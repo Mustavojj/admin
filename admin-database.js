@@ -4,6 +4,43 @@ const SUPABASE_CONFIG = {
     key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0am9rbmdwemJzdXlrd3Bjc2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTU0MTcsImV4cCI6MjA0ODU3MTQxN30.8dRLfC-3kzCfIH9c6FCwzva5X4W5j2w1M75Q0q4Jc9A'
 };
 
+
+class AdminDatabase {
+    constructor() {
+        this.supabase = null;
+        this.init();
+    }
+
+    async init() {
+        try {
+            const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+            this.supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+            console.log('✅ Admin Database connected successfully');
+            
+            // اختبار الاتصال
+            await this.testConnection();
+        } catch (error) {
+            console.error('❌ Admin Database connection failed:', error);
+        }
+    }
+
+    async testConnection() {
+        try {
+            const { data, error } = await this.supabase
+                .from('users')
+                .select('count', { count: 'exact', head: true });
+            
+            if (error) {
+                console.error('❌ Supabase test failed:', error);
+            } else {
+                console.log('✅ Supabase test passed - Users count:', data);
+            }
+        } catch (error) {
+            console.error('❌ Connection test failed:', error);
+        }
+    }
+
+    
 class AdminDatabase {
     constructor() {
         this.supabase = null;
