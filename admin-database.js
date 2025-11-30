@@ -1,275 +1,221 @@
-// Supabase Configuration for Admin
-const SUPABASE_CONFIG = {
-    url: 'https://ztjokngpzbsuykwpcscz.supabase.co',
-    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0am9rbmdwemJzdXlrd3Bjc2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTU0MTcsImV4cCI6MjA0ODU3MTQxN30.8dRLfC-3kzCfIH9c6FCwzva5X4W5j2w1M75Q0q4Jc9A'
-};
-
-
 class AdminDatabase {
-    constructor() {
-        this.supabase = null;
-        this.init();
-    }
+    // ... باقي الكود
 
-    async init() {
-        try {
-            const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-            this.supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
-            console.log('✅ Admin Database connected successfully');
-            
-            // اختبار الاتصال
-            await this.testConnection();
-        } catch (error) {
-            console.error('❌ Admin Database connection failed:', error);
-        }
-    }
-
-    async testConnection() {
-        try {
-            const { data, error } = await this.supabase
-                .from('users')
-                .select('count', { count: 'exact', head: true });
-            
-            if (error) {
-                console.error('❌ Supabase test failed:', error);
-            } else {
-                console.log('✅ Supabase test passed - Users count:', data);
-            }
-        } catch (error) {
-            console.error('❌ Connection test failed:', error);
-        }
-    }
-
-    
-class AdminDatabase {
-    constructor() {
-        this.supabase = null;
-        this.init();
-    }
-
-    async init() {
-        try {
-            const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-            this.supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
-            console.log('✅ Admin Database connected successfully');
-        } catch (error) {
-            console.error('❌ Admin Database connection failed:', error);
-        }
-    }
-
-    // Users Management
     async getAllUsers() {
         try {
+            // نظراً لأنه لا يوجد جدول users، سنحاول الحصول على المستخدمين من الجداول الأخرى
+            console.log('📋 Fetching users from existing tables...');
+            
+            // جلب المستخدمين الفريدين من جدول user_tasks
+            const { data: tasksData, error: tasksError } = await this.supabase
+                .from('user_tasks')
+                .select('user_id')
+                .order('user_id');
+
+            if (tasksError) {
+                console.error('❌ Error getting users from tasks:', tasksError);
+                return [];
+            }
+
+            // جلب المستخدمين الفريدين من جدول withdrawals
+            const { data: withdrawalsData, error: withdrawalsError } = await this.supabase
+                .from('withdrawals')
+                .select('user_id')
+                .order('user_id');
+
+            if (withdrawalsError) {
+                console.error('❌ Error getting users from withdrawals:', withdrawalsError);
+                return [];
+            }
+
+            // دمج وترتيب المستخدمين
+            const userSet = new Set();
+            
+            tasksData?.forEach(task => userSet.add(task.user_id));
+            withdrawalsData?.forEach(withdrawal => userSet.add(withdrawal.user_id));
+            
+            const userIds = Array.from(userSet).sort((a, b) => a - b);
+            
+            console.log(`✅ Found ${userIds.length} unique users`);
+            
+            // إنشاء بيانات مستخدمين افتراضية
+            return userIds.map(userId => ({
+                id: userId,
+                firstName: 'User',
+                lastName: `#${userId}`,
+                username: `user_${userId}`,
+                balance: 0,
+                tub: 0,
+                referrals: 0,
+                referralEarnings: 0,
+                totalEarned: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+            
+        } catch (error) {
+            console.error('❌ Exception getting users:', error);
+            return [];
+        }
+    }
+
+    async getAllTasks() {
+        try {
+            console.log('📋 Fetching tasks from existing tables...');
+            
+            // الجمع بين public_tasks و user_tasks
+            const [publicTasks, userTasks] = await Promise.all([
+                this.getPublicTasks(),
+                this.getUserTasks()
+            ]);
+
+            const allTasks = [...publicTasks, ...userTasks];
+            console.log(`✅ Found ${allTasks.length} total tasks`);
+            
+            return allTasks;
+            
+        } catch (error) {
+            console.error('❌ Exception getting tasks:', error);
+            return [];
+        }
+    }
+
+    async getPublicTasks() {
+        try {
             const { data, error } = await this.supabase
-                .from('users')
+                .from('public_tasks')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data.map(user => this.convertToCamelCase(user));
+            if (error) {
+                console.error('❌ Error getting public tasks:', error);
+                return [];
+            }
+
+            return data.map(task => ({
+                id: task.id,
+                name: task.name || task.title || 'Public Task',
+                link: task.link || task.url,
+                type: task.type || 'other',
+                userId: null, // مهام عامة بدون مستخدم محدد
+                targetCompletions: task.target_completions || 1000,
+                cost: task.cost || 0,
+                reward: task.reward || 10,
+                completions: task.completions || 0,
+                status: task.status || 'active',
+                createdAt: task.created_at,
+                user: { firstName: 'Public', lastName: 'Task', username: 'public' }
+            }));
+            
         } catch (error) {
-            console.error('Error getting users:', error);
+            console.error('❌ Exception getting public tasks:', error);
             return [];
         }
     }
 
-    async createUser(userData) {
-        try {
-            const userRecord = {
-                id: userData.id,
-                first_name: userData.firstName,
-                last_name: userData.lastName,
-                username: userData.username,
-                photo_url: userData.photoUrl,
-                balance: userData.balance || 0,
-                tub: userData.tub || 1000,
-                referrals: userData.referrals || 0,
-                referral_earnings: userData.referralEarnings || 0,
-                total_earned: userData.totalEarned || 0
-            };
-
-            const { data, error } = await this.supabase
-                .from('users')
-                .insert([userRecord])
-                .select()
-                .single();
-
-            if (error) throw error;
-            return this.convertToCamelCase(data);
-        } catch (error) {
-            console.error('Error creating user:', error);
-            throw error;
-        }
-    }
-
-    async updateUser(userId, updates) {
-        try {
-            const updateData = {
-                updated_at: new Date().toISOString()
-            };
-
-            // Convert camelCase to snake_case
-            Object.keys(updates).forEach(key => {
-                if (key === 'firstName') updateData.first_name = updates[key];
-                else if (key === 'lastName') updateData.last_name = updates[key];
-                else if (key === 'photoUrl') updateData.photo_url = updates[key];
-                else if (key === 'referralEarnings') updateData.referral_earnings = updates[key];
-                else if (key === 'totalEarned') updateData.total_earned = updates[key];
-                else updateData[key] = updates[key];
-            });
-
-            const { data, error } = await this.supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', userId)
-                .select()
-                .single();
-
-            if (error) throw error;
-            return this.convertToCamelCase(data);
-        } catch (error) {
-            console.error('Error updating user:', error);
-            throw error;
-        }
-    }
-
-    async deleteUser(userId) {
-        try {
-            const { error } = await this.supabase
-                .from('users')
-                .delete()
-                .eq('id', userId);
-
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            throw error;
-        }
-    }
-
-    // Tasks Management
-    async getAllTasks() {
+    async getUserTasks() {
         try {
             const { data, error } = await this.supabase
-                .from('tasks')
-                .select('*, users(first_name, last_name, username)')
+                .from('user_tasks')
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data.map(task => this.convertToCamelCase(task));
+            if (error) {
+                console.error('❌ Error getting user tasks:', error);
+                return [];
+            }
+
+            return await Promise.all(
+                data.map(async (task) => {
+                    return {
+                        id: task.id,
+                        name: task.name || task.title || 'User Task',
+                        link: task.link || task.url,
+                        type: task.type || 'other',
+                        userId: task.user_id,
+                        targetCompletions: task.target_completions || 1000,
+                        cost: task.cost || 0,
+                        reward: task.reward || 10,
+                        completions: task.completions || 0,
+                        status: task.status || 'active',
+                        createdAt: task.created_at,
+                        user: { 
+                            firstName: 'User', 
+                            lastName: `#${task.user_id}`, 
+                            username: `user_${task.user_id}` 
+                        }
+                    };
+                })
+            );
+            
         } catch (error) {
-            console.error('Error getting tasks:', error);
+            console.error('❌ Exception getting user tasks:', error);
             return [];
         }
     }
 
-    async createTask(taskData) {
-        try {
-            const taskRecord = {
-                user_id: taskData.userId,
-                name: taskData.name,
-                link: taskData.link,
-                type: taskData.type,
-                check_subscription: taskData.checkSubscription || false,
-                target_completions: taskData.targetCompletions,
-                cost: taskData.cost,
-                reward: taskData.reward || 10,
-                status: 'active'
-            };
-
-            const { data, error } = await this.supabase
-                .from('tasks')
-                .insert([taskRecord])
-                .select('*, users(first_name, last_name, username)')
-                .single();
-
-            if (error) throw error;
-            return this.convertToCamelCase(data);
-        } catch (error) {
-            console.error('Error creating task:', error);
-            throw error;
-        }
-    }
-
-    async updateTask(taskId, updates) {
-        try {
-            const { data, error } = await this.supabase
-                .from('tasks')
-                .update(updates)
-                .eq('id', taskId)
-                .select('*, users(first_name, last_name, username)')
-                .single();
-
-            if (error) throw error;
-            return this.convertToCamelCase(data);
-        } catch (error) {
-            console.error('Error updating task:', error);
-            throw error;
-        }
-    }
-
-    async deleteTask(taskId) {
-        try {
-            const { error } = await this.supabase
-                .from('tasks')
-                .delete()
-                .eq('id', taskId);
-
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Error deleting task:', error);
-            throw error;
-        }
-    }
-
-    // Transactions
     async getAllTransactions() {
         try {
+            console.log('📋 Fetching transactions from withdrawals...');
+            
             const { data, error } = await this.supabase
-                .from('transactions')
-                .select('*, users(first_name, last_name, username)')
+                .from('withdrawals')
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data.map(transaction => this.convertToCamelCase(transaction));
+            if (error) {
+                console.error('❌ Error getting withdrawals:', error);
+                return [];
+            }
+
+            console.log(`✅ Found ${data.length} withdrawal transactions`);
+            
+            return data.map(withdrawal => ({
+                id: withdrawal.id,
+                userId: withdrawal.user_id,
+                type: 'withdrawal',
+                amount: -Math.abs(withdrawal.amount || 0), // السحب يكون سالب
+                description: `Withdrawal request: ${withdrawal.amount} TON`,
+                status: withdrawal.status || 'pending',
+                createdAt: withdrawal.created_at,
+                user: { 
+                    firstName: 'User', 
+                    lastName: `#${withdrawal.user_id}`, 
+                    username: `user_${withdrawal.user_id}` 
+                }
+            }));
+            
         } catch (error) {
-            console.error('Error getting transactions:', error);
+            console.error('❌ Exception getting transactions:', error);
             return [];
         }
     }
 
-    // Statistics
     async getStatistics() {
         try {
-            // Total Users
-            const { count: totalUsers } = await this.supabase
-                .from('users')
-                .select('*', { count: 'exact', head: true });
+            console.log('📊 Calculating statistics from existing tables...');
+            
+            const [users, tasks, transactions] = await Promise.all([
+                this.getAllUsers(),
+                this.getAllTasks(),
+                this.getAllTransactions()
+            ]);
 
-            // Tasks Statistics
-            const { data: tasksData } = await this.supabase
-                .from('tasks')
-                .select('completions, target_completions, status');
+            const totalEarned = tasks.reduce((sum, task) => sum + (task.reward * task.completions || 0), 0);
+            const tasksCompleted = tasks.reduce((sum, task) => sum + (task.completions || 0), 0);
 
-            // Total Earnings
-            const { data: usersData } = await this.supabase
-                .from('users')
-                .select('total_earned');
-
-            const tasksCompleted = tasksData?.reduce((sum, task) => sum + (task.completions || 0), 0) || 0;
-            const tasksCreated = tasksData?.length || 0;
-            const totalEarned = usersData?.reduce((sum, user) => sum + (user.total_earned || 0), 0) || 0;
-
-            return {
-                totalUsers: totalUsers || 0,
-                tasksCompleted,
-                tasksCreated,
-                totalEarned
+            const stats = {
+                totalUsers: users.length,
+                tasksCompleted: tasksCompleted,
+                tasksCreated: tasks.length,
+                totalEarned: totalEarned
             };
+
+            console.log('📊 Statistics from existing data:', stats);
+            return stats;
+
         } catch (error) {
-            console.error('Error getting statistics:', error);
+            console.error('❌ Exception getting statistics:', error);
             return {
                 totalUsers: 0,
                 tasksCompleted: 0,
@@ -278,22 +224,4 @@ class AdminDatabase {
             };
         }
     }
-
-    // Helper function to convert snake_case to camelCase
-    convertToCamelCase(data) {
-        if (!data) return data;
-        
-        const converted = {};
-        Object.keys(data).forEach(key => {
-            let camelKey = key;
-            if (key.includes('_')) {
-                camelKey = key.replace(/_([a-z])/g, (match, char) => char.toUpperCase());
-            }
-            converted[camelKey] = data[key];
-        });
-        return converted;
-    }
 }
-
-// Initialize admin database
-const adminDB = new AdminDatabase();
