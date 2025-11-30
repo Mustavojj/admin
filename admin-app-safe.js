@@ -1,3 +1,57 @@
+
+async init() {
+    try {
+        console.log('🚀 Starting Admin App...');
+        
+        // اختبار بسيط للاتصال أولاً
+        await this.testConnection();
+        
+        // تهيئة Supabase
+        await this.initializeSupabase();
+        
+        this.setupEventListeners();
+        await this.loadAllData();
+        this.updateStatsGrid();
+        this.isInitialized = true;
+        
+        console.log('✅ Admin App initialized successfully');
+        this.showNotification('Admin panel loaded successfully!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Admin App initialization failed:', error);
+        this.showNotification('Failed to initialize admin panel: ' + error.message, 'error');
+    }
+}
+
+async testConnection() {
+    console.log('🔗 Testing Supabase connection...');
+    
+    // اختبار إذا كان Supabase SDK محملاً
+    if (typeof supabase === 'undefined') {
+        console.log('📚 Loading Supabase SDK...');
+        await this.loadSupabaseSDK();
+    }
+    
+    // إنشاء العميل
+    this.supabase = supabase.createClient(
+        'https://ztjokngpzbsuykwpcscz.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0am9rbmdwemJzdXlrd3Bjc2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTU0MTcsImV4cCI6MjA0ODU3MTQxN30.8dRLfC-3kzCfIH9c6FCwzva5X4W5j2w1M75Q0q4Jc9A'
+    );
+    
+    // اختبار الاتصال بجلب بسيط
+    const { data, error } = await this.supabase
+        .from('users')
+        .select('id')
+        .limit(1);
+    
+    if (error) {
+        console.error('❌ Connection test failed:', error);
+        throw new Error(`Database connection failed: ${error.message}`);
+    }
+    
+    console.log('✅ Connection test successful');
+}
+
 class AdminApp {
     constructor() {
         this.currentSection = 'dashboard';
