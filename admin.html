@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TON BOSS - لوحة التحكم</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>
+                    <i class="fas fa-shield-alt"></i>
+                    TON BOSS Admin
+                </h1>
+            </div>
+            <ul class="sidebar-nav">
+                <li class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>لوحة التحكم</span>
+                </li>
+                <li class="nav-item" data-section="users">
+                    <i class="fas fa-users"></i>
+                    <span>إدارة المستخدمين</span>
+                </li>
+                <li class="nav-item" data-section="tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>إدارة المهام</span>
+                </li>
+                <li class="nav-item" data-section="transactions">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>المعاملات</span>
+                </li>
+                <li class="nav-item" data-section="statistics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>الإحصائيات</span>
+                </li>
+                <li class="nav-item" data-section="settings">
+                    <i class="fas fa-cogs"></i>
+                    <span>الإعدادات</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h2 id="page-title">لوحة التحكم</h2>
+                <div class="stats-grid" id="stats-grid">
+                    <!-- سيتم ملؤها بالبيانات -->
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="quick-actions">
+                    <h3>إجراءات سريعة</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="admin.showSection('users')">
+                            <i class="fas fa-user-plus"></i>
+                            إضافة مستخدم
+                        </button>
+                        <button class="btn btn-success" onclick="admin.showSection('tasks')">
+                            <i class="fas fa-plus-circle"></i>
+                            إنشاء مهمة
+                        </button>
+                        <button class="btn btn-warning" onclick="admin.refreshAllData()">
+                            <i class="fas fa-sync-alt"></i>
+                            تحديث البيانات
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3>النشاط الأخير</h3>
+                    <div id="recent-activity">
+                        <!-- سيتم ملؤها بالبيانات -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Management Section -->
+            <section id="users" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> إدارة المستخدمين</h2>
+                    <button class="btn btn-primary" onclick="admin.showUserModal()">
+                        <i class="fas fa-plus"></i>
+                        إضافة مستخدم
+                    </button>
+                </div>
+
+                <input type="text" class="search-box" id="user-search" placeholder="بحث في المستخدمين...">
+
+                <div class="tabs">
+                    <button class="tab active" onclick="admin.filterUsers('all')">الكل</button>
+                    <button class="tab" onclick="admin.filterUsers('active')">نشط</button>
+                    <button class="tab" onclick="admin.filterUsers('new')">جديد</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>الاسم</th>
+                                <th>Username</th>
+                                <th>الرصيد</th>
+                                <th>GOLD</th>
+                                <th>Referrals</th>
+                                <th>تاريخ التسجيل</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table">
+                            <!-- سيتم ملؤها بالبيانات -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tasks Management Section -->
+            <section id="tasks" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-tasks"></i> إدارة المهام</h2>
+                    <button class="btn btn-primary" onclick="admin.showTaskModal()">
+                        <i class="fas fa-plus"></i>
+                        مهمة جديدة
+                    </button>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="admin.filterTasks('all')">الكل</button>
+                    <button class="tab" onclick="admin.filterTasks('active')">نشط</button>
+                    <button class="tab" onclick="admin.filterTasks('completed')">مكتمل</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>اسم المهمة</th>
+                                <th>النوع</th>
+                                <th>المستخدم</th>
+                                <th>التقدم</th>
+                                <th>المكافأة</th>
+                                <th>التكلفة</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-table">
+                            <!-- سيتم ملؤها بالبيانات -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Transactions Section -->
+            <section id="transactions" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-exchange-alt"></i> إدارة المعاملات</h2>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="admin.filterTransactions('all')">الكل</button>
+                    <button class="tab" onclick="admin.filterTransactions('task_reward')">مكافآت مهام</button>
+                    <button class="tab" onclick="admin.filterTransactions('withdrawal')">سحوبات</button>
+                    <button class="tab" onclick="admin.filterTransactions('swap')">تبادل</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>المستخدم</th>
+                                <th>النوع</th>
+                                <th>المبلغ</th>
+                                <th>الوصف</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-table">
+                            <!-- سيتم ملؤها بالبيانات -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Statistics Section -->
+            <section id="statistics" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-bar"></i> الإحصائيات والتقارير</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-value" id="stat-total-users">0</div>
+                        <div class="stat-label">إجمالي المستخدمين</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-value" id="stat-total-tasks">0</div>
+                        <div class="stat-label">المهام المنشأة</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-value" id="stat-completed-tasks">0</div>
+                        <div class="stat-label">مهام مكتملة</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="stat-value" id="stat-total-earned">0</div>
+                        <div class="stat-label">إجمالي الأرباح</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3>مخطط النمو</h3>
+                    <div id="growth-chart" style="background: var(--card-bg); padding: 20px; border-radius: 12px; min-height: 300px;">
+                        <!-- سيتم إضافة المخطط هنا -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cogs"></i> إعدادات النظام</h2>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>سعر المهمة لكل 1000 مشاهدة (TON)</label>
+                        <input type="number" class="form-input" id="task-price" value="1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>سعر الصرف (GOLD to TON)</label>
+                        <input type="number" class="form-input" id="exchange-rate" value="10000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>الحد الأدنى للسحب (TON)</label>
+                        <input type="number" class="form-input" id="min-withdrawal" value="0.05" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>الحد اليومي للإعلانات</label>
+                        <input type="number" class="form-input" id="daily-ad-limit" value="50">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="admin.saveSettings()">
+                    <i class="fas fa-save"></i>
+                    حفظ الإعدادات
+                </button>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <h3>إجراءات النظام</h3>
+                    <div style="display: flex; gap: 15px; margin-top: 15px;">
+                        <button class="btn btn-warning" onclick="admin.backupData()">
+                            <i class="fas fa-download"></i>
+                            نسخ احتياطي
+                        </button>
+                        <button class="btn btn-danger" onclick="admin.clearOldData()">
+                            <i class="fas fa-trash"></i>
+                            مسح البيانات القديمة
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals will be added here by JavaScript -->
+    <div id="modals-container"></div>
+
+    <script src="admin-database.js"></script>
+    <script src="admin-app.js"></script>
+</body>
+</html>
