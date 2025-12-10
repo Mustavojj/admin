@@ -801,3 +801,436 @@ td::before {
     font-size: 0.8rem;
   }
 }
+
+/* إضافة في نهاية الملف */
+
+/* My Tasks Section */
+.my-tasks-container {
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.my-task-item {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+
+.my-task-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.my-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.my-task-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 200px;
+}
+
+.task-status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.task-status-badge.active {
+  background: linear-gradient(135deg, #00d9a6, #00b894);
+}
+
+.task-status-badge.finished {
+  background: linear-gradient(135deg, #00a8e8, #0097e6);
+}
+
+.task-status-badge.deleted {
+  background: linear-gradient(135deg, #ff4757, #ff3838);
+}
+
+.my-task-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.info-item {
+  background: rgba(255,255,255,0.05);
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-value.gold {
+  color: #FFD700;
+}
+
+.info-value.ton {
+  color: #0088cc;
+}
+
+.my-task-progress {
+  margin: 15px 0;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #0088cc, #00a8e8);
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.my-task-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.task-control-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #ff4757, #ff3838);
+  color: white;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #ff3838, #ff2e2e);
+}
+
+/* Add Task Modal */
+.add-task-modal-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.task-category-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.category-btn {
+  padding: 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.category-btn.active {
+  border-color: var(--primary);
+  background: rgba(0, 136, 204, 0.1);
+}
+
+.category-btn i {
+  font-size: 1.2rem;
+}
+
+.completion-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.completion-option {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.completion-option:hover {
+  transform: translateY(-2px);
+}
+
+.completion-option.selected {
+  border-color: var(--primary);
+  background: rgba(0, 136, 204, 0.1);
+}
+
+.users-count {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+
+.ton-price {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Broadcast Section */
+.broadcast-buttons-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.broadcast-btn {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+}
+
+.broadcast-btn:hover {
+  background: rgba(0, 136, 204, 0.1);
+  border-color: var(--primary);
+}
+
+.broadcast-btn i {
+  font-size: 1.2rem;
+}
+
+.inline-button-row {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.inline-button-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.remove-inline-btn {
+  padding: 10px 15px;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Balance History */
+.balance-history-container {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-top: 20px;
+}
+
+.balance-history-item {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.balance-history-user {
+  flex: 1;
+  min-width: 200px;
+}
+
+.balance-history-user strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.balance-history-user small {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.balance-history-amount {
+  text-align: center;
+  min-width: 120px;
+}
+
+.amount-display {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.amount-display.gold {
+  color: #FFD700;
+}
+
+.amount-display.ton {
+  color: #0088cc;
+}
+
+.amount-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.1);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.balance-history-details {
+  flex: 2;
+  min-width: 250px;
+}
+
+.balance-history-reason {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.balance-history-meta {
+  display: flex;
+  gap: 15px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.balance-history-date {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: right;
+  min-width: 150px;
+}
+
+/* Coin Icons */
+.coin-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+.coin-icon.gold {
+  background: #FFD700;
+  border: 2px solid #DAA520;
+}
+
+.coin-icon.ton {
+  background: #0088cc;
+  border: 2px solid #006699;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .task-category-buttons,
+  .completion-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .balance-history-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .balance-history-amount,
+  .balance-history-date {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .task-category-buttons,
+  .completion-options-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .my-task-controls {
+    flex-direction: column;
+  }
+  
+  .task-control-btn {
+    width: 100%;
+  }
+  }
