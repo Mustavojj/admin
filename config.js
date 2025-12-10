@@ -1,5 +1,5 @@
 // config.js
-const FIREBASE_CONFIG = {
+export const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBgZVF60SotjtCvAjv52GfBZv4ppKdGYWk",
   authDomain: "new-you-6a04c.firebaseapp.com",
   databaseURL: "https://new-you-6a04c-default-rtdb.firebaseio.com",
@@ -10,29 +10,29 @@ const FIREBASE_CONFIG = {
   measurementId: "G-TZGKT4GJ4L"
 };
 
-const ADMIN_PASSWORDS = ["Admin@123", "Xboss2024", "Mostafa$500"];
+export const ADMIN_PASSWORDS = ["Admin@123", "Xboss2024", "Mostafa$500"];
 
-const APP_DEFAULT_CONFIG = {
+export const APP_DEFAULT_CONFIG = {
   appName: "X BOSS APP",
-  botUsername: "x_boss_bot",
+  botUsername: "XBOSSX_Robot",
+  botToken: "8245344556:AAHePdCS2OC6z3Um6HweQqszFOhGpPWMlKU",
   walletAddress: "UQDMj-aLehj4WZwvw0ZEcIVD14blpLWQxzdCmD7QjKOP6D-F",
-  adZoneId: "10287609",
-  adValue: 10,
-  dailyAdLimit: 50,
-  adsPerBreak: 10,
-  breakDuration: 5,
   minimumWithdraw: 0.10,
-  minimumDeposit: 0.50,
+  minimumDeposit: 0.10,
   exchangeRate: 10000,
-  welcomeMessage: "Welcome to X BOSS APP! Earn GOLD and withdraw TON!",
+  welcomeMessage: "Welcome to X BOSS APP!",
   communityLink: "https://t.me/TON_HUB_NEWS",
   tonkeeperLink: "https://app.tonkeeper.com/transfer/UQDMj-aLehj4WZwvw0ZEcIVD14blpLWQxzdCmD7QjKOP6D-F?amount=&text=",
+  
   taskPrices: {
-    500: 0.5,
-    1000: 1.0,
-    3000: 3.0,
-    5000: 5.0
+    100: 0.100,
+    250: 0.250,
+    500: 0.500,
+    1000: 1.000,
+    2500: 2.500,
+    5000: 5.000
   },
+  
   withdrawalOptions: [
     { gold: 10000, ton: 0.10, label: "10,000 GOLD ≈ 0.10 TON" },
     { gold: 50000, ton: 0.50, label: "50,000 GOLD ≈ 0.50 TON" },
@@ -40,5 +40,3 @@ const APP_DEFAULT_CONFIG = {
     { gold: 500000, ton: 5.00, label: "500,000 GOLD ≈ 5 TON" }
   ]
 };
-
-export { FIREBASE_CONFIG, ADMIN_PASSWORDS, APP_DEFAULT_CONFIG };
