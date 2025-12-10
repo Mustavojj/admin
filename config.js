@@ -1,5 +1,4 @@
-// config.js
-export const FIREBASE_CONFIG = {
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBgZVF60SotjtCvAjv52GfBZv4ppKdGYWk",
   authDomain: "new-you-6a04c.firebaseapp.com",
   databaseURL: "https://new-you-6a04c-default-rtdb.firebaseio.com",
@@ -10,9 +9,9 @@ export const FIREBASE_CONFIG = {
   measurementId: "G-TZGKT4GJ4L"
 };
 
-export const ADMIN_PASSWORDS = ["Admin@123", "Xboss2024", "Mostafa$500"];
+const ADMIN_PASSWORDS = ["Admin@123", "Xboss2024", "Mostafa$500"];
 
-export const APP_DEFAULT_CONFIG = {
+const APP_DEFAULT_CONFIG = {
   appName: "X BOSS APP",
   botUsername: "XBOSSX_Robot",
   botToken: "8245344556:AAHePdCS2OC6z3Um6HweQqszFOhGpPWMlKU",
