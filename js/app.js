@@ -1,12 +1,9 @@
-// app.js - Admin Panel
-import { FIREBASE_CONFIG, ADMIN_PASSWORDS, APP_DEFAULT_CONFIG } from './config.js';
-
 class AdminPanel {
   constructor() {
     this.db = null;
     this.auth = null;
     this.currentUser = null;
-    this.appConfig = APP_DEFAULT_CONFIG;
+    this.appConfig = APP_DEFAULT_CONFIG; // استخدام المتغير مباشرة
     this.botToken = "8245344556:AAHePdCS2OC6z3Um6HweQqszFOhGpPWMlKU";
     
     this.elements = {
@@ -21,13 +18,14 @@ class AdminPanel {
       overlay: document.getElementById('overlay')
     };
     
-    this.initialize();
+    // تهيئة Firebase أولاً
+    this.initializeFirebase();
   }
 
-  async initialize() {
+  async initializeFirebase() {
     try {
       if (!firebase.apps.length) {
-        firebase.initializeApp(FIREBASE_CONFIG);
+        firebase.initializeApp(FIREBASE_CONFIG); // استخدام المتغير مباشرة
       }
       
       this.db = firebase.database();
@@ -55,7 +53,7 @@ class AdminPanel {
       console.error("Error loading app config:", error);
     }
   }
-
+  
   async setupEventListeners() {
     this.elements.loginButton.addEventListener('click', () => this.handleLogin());
     this.elements.loginPassword.addEventListener('keypress', (e) => {
