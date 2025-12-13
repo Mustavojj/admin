@@ -9,11 +9,11 @@ const FIREBASE_CONFIG = {
   measurementId: "G-TZGKT4GJ4L"
 };
 
-const ADMIN_PASSWORDS = ["Admin@123", "Xboss2024", "Mostafa$500"];
+const ADMIN_PASSWORDS = ["Mostafa$500"];
 
 const APP_DEFAULT_CONFIG = {
   appName: "X BOSS APP",
-  botUsername: "XBOSSX_Robot",
+  botUsername: "XBOSSNEWS_Robot",
   botToken: "8245344556:AAHePdCS2OC6z3Um6HweQqszFOhGpPWMlKU",
   walletAddress: "UQDMj-aLehj4WZwvw0ZEcIVD14blpLWQxzdCmD7QjKOP6D-F",
   minimumWithdraw: 0.10,
