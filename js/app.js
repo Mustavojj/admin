@@ -273,11 +273,11 @@ class AdminPanel {
             </div>
             <div class="user-stats">
               <span class="stat-badge gold">
-                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon-sm">
                 ${user.gold.toLocaleString()} GOLD
               </span>
               <span class="stat-badge ton">
-                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
                 ${user.balance.toFixed(3)} TON
               </span>
             </div>
@@ -465,7 +465,7 @@ class AdminPanel {
           <div class="user-stats-grid">
             <div class="user-stat-card">
               <div class="user-stat-icon gold">
-                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD">
+                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon-sm">
               </div>
               <div class="user-stat-content">
                 <h4>GOLD Balance</h4>
@@ -475,7 +475,7 @@ class AdminPanel {
             
             <div class="user-stat-card">
               <div class="user-stat-icon ton">
-                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON">
+                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
               </div>
               <div class="user-stat-content">
                 <h4>TON Balance</h4>
@@ -949,7 +949,7 @@ class AdminPanel {
                   <div class="task-detail">
                     <span class="detail-label">Reward per User:</span>
                     <span class="reward-amount">
-                      <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                      <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon-sm">
                       ${task.reward || 50} GOLD
                     </span>
                   </div>
@@ -1176,10 +1176,10 @@ class AdminPanel {
                   </div>
                 </div>
                 <div class="withdrawal-amount">
-                  <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                  <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
                   ${req.tonAmount || req.amount || 0} TON
                   <div class="gold-amount">
-                    <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                    <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon-sm">
                     ${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD
                   </div>
                 </div>
@@ -1205,7 +1205,7 @@ class AdminPanel {
                 <div class="detail-item full-width">
                   <span class="detail-label">Amount:</span>
                   <span class="detail-value amount-highlight">
-                    <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                    <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
                     ${req.tonAmount || req.amount || 0} TON
                     (${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD)
                   </span>
@@ -1331,8 +1331,8 @@ class AdminPanel {
                 <div class="promo-code">${promo.code}</div>
                 <div class="promo-reward">
                   ${promo.type === 'ton' ? 
-                    `<img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton"> ${promo.reward} TON` : 
-                    `<img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold"> ${promo.reward} GOLD`
+                    `<img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm"> ${promo.reward} TON` : 
+                    `<img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon-sm"> ${promo.reward} GOLD`
                   }
                 </div>
               </div>
