@@ -3,7 +3,7 @@ class AdminPanel {
     this.db = null;
     this.auth = null;
     this.currentUser = null;
-    this.appConfig = APP_DEFAULT_CONFIG; // استخدام المتغير مباشرة
+    this.appConfig = APP_DEFAULT_CONFIG;
     this.botToken = "8245344556:AAHePdCS2OC6z3Um6HweQqszFOhGpPWMlKU";
     
     this.elements = {
@@ -18,14 +18,13 @@ class AdminPanel {
       overlay: document.getElementById('overlay')
     };
     
-    // تهيئة Firebase أولاً
     this.initializeFirebase();
   }
 
   async initializeFirebase() {
     try {
       if (!firebase.apps.length) {
-        firebase.initializeApp(FIREBASE_CONFIG); // استخدام المتغير مباشرة
+        firebase.initializeApp(FIREBASE_CONFIG);
       }
       
       this.db = firebase.database();
@@ -176,29 +175,17 @@ class AdminPanel {
       case 'dashboard':
         await this.renderDashboard();
         break;
-      case 'withdrawals':
-        await this.renderWithdrawals();
-        break;
-      case 'wallet':
-        await this.renderWallet();
+      case 'users':
+        await this.renderUsers();
         break;
       case 'tasks':
         await this.renderTasks();
         break;
+      case 'withdrawals':
+        await this.renderWithdrawals();
+        break;
       case 'promoCodes':
         await this.renderPromoCodes();
-        break;
-      case 'settings':
-        await this.renderSettings();
-        break;
-      case 'broadcast':
-        await this.renderBroadcast();
-        break;
-      case 'addBalance':
-        await this.renderAddBalance();
-        break;
-      case 'history':
-        await this.renderBalanceHistory();
         break;
       default:
         await this.renderDashboard();
@@ -221,54 +208,80 @@ class AdminPanel {
     `;
     
     try {
-      const [usersSnap, withdrawalsSnap, tasksSnap, historySnap] = await Promise.all([
-        this.db.ref('users').limitToLast(5).once('value'),
-        this.db.ref('withdrawals/pending').once('value'),
-        this.db.ref('config/tasks').orderByChild('createdAt').limitToLast(3).once('value'),
-        this.db.ref('balanceHistory').orderByChild('timestamp').limitToLast(5).once('value')
+      const [usersSnap, withdrawalsSnap] = await Promise.all([
+        this.db.ref('users').once('value'),
+        this.db.ref('withdrawals/pending').once('value')
       ]);
       
-      const totalUsers = await this.getTotalUsersCount();
+      const totalUsers = usersSnap.numChildren();
       const pendingWithdrawals = withdrawalsSnap.numChildren();
-      const totalTasks = tasksSnap.numChildren();
-      const recentBalanceAdditions = historySnap.numChildren();
       
-      let recentUsers = '';
+      // Get top 20 users by balance
+      let usersArray = [];
       usersSnap.forEach(child => {
         const user = child.val();
         const telegramId = user.id || child.key;
-        recentUsers += `
-          <tr>
-            <td data-label="User">
-              <strong>${user.firstName || 'User'}</strong>
-              <br><small>ID: ${telegramId}</small>
-            </td>
-            <td data-label="Balance">
-              <span class="coin-icon gold"></span> ${(user.gold || 0).toLocaleString()}
-              <br><span class="coin-icon ton"></span> ${(user.balance || 0).toFixed(3)}
-            </td>
-            <td data-label="Date">
-              ${new Date(user.createdAt || Date.now()).toLocaleDateString()}
-            </td>
-          </tr>
+        usersArray.push({
+          id: telegramId,
+          firstName: user.firstName || 'User',
+          username: user.username,
+          gold: user.gold || 0,
+          balance: user.balance || 0,
+          referrals: user.totalReferrals || 0,
+          tasksCompleted: user.tasksCompleted || 0
+        });
+      });
+      
+      // Sort by balance (gold + ton)
+      const topByBalance = [...usersArray]
+        .sort((a, b) => (b.gold + (b.balance * this.appConfig.exchangeRate)) - (a.gold + (a.balance * this.appConfig.exchangeRate)))
+        .slice(0, 20);
+      
+      // Sort by referrals
+      const topByReferrals = [...usersArray]
+        .sort((a, b) => b.referrals - a.referrals)
+        .slice(0, 20);
+      
+      let topBalanceHTML = '';
+      topByBalance.forEach((user, index) => {
+        const totalGold = user.gold + (user.balance * this.appConfig.exchangeRate);
+        topBalanceHTML += `
+          <div class="dashboard-user-item">
+            <div class="user-rank">${index + 1}</div>
+            <div class="user-info">
+              <strong>${user.firstName}</strong>
+              ${user.username ? `<br><small>@${user.username}</small>` : ''}
+            </div>
+            <div class="user-stats">
+              <span class="stat-badge gold">
+                <i class="fas fa-coins"></i> ${user.gold.toLocaleString()} GOLD
+              </span>
+              <span class="stat-badge ton">
+                <i class="fab fa-telegram"></i> ${user.balance.toFixed(3)} TON
+              </span>
+            </div>
+          </div>
         `;
       });
       
-      let recentHistory = '';
-      historySnap.forEach(child => {
-        const record = child.val();
-        recentHistory += `
-          <tr>
-            <td data-label="User">${record.userName || 'Unknown'}</td>
-            <td data-label="Amount">
-              <span class="${record.balanceType === 'gold' ? 'balance-positive' : 'balance-positive'}">
-                ${record.balanceType === 'gold' ? '🟡' : '🔵'} ${record.amount}
+      let topReferralsHTML = '';
+      topByReferrals.forEach((user, index) => {
+        topReferralsHTML += `
+          <div class="dashboard-user-item">
+            <div class="user-rank">${index + 1}</div>
+            <div class="user-info">
+              <strong>${user.firstName}</strong>
+              ${user.username ? `<br><small>@${user.username}</small>` : ''}
+            </div>
+            <div class="user-stats">
+              <span class="stat-badge referral">
+                <i class="fas fa-users"></i> ${user.referrals} Referrals
               </span>
-            </td>
-            <td data-label="Date">
-              ${new Date(record.timestamp).toLocaleDateString()}
-            </td>
-          </tr>
+              <span class="stat-badge task">
+                <i class="fas fa-tasks"></i> ${user.tasksCompleted} Tasks
+              </span>
+            </div>
+          </div>
         `;
       });
       
@@ -276,70 +289,60 @@ class AdminPanel {
         <div id="dashboard" class="page active">
           <div class="stats-grid">
             <div class="stat-card">
-              <h3>Total Users</h3>
-              <p>${totalUsers.toLocaleString()}</p>
+              <div class="stat-icon">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Total Users</h3>
+                <p>${totalUsers.toLocaleString()}</p>
+              </div>
             </div>
             <div class="stat-card">
-              <h3>Pending Withdrawals</h3>
-              <p>${pendingWithdrawals}</p>
+              <div class="stat-icon">
+                <i class="fas fa-wallet"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Pending Withdrawals</h3>
+                <p>${pendingWithdrawals}</p>
+              </div>
             </div>
             <div class="stat-card">
-              <h3>Active Tasks</h3>
-              <p>${totalTasks}</p>
+              <div class="stat-icon">
+                <i class="fas fa-coins"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Total GOLD</h3>
+                <p>${usersArray.reduce((sum, user) => sum + user.gold, 0).toLocaleString()}</p>
+              </div>
             </div>
             <div class="stat-card">
-              <h3>Recent Balance Adds</h3>
-              <p>${recentBalanceAdditions}</p>
+              <div class="stat-icon">
+                <i class="fab fa-telegram"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Total TON</h3>
+                <p>${usersArray.reduce((sum, user) => sum + user.balance, 0).toFixed(3)}</p>
+              </div>
             </div>
           </div>
           
-          <div class="card">
-            <h3>Quick Actions</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-              <button class="action-btn btn-primary" onclick="admin.showPage('tasks')">
-                <i class="fas fa-plus"></i> Add New Task
-              </button>
-              <button class="action-btn btn-warning" onclick="admin.showPage('withdrawals')">
-                <i class="fas fa-wallet"></i> Pending Withdrawals
-              </button>
-              <button class="action-btn btn-success" onclick="admin.showPage('addBalance')">
-                <i class="fas fa-plus-circle"></i> Add Balance
-              </button>
-              <button class="action-btn btn-info" onclick="admin.showPage('broadcast')">
-                <i class="fas fa-bullhorn"></i> Send Broadcast
-              </button>
+          <div class="dashboard-columns">
+            <div class="dashboard-column">
+              <div class="card">
+                <h3><i class="fas fa-trophy"></i> Top 20 Users by Balance</h3>
+                <div class="user-list-container">
+                  ${topBalanceHTML || '<div class="empty-state">No users found</div>'}
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div class="card">
-            <h3>Recent Users</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>User Information</th>
-                    <th>Balance</th>
-                    <th>Registration Date</th>
-                  </tr>
-                </thead>
-                <tbody>${recentUsers || '<tr><td colspan="3">No users found</td></tr>'}</tbody>
-              </table>
-            </div>
-          </div>
-          
-          <div class="card">
-            <h3>Recent Balance Additions</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>${recentHistory || '<tr><td colspan="3">No history found</td></tr>'}</tbody>
-              </table>
+            
+            <div class="dashboard-column">
+              <div class="card">
+                <h3><i class="fas fa-chart-line"></i> Top 20 Users by Referrals</h3>
+                <div class="user-list-container">
+                  ${topReferralsHTML || '<div class="empty-state">No users found</div>'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -358,406 +361,502 @@ class AdminPanel {
     }
   }
 
-  async getTotalUsersCount() {
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      return usersSnap.numChildren();
-    } catch (error) {
-      console.error("Error counting users:", error);
-      return 0;
-    }
-  }
-
-  async renderWithdrawals() {
+  async renderUsers() {
     this.elements.mainContent.innerHTML = `
-      <div id="withdrawals" class="page active">
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Loading Withdrawals...</p>
+      <div id="users" class="page active">
+        <div class="card">
+          <h3>Search User by ID</h3>
+          <div class="search-container">
+            <input type="text" id="searchUserId" placeholder="Enter Telegram User ID (e.g., 123456789)">
+            <button class="action-btn btn-primary" onclick="admin.searchUser()">
+              <i class="fas fa-search"></i> Search
+            </button>
+          </div>
+          <div id="userDetails" class="user-details-container">
+            <div class="empty-state">
+              <i class="fas fa-user-search"></i>
+              <p>Enter a User ID to view details</p>
+            </div>
+          </div>
         </div>
       </div>
     `;
-    
-    try {
-      const withdrawalsSnap = await this.db.ref('withdrawals/pending').once('value');
-      let withdrawalsContent = '';
-      let requests = [];
-      
-      if (withdrawalsSnap.exists()) {
-        withdrawalsSnap.forEach(child => {
-          requests.push({ id: child.key, ...child.val() });
-        });
-      }
-      
-      if (requests.length > 0) {
-        requests.forEach(req => {
-          withdrawalsContent += `
-            <div class="withdrawal-card">
-              <div class="withdrawal-header">
-                <div class="withdrawal-user">
-                  <strong>${req.userName || 'Unknown User'}</strong>
-                  <div style="font-size: 0.8rem; color: var(--text-secondary);">ID: ${req.userId || 'N/A'}</div>
-                </div>
-                <div class="withdrawal-amount">
-                  <span class="coin-icon ton"></span> ${req.tonAmount || req.amount || 0} TON
-                  <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
-                    <span class="coin-icon gold"></span> ${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD
-                  </div>
-                </div>
-              </div>
-              <div class="withdrawal-details">
-                <div><strong>Wallet:</strong> ${req.walletAddress || req.account || 'Not specified'}</div>
-                <div><strong>Date:</strong> ${new Date(req.createdAt || req.timestamp).toLocaleString()}</div>
-                <div><strong>Status:</strong> <span style="color: var(--warning);">Pending</span></div>
-              </div>
-              <div class="withdrawal-actions">
-                <button class="action-btn btn-success" onclick="admin.handleWithdrawal('${req.id}', 'approve')">
-                  <i class="fas fa-check"></i> Approve
-                </button>
-                <button class="action-btn btn-danger" onclick="admin.handleWithdrawal('${req.id}', 'reject')">
-                  <i class="fas fa-times"></i> Reject
-                </button>
-              </div>
-            </div>
-          `;
-        });
-      } else {
-        withdrawalsContent = `
-          <div class="card">
-            <div style="text-align: center; padding: 40px;">
-              <i class="fas fa-wallet" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 15px;"></i>
-              <h3 style="color: var(--text-secondary);">No Pending Withdrawals</h3>
-              <p style="color: var(--text-secondary);">There are no pending withdrawal requests.</p>
-            </div>
-          </div>
-        `;
-      }
-      
-      this.elements.mainContent.innerHTML = `
-        <div id="withdrawals" class="page active">
-          <h3>Pending Withdrawals (${requests.length})</h3>
-          ${withdrawalsContent}
-        </div>
-      `;
-      
-    } catch (error) {
-      console.error("Error loading withdrawals:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="withdrawals" class="page active">
-          <div class="card">
-            <h3>Error loading withdrawals</h3>
-            <p>${error.message}</p>
-          </div>
-        </div>
-      `;
-    }
   }
 
-  async handleWithdrawal(requestId, action) {
+  async searchUser() {
+    const userId = document.getElementById('searchUserId').value.trim();
+    
+    if (!userId) {
+      this.showNotification("Error", "Please enter a User ID", "error");
+      return;
+    }
+
     try {
-      const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
-      const snapshot = await requestRef.once('value');
-      const request = snapshot.val();
-      
-      if (!request) {
-        this.showNotification("Error", "Request not found", "error");
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        document.getElementById('userDetails').innerHTML = `
+          <div class="empty-state error">
+            <i class="fas fa-user-times"></i>
+            <p>User with ID "${userId}" not found</p>
+          </div>
+        `;
         return;
       }
-      
-      const status = action === 'approve' ? 'completed' : 'rejected';
-      const targetPath = `withdrawals/${status}/${requestId}`;
-      
-      await this.db.ref(targetPath).set({
-        ...request,
-        status: status,
-        processedAt: Date.now(),
-        processedBy: 'admin'
-      });
-      
-      await requestRef.remove();
-      
-      this.showNotification("Success", `Withdrawal ${status} successfully`, "success");
-      this.renderWithdrawals();
-      
-    } catch (error) {
-      console.error("Error processing withdrawal:", error);
-      this.showNotification("Error", "Failed to process withdrawal", "error");
-    }
-  }
 
-  async renderWallet() {
-    this.elements.mainContent.innerHTML = `
-      <div id="wallet" class="page active">
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Loading Wallet Data...</p>
-        </div>
-      </div>
-    `;
-    
-    try {
-      const [depositsSnap, withdrawalsSnap] = await Promise.all([
-        this.db.ref('deposits').once('value'),
-        this.db.ref('withdrawals').once('value')
-      ]);
+      const user = userSnap.val();
+      const statusSnap = await this.db.ref(`config/${userId}/status`).once('value');
+      const userStatus = statusSnap.exists() ? statusSnap.val() : 'free';
       
-      let deposits = [];
-      let withdrawals = [];
-      
-      depositsSnap.forEach(userSnap => {
-        userSnap.forEach(depositSnap => {
-          deposits.push({ id: depositSnap.key, userId: userSnap.key, ...depositSnap.val() });
-        });
-      });
-      
-      ['pending', 'completed', 'rejected'].forEach(status => {
-        const statusSnap = withdrawalsSnap.child(status);
-        statusSnap.forEach(withdrawalSnap => {
-          withdrawals.push({ id: withdrawalSnap.key, status, ...withdrawalSnap.val() });
-        });
-      });
-      
-      deposits.sort((a, b) => b.timestamp - a.timestamp);
-      withdrawals.sort((a, b) => b.createdAt - a.createdAt);
-      
-      const depositHistory = deposits.slice(0, 20).map(deposit => {
-        const date = new Date(deposit.timestamp);
-        return `
-          <tr>
-            <td>${deposit.userId}</td>
-            <td>
-              <span class="coin-icon ton"></span> ${deposit.amount} TON
-            </td>
-            <td>${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-            <td><span style="padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; background: rgba(0, 136, 204, 0.2); color: var(--primary);">${deposit.status || 'completed'}</span></td>
-            <td>${deposit.txid ? deposit.txid.substring(0, 10) + '...' : 'N/A'}</td>
-          </tr>
-        `;
-      }).join('');
-      
-      const withdrawalHistory = withdrawals.slice(0, 20).map(withdrawal => {
-        const date = new Date(withdrawal.createdAt || withdrawal.timestamp);
-        let statusClass = 'status-pending';
-        if (withdrawal.status === 'completed') statusClass = 'status-completed';
-        if (withdrawal.status === 'rejected') statusClass = 'status-rejected';
-        
-        return `
-          <tr>
-            <td>${withdrawal.userId}</td>
-            <td>${withdrawal.userName || 'Unknown'}</td>
-            <td>
-              <span class="coin-icon ton"></span> ${withdrawal.tonAmount || withdrawal.amount || 0} TON
-              <br><small style="color: var(--text-secondary);">
-                <span class="coin-icon gold"></span> ${withdrawal.goldAmount ? withdrawal.goldAmount.toLocaleString() : '0'} GOLD
-              </small>
-            </td>
-            <td>${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-            <td><span class="${statusClass}" style="padding: 4px 8px; border-radius: 12px; font-size: 0.8rem;">${withdrawal.status}</span></td>
-          </tr>
-        `;
-      }).join('');
-      
-      this.elements.mainContent.innerHTML = `
-        <div id="wallet" class="page active">
-          <h3>Wallet Management</h3>
-          
-          <div class="card">
-            <h4>Deposit Address</h4>
-            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 15px 0;">
-              <p style="color: var(--text-secondary); margin-bottom: 5px;">Wallet Address:</p>
-              <p style="font-family: 'Courier New', monospace; font-size: 0.9rem; word-break: break-all;">
-                ${this.appConfig.walletAddress}
-              </p>
-              <div style="margin-top: 10px; display: flex; gap: 10px;">
-                <button class="action-btn btn-primary" onclick="navigator.clipboard.writeText('${this.appConfig.walletAddress}')">
-                  <i class="far fa-copy"></i> Copy Address
-                </button>
-                <button class="action-btn btn-info" onclick="navigator.clipboard.writeText('${this.appConfig.tonkeeperLink}')">
-                  <i class="fas fa-link"></i> Copy Tonkeeper Link
-                </button>
+      // Get user's tasks completed count
+      const tasksCompleted = user.tasksCompleted || 0;
+      const totalReferrals = user.totalReferrals || 0;
+
+      document.getElementById('userDetails').innerHTML = `
+        <div class="user-profile-card">
+          <div class="user-profile-header">
+            <div class="user-avatar">
+              <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-profile-info">
+              <h3>${user.firstName || 'User'} ${user.lastName || ''}</h3>
+              <div class="user-meta">
+                ${user.username ? `<span><i class="fab fa-telegram"></i> @${user.username}</span>` : ''}
+                <span><i class="fas fa-id-card"></i> ID: ${userId}</span>
+                <span class="user-status ${userStatus}">
+                  <i class="fas fa-circle"></i> ${userStatus.toUpperCase()}
+                </span>
               </div>
             </div>
           </div>
           
-          <div class="card">
-            <h4>Recent Deposits (Last 20)</h4>
-            <div style="overflow-x: auto; margin-top: 15px;">
-              <table class="balance-history-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Transaction ID</th>
-                  </tr>
-                </thead>
-                <tbody>${depositHistory || '<tr><td colspan="5">No deposits found</td></tr>'}</tbody>
-              </table>
+          <div class="user-stats-grid">
+            <div class="user-stat-card">
+              <div class="user-stat-icon gold">
+                <i class="fas fa-coins"></i>
+              </div>
+              <div class="user-stat-content">
+                <h4>GOLD Balance</h4>
+                <p>${(user.gold || 0).toLocaleString()}</p>
+              </div>
+            </div>
+            
+            <div class="user-stat-card">
+              <div class="user-stat-icon ton">
+                <i class="fab fa-telegram"></i>
+              </div>
+              <div class="user-stat-content">
+                <h4>TON Balance</h4>
+                <p>${(user.balance || 0).toFixed(3)}</p>
+              </div>
+            </div>
+            
+            <div class="user-stat-card">
+              <div class="user-stat-icon referral">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="user-stat-content">
+                <h4>Total Referrals</h4>
+                <p>${totalReferrals}</p>
+              </div>
+            </div>
+            
+            <div class="user-stat-card">
+              <div class="user-stat-icon task">
+                <i class="fas fa-tasks"></i>
+              </div>
+              <div class="user-stat-content">
+                <h4>Tasks Completed</h4>
+                <p>${tasksCompleted}</p>
+              </div>
             </div>
           </div>
           
-          <div class="card">
-            <h4>Withdrawal History (Last 20)</h4>
-            <div style="overflow-x: auto; margin-top: 15px;">
-              <table class="balance-history-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th>
-                    <th>Name</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>${withdrawalHistory || '<tr><td colspan="5">No withdrawals found</td></tr>'}</tbody>
-              </table>
+          <div class="user-actions">
+            <h4>User Management</h4>
+            <div class="action-buttons-grid">
+              <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${userId}', '${user.firstName || 'User'}')">
+                <i class="fas fa-plus-circle"></i> Add Balance
+              </button>
+              <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${user.firstName || 'User'}')">
+                <i class="fas fa-minus-circle"></i> Remove Balance
+              </button>
+              ${userStatus === 'free' ? 
+                `<button class="action-btn btn-warning" onclick="admin.banUser('${userId}')">
+                  <i class="fas fa-ban"></i> Ban User
+                </button>` : 
+                `<button class="action-btn btn-info" onclick="admin.unbanUser('${userId}')">
+                  <i class="fas fa-check-circle"></i> Unban User
+                </button>`
+              }
             </div>
           </div>
         </div>
       `;
-      
+
     } catch (error) {
-      console.error("Error loading wallet data:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="wallet" class="page active">
-          <div class="card">
-            <h3>Error loading wallet data</h3>
-            <p>${error.message}</p>
+      console.error("Error searching user:", error);
+      this.showNotification("Error", "Failed to search user", "error");
+    }
+  }
+
+  showAddBalanceModal(userId, userName) {
+    const modalHTML = `
+      <div class="modal-overlay active" id="addBalanceModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Add Balance to ${userName}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="addBalanceType">Balance Type</label>
+              <select id="addBalanceType" class="form-input">
+                <option value="gold">🟡 GOLD</option>
+                <option value="ton">🔵 TON</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="addBalanceAmount">Amount</label>
+              <input type="number" id="addBalanceAmount" placeholder="Enter amount" step="0.001" min="0">
+            </div>
+            <div class="form-group">
+              <label for="addBalanceReason">Reason</label>
+              <input type="text" id="addBalanceReason" placeholder="Reason for adding balance">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            <button class="action-btn btn-success" onclick="admin.addBalance('${userId}')">
+              <i class="fas fa-check"></i> Add Balance
+            </button>
           </div>
         </div>
-      `;
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  showRemoveBalanceModal(userId, userName) {
+    const modalHTML = `
+      <div class="modal-overlay active" id="removeBalanceModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Remove Balance from ${userName}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="removeBalanceType">Balance Type</label>
+              <select id="removeBalanceType" class="form-input">
+                <option value="gold">🟡 GOLD</option>
+                <option value="ton">🔵 TON</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="removeBalanceAmount">Amount</label>
+              <input type="number" id="removeBalanceAmount" placeholder="Enter amount" step="0.001" min="0">
+            </div>
+            <div class="form-group">
+              <label for="removeBalanceReason">Reason</label>
+              <input type="text" id="removeBalanceReason" placeholder="Reason for removing balance">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            <button class="action-btn btn-danger" onclick="admin.removeBalance('${userId}')">
+              <i class="fas fa-check"></i> Remove Balance
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async addBalance(userId) {
+    const type = document.getElementById('addBalanceType').value;
+    const amount = parseFloat(document.getElementById('addBalanceAmount').value);
+    const reason = document.getElementById('addBalanceReason').value.trim() || 'Admin added balance';
+
+    if (!amount || amount <= 0) {
+      this.showNotification("Error", "Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const user = userSnap.val();
+      const currentBalance = type === 'gold' ? (user.gold || 0) : (user.balance || 0);
+      const newBalance = currentBalance + amount;
+
+      const updateData = {};
+      if (type === 'gold') {
+        updateData[`users/${userId}/gold`] = newBalance;
+      } else {
+        updateData[`users/${userId}/balance`] = newBalance;
+      }
+
+      await this.db.ref().update(updateData);
+
+      // Add to balance history
+      const balanceHistory = {
+        telegramId: userId,
+        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+        balanceType: type,
+        amount: amount,
+        reason: reason,
+        previousBalance: currentBalance,
+        newBalance: newBalance,
+        adminId: 'admin',
+        timestamp: Date.now(),
+        date: new Date().toLocaleString()
+      };
+
+      await this.db.ref('balanceHistory').push(balanceHistory);
+
+      this.showNotification("Success", `Added ${amount} ${type.toUpperCase()} to user`, "success");
+      
+      // Close modal and refresh user details
+      document.querySelector('#addBalanceModal').remove();
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error adding balance:", error);
+      this.showNotification("Error", "Failed to add balance", "error");
+    }
+  }
+
+  async removeBalance(userId) {
+    const type = document.getElementById('removeBalanceType').value;
+    const amount = parseFloat(document.getElementById('removeBalanceAmount').value);
+    const reason = document.getElementById('removeBalanceReason').value.trim() || 'Admin removed balance';
+
+    if (!amount || amount <= 0) {
+      this.showNotification("Error", "Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const user = userSnap.val();
+      const currentBalance = type === 'gold' ? (user.gold || 0) : (user.balance || 0);
+      
+      if (currentBalance < amount) {
+        this.showNotification("Error", `User only has ${currentBalance} ${type.toUpperCase()}`, "error");
+        return;
+      }
+
+      const newBalance = currentBalance - amount;
+
+      const updateData = {};
+      if (type === 'gold') {
+        updateData[`users/${userId}/gold`] = newBalance;
+      } else {
+        updateData[`users/${userId}/balance`] = newBalance;
+      }
+
+      await this.db.ref().update(updateData);
+
+      // Add to balance history
+      const balanceHistory = {
+        telegramId: userId,
+        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+        balanceType: type,
+        amount: -amount,
+        reason: reason,
+        previousBalance: currentBalance,
+        newBalance: newBalance,
+        adminId: 'admin',
+        timestamp: Date.now(),
+        date: new Date().toLocaleString()
+      };
+
+      await this.db.ref('balanceHistory').push(balanceHistory);
+
+      this.showNotification("Success", `Removed ${amount} ${type.toUpperCase()} from user`, "success");
+      
+      // Close modal and refresh user details
+      document.querySelector('#removeBalanceModal').remove();
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error removing balance:", error);
+      this.showNotification("Error", "Failed to remove balance", "error");
+    }
+  }
+
+  async banUser(userId) {
+    if (!confirm('Are you sure you want to ban this user?')) return;
+
+    try {
+      await this.db.ref(`config/${userId}`).update({
+        status: 'banned',
+        bannedAt: Date.now(),
+        bannedBy: 'admin'
+      });
+
+      this.showNotification("Success", "User has been banned", "success");
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error banning user:", error);
+      this.showNotification("Error", "Failed to ban user", "error");
+    }
+  }
+
+  async unbanUser(userId) {
+    if (!confirm('Are you sure you want to unban this user?')) return;
+
+    try {
+      await this.db.ref(`config/${userId}`).update({
+        status: 'free',
+        unbannedAt: Date.now(),
+        unbannedBy: 'admin'
+      });
+
+      this.showNotification("Success", "User has been unbanned", "success");
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error unbanning user:", error);
+      this.showNotification("Error", "Failed to unban user", "error");
     }
   }
 
   async renderTasks() {
     this.elements.mainContent.innerHTML = `
       <div id="tasks" class="page active">
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Loading Tasks...</p>
+        <div class="tasks-management">
+          <div class="card">
+            <h3><i class="fas fa-tasks"></i> Tasks Management</h3>
+            
+            <div class="form-group">
+              <label for="taskName">Task Name *</label>
+              <input type="text" id="taskName" placeholder="e.g., Join Our Channel" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="taskLink">Task Link (URL) *</label>
+              <input type="text" id="taskLink" placeholder="https://t.me/..." required>
+              <small>For channels/groups: Add @${this.appConfig.botUsername} as admin</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Task Category *</label>
+              <div class="task-category-buttons">
+                <button type="button" class="category-btn active" data-category="channel">
+                  <i class="fas fa-bullhorn"></i> Channel/Group
+                </button>
+                <button type="button" class="category-btn" data-category="bot">
+                  <i class="fas fa-robot"></i> Website/Bot
+                </button>
+                <button type="button" class="category-btn" data-category="other">
+                  <i class="fas fa-link"></i> Other Links
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Number of Completions *</label>
+              <div class="completion-options-grid">
+                ${Object.entries(this.appConfig.taskPrices).map(([users, price]) => `
+                  <div class="completion-option" data-users="${users}" data-price="${price}">
+                    <div class="users-count">${users}</div>
+                    <div class="ton-price">
+                      <span class="coin-icon ton"></span> ${price} TON
+                    </div>
+                    <small>Users</small>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="taskReward">Reward per User (GOLD) *</label>
+              <input type="number" id="taskReward" placeholder="50" value="50" min="10" step="1">
+              <small>How much GOLD each user gets for completing</small>
+            </div>
+            
+            <button class="action-btn btn-success" style="width: 100%;" onclick="admin.addNewTask()">
+              <i class="fas fa-plus-circle"></i> Create New Task
+            </button>
+          </div>
+          
+          <div class="card" id="tasksListContainer">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Loading Tasks...</p>
+            </div>
+          </div>
         </div>
       </div>
     `;
     
+    this.setupTaskFormEvents();
+    await this.loadTasksList();
+  }
+
+  async loadTasksList() {
     try {
-      const [tasksSnap, myTasksSnap] = await Promise.all([
-        this.db.ref('config/tasks').once('value'),
-        this.db.ref('config/tasks').orderByChild('createdBy').equalTo('admin').once('value')
-      ]);
-      
-      let tasksContent = '';
-      let tasksCount = 0;
-      let myTasks = [];
+      const tasksSnap = await this.db.ref('config/tasks').once('value');
+      let tasksHTML = '<h3><i class="fas fa-list"></i> All Tasks</h3>';
       
       if (tasksSnap.exists()) {
+        tasksHTML += '<div class="tasks-list">';
+        
         tasksSnap.forEach(child => {
           const task = child.val();
-          tasksCount++;
-          
-          if (task.createdBy === 'admin') {
-            myTasks.push({ id: child.key, ...task });
-          }
-        });
-      }
-      
-      // قسم Add New Task
-      tasksContent = `
-        <div class="card">
-          <h4>Add New Task (Admin)</h4>
-          <div class="form-group">
-            <label for="taskName">Task Name *</label>
-            <input type="text" id="taskName" placeholder="e.g., Join Our Channel" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="taskLink">Task Link (URL) *</label>
-            <input type="text" id="taskLink" placeholder="https://t.me/..." required>
-            <small style="color: var(--text-secondary);">For channels/groups: Add @${this.appConfig.botUsername} as admin</small>
-          </div>
-          
-          <div class="form-group">
-            <label>Task Category *</label>
-            <div class="task-category-buttons">
-              <button type="button" class="category-btn active" data-category="channel">
-                <i class="fas fa-bullhorn"></i>
-                Channel/Group
-              </button>
-              <button type="button" class="category-btn" data-category="bot">
-                <i class="fas fa-robot"></i>
-                Website/Bot
-              </button>
-              <button type="button" class="category-btn" data-category="other">
-                <i class="fas fa-link"></i>
-                Other Links
-              </button>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Number of Completions *</label>
-            <div class="completion-options-grid">
-              ${Object.entries(this.appConfig.taskPrices).map(([users, price]) => `
-                <div class="completion-option" data-users="${users}" data-price="${price}">
-                  <div class="users-count">${users}</div>
-                  <div class="ton-price">
-                    <span class="coin-icon ton"></span> ${price} TON
-                  </div>
-                  <small style="color: var(--text-secondary);">Users</small>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="taskReward">Reward per User (GOLD) *</label>
-            <input type="number" id="taskReward" placeholder="50" value="50" min="10" step="1">
-            <small style="color: var(--text-secondary);">How much GOLD each user gets for completing</small>
-          </div>
-          
-          <button class="action-btn btn-success" style="width: 100%;" onclick="admin.addNewTask()">
-            <i class="fas fa-plus-circle"></i> Create Task
-          </button>
-          
-          <div id="taskMessage" style="margin-top: 15px;"></div>
-        </div>
-      `;
-      
-      // قسم My Tasks
-      if (myTasks.length > 0) {
-        let myTasksContent = '';
-        myTasks.forEach(task => {
+          const taskId = child.key;
           const progress = Math.min((task.currentCompletions || 0) / task.maxCompletions * 100, 100);
           
-          myTasksContent += `
-            <div class="my-task-item">
-              <div class="my-task-header">
-                <div class="my-task-title">${task.name || 'Unnamed Task'}</div>
-                <span class="task-status-badge ${task.status || 'active'}">
-                  ${task.status || 'active'}
-                </span>
-              </div>
-              
-              <div class="my-task-info">
-                <div class="info-item">
-                  <div class="info-label">Type</div>
-                  <div class="info-value">${task.type || 'channel'}</div>
+          tasksHTML += `
+            <div class="task-item">
+              <div class="task-item-header">
+                <div class="task-title">
+                  <h4>${task.name || 'Unnamed Task'}</h4>
+                  <span class="task-type-badge ${task.type || 'channel'}">${task.type || 'channel'}</span>
                 </div>
-                <div class="info-item">
-                  <div class="info-label">Reward</div>
-                  <div class="info-value gold">
-                    <span class="coin-icon gold"></span> ${task.reward || 50}
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Price</div>
-                  <div class="info-value">
-                    ${this.appConfig.taskPrices[task.maxCompletions] || 0} TON
-                  </div>
+                <div class="task-actions">
+                  <button class="action-btn btn-danger btn-sm" onclick="admin.deleteTask('${taskId}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </div>
               </div>
               
-              <div class="my-task-progress">
+              <div class="task-item-details">
+                <div class="task-detail">
+                  <span class="detail-label">URL:</span>
+                  <a href="${task.url}" target="_blank" class="task-link">${task.url}</a>
+                </div>
+                <div class="task-detail">
+                  <span class="detail-label">Reward:</span>
+                  <span class="reward-amount">
+                    <span class="coin-icon gold"></span> ${task.reward || 50} GOLD
+                  </span>
+                </div>
+                <div class="task-detail">
+                  <span class="detail-label">Max Completions:</span>
+                  <span>${task.maxCompletions}</span>
+                </div>
+                <div class="task-detail">
+                  <span class="detail-label">Current:</span>
+                  <span>${task.currentCompletions || 0}</span>
+                </div>
+              </div>
+              
+              <div class="task-progress">
                 <div class="progress-info">
                   <span>Progress: ${task.currentCompletions || 0}/${task.maxCompletions}</span>
                   <span>${progress.toFixed(0)}%</span>
@@ -766,54 +865,28 @@ class AdminPanel {
                   <div class="progress-fill" style="width: ${progress}%"></div>
                 </div>
               </div>
-              
-              <div class="my-task-controls">
-                <button class="task-control-btn delete-btn" onclick="admin.deleteTask('${task.id}')">
-                  <i class="fas fa-trash"></i> Delete Task
-                </button>
-              </div>
             </div>
           `;
         });
         
-        tasksContent += `
-          <div class="card" style="margin-top: 20px;">
-            <h4>My Tasks (${myTasks.length})</h4>
-            <div class="my-tasks-container">
-              ${myTasksContent}
-            </div>
-          </div>
-        `;
+        tasksHTML += '</div>';
       } else {
-        tasksContent += `
-          <div class="card" style="margin-top: 20px;">
-            <h4>My Tasks</h4>
-            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-              <i class="fas fa-tasks" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
-              <h3>No Tasks Created Yet</h3>
-              <p>Create your first task above</p>
-            </div>
+        tasksHTML = `
+          <div class="empty-state">
+            <i class="fas fa-tasks"></i>
+            <p>No tasks created yet</p>
           </div>
         `;
       }
       
-      this.elements.mainContent.innerHTML = `
-        <div id="tasks" class="page active">
-          <h3>Tasks Management</h3>
-          ${tasksContent}
-        </div>
-      `;
-      
-      this.setupTaskFormEvents();
+      document.getElementById('tasksListContainer').innerHTML = tasksHTML;
       
     } catch (error) {
       console.error("Error loading tasks:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="tasks" class="page active">
-          <div class="card">
-            <h3>Error loading tasks</h3>
-            <p>${error.message}</p>
-          </div>
+      document.getElementById('tasksListContainer').innerHTML = `
+        <div class="error-message">
+          <h3>Error loading tasks</h3>
+          <p>${error.message}</p>
         </div>
       `;
     }
@@ -891,7 +964,7 @@ class AdminPanel {
       document.getElementById('taskReward').value = '50';
       
       // Refresh tasks list
-      await this.renderTasks();
+      await this.loadTasksList();
       
     } catch (error) {
       console.error("Error adding task:", error);
@@ -903,16 +976,171 @@ class AdminPanel {
     if (!confirm('Are you sure you want to delete this task?')) return;
     
     try {
-      await this.db.ref(`config/tasks/${taskId}`).update({
-        status: 'deleted',
-        deletedAt: Date.now()
-      });
-      
+      await this.db.ref(`config/tasks/${taskId}`).remove();
       this.showNotification("Success", "Task deleted successfully", "success");
-      this.renderTasks();
+      await this.loadTasksList();
     } catch (error) {
       console.error("Error deleting task:", error);
       this.showNotification("Error", "Failed to delete task", "error");
+    }
+  }
+
+  async renderWithdrawals() {
+    this.elements.mainContent.innerHTML = `
+      <div id="withdrawals" class="page active">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading Withdrawals...</p>
+        </div>
+      </div>
+    `;
+    
+    try {
+      const withdrawalsSnap = await this.db.ref('withdrawals/pending').once('value');
+      let withdrawalsContent = '';
+      let requests = [];
+      
+      if (withdrawalsSnap.exists()) {
+        withdrawalsSnap.forEach(child => {
+          requests.push({ id: child.key, ...child.val() });
+        });
+      }
+      
+      if (requests.length > 0) {
+        requests.forEach(async (req) => {
+          // Get user details from users collection
+          const userSnap = await this.db.ref(`users/${req.userId}`).once('value');
+          const user = userSnap.exists() ? userSnap.val() : {};
+          
+          withdrawalsContent += `
+            <div class="withdrawal-card">
+              <div class="withdrawal-header">
+                <div class="withdrawal-user">
+                  <strong>${req.userName || user.firstName || 'Unknown User'}</strong>
+                  <div class="user-meta">
+                    <span><i class="fab fa-telegram"></i> ${user.username ? '@' + user.username : 'No username'}</span>
+                    <span><i class="fas fa-id-card"></i> ID: ${req.userId}</span>
+                  </div>
+                </div>
+                <div class="withdrawal-amount">
+                  <span class="coin-icon ton"></span> ${req.tonAmount || req.amount || 0} TON
+                  <div class="gold-amount">
+                    <span class="coin-icon gold"></span> ${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD
+                  </div>
+                </div>
+              </div>
+              
+              <div class="withdrawal-details-grid">
+                <div class="detail-item">
+                  <span class="detail-label">First Name:</span>
+                  <span class="detail-value">${user.firstName || 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Username:</span>
+                  <span class="detail-value">${user.username ? '@' + user.username : 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Referrals:</span>
+                  <span class="detail-value">${user.totalReferrals || 0}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Tasks Completed:</span>
+                  <span class="detail-value">${user.tasksCompleted || 0}</span>
+                </div>
+                <div class="detail-item full-width">
+                  <span class="detail-label">Amount:</span>
+                  <span class="detail-value amount-highlight">
+                    <span class="coin-icon ton"></span> ${req.tonAmount || req.amount || 0} TON
+                    (${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD)
+                  </span>
+                </div>
+                <div class="detail-item full-width">
+                  <span class="detail-label">Wallet Address:</span>
+                  <span class="detail-value wallet-address">${req.walletAddress || req.account || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Date:</span>
+                  <span class="detail-value">${new Date(req.createdAt || req.timestamp).toLocaleString()}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Status:</span>
+                  <span class="detail-value status-pending">Pending</span>
+                </div>
+              </div>
+              
+              <div class="withdrawal-actions">
+                <button class="action-btn btn-success" onclick="admin.handleWithdrawal('${req.id}', 'approve')">
+                  <i class="fas fa-check"></i> Approve
+                </button>
+                <button class="action-btn btn-danger" onclick="admin.handleWithdrawal('${req.id}', 'reject')">
+                  <i class="fas fa-times"></i> Reject
+                </button>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        withdrawalsContent = `
+          <div class="empty-state">
+            <i class="fas fa-wallet"></i>
+            <h3>No Pending Withdrawals</h3>
+            <p>There are no pending withdrawal requests.</p>
+          </div>
+        `;
+      }
+      
+      this.elements.mainContent.innerHTML = `
+        <div id="withdrawals" class="page active">
+          <div class="withdrawals-header">
+            <h3><i class="fas fa-wallet"></i> Pending Withdrawals</h3>
+            <span class="badge">${requests.length}</span>
+          </div>
+          ${withdrawalsContent}
+        </div>
+      `;
+      
+    } catch (error) {
+      console.error("Error loading withdrawals:", error);
+      this.elements.mainContent.innerHTML = `
+        <div id="withdrawals" class="page active">
+          <div class="error-message">
+            <h3>Error loading withdrawals</h3>
+            <p>${error.message}</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  async handleWithdrawal(requestId, action) {
+    try {
+      const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
+      const snapshot = await requestRef.once('value');
+      const request = snapshot.val();
+      
+      if (!request) {
+        this.showNotification("Error", "Request not found", "error");
+        return;
+      }
+      
+      const status = action === 'approve' ? 'completed' : 'rejected';
+      const targetPath = `withdrawals/${status}/${requestId}`;
+      
+      await this.db.ref(targetPath).set({
+        ...request,
+        status: status,
+        processedAt: Date.now(),
+        processedBy: 'admin'
+      });
+      
+      await requestRef.remove();
+      
+      this.showNotification("Success", `Withdrawal ${status} successfully`, "success");
+      this.renderWithdrawals();
+      
+    } catch (error) {
+      console.error("Error processing withdrawal:", error);
+      this.showNotification("Error", "Failed to process withdrawal", "error");
     }
   }
 
@@ -962,45 +1190,48 @@ class AdminPanel {
         });
       } else {
         promoCodesContent = `
-          <div class="card">
-            <div style="text-align: center; padding: 40px;">
-              <i class="fas fa-gift" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 15px;"></i>
-              <h3 style="color: var(--text-secondary);">No Promo Codes Found</h3>
-              <p style="color: var(--text-secondary);">No promo codes have been created yet.</p>
-            </div>
+          <div class="empty-state">
+            <i class="fas fa-gift"></i>
+            <h3>No Promo Codes Found</h3>
+            <p>No promo codes have been created yet.</p>
           </div>
         `;
       }
       
       this.elements.mainContent.innerHTML = `
         <div id="promoCodes" class="page active">
-          <h3>Promo Codes Management (${promoCodesList.length})</h3>
-          
-          <div class="card">
-            <h4>Create New Promo Code</h4>
-            <div class="form-group">
-              <label for="promoType">Reward Type</label>
-              <select id="promoType" class="form-input">
-                <option value="gold">🟡 GOLD</option>
-                <option value="ton">🔵 TON</option>
-              </select>
+          <div class="promo-management">
+            <div class="card">
+              <h3><i class="fas fa-gift"></i> Create New Promo Code</h3>
+              <div class="form-group">
+                <label for="promoType">Reward Type</label>
+                <select id="promoType" class="form-input">
+                  <option value="gold">🟡 GOLD</option>
+                  <option value="ton">🔵 TON</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="promoReward">Reward Amount</label>
+                <input type="number" id="promoReward" placeholder="Enter reward amount" min="1" step="1">
+              </div>
+              <div class="form-group">
+                <label for="customCode">Custom Code (Optional)</label>
+                <input type="text" id="customCode" placeholder="Leave empty for auto-generate" maxlength="12">
+                <small>Leave empty to generate random 8-character code</small>
+              </div>
+              <button class="action-btn btn-success" style="width: 100%;" onclick="admin.createPromoCode()">
+                <i class="fas fa-plus-circle"></i> Generate Promo Code
+              </button>
             </div>
-            <div class="form-group">
-              <label for="promoReward">Reward Amount</label>
-              <input type="number" id="promoReward" placeholder="Enter reward amount" min="1" step="1">
+            
+            <div class="card">
+              <div class="promo-codes-header">
+                <h3><i class="fas fa-list"></i> Active Promo Codes</h3>
+                <span class="badge">${promoCodesList.length}</span>
+              </div>
+              ${promoCodesContent}
             </div>
-            <div class="form-group">
-              <label for="customCode">Custom Code (Optional)</label>
-              <input type="text" id="customCode" placeholder="Leave empty for auto-generate" maxlength="12">
-              <small style="color: var(--text-secondary);">Leave empty to generate random 8-character code</small>
-            </div>
-            <button class="action-btn btn-success" style="width: 100%;" onclick="admin.createPromoCode()">
-              <i class="fas fa-plus-circle"></i> Generate Promo Code
-            </button>
           </div>
-          
-          <h4 style="margin-top: 30px;">Active Promo Codes</h4>
-          ${promoCodesContent}
         </div>
       `;
       
@@ -1008,7 +1239,7 @@ class AdminPanel {
       console.error("Error loading promo codes:", error);
       this.elements.mainContent.innerHTML = `
         <div id="promoCodes" class="page active">
-          <div class="card">
+          <div class="error-message">
             <h3>Error loading promo codes</h3>
             <p>${error.message}</p>
           </div>
@@ -1085,654 +1316,6 @@ class AdminPanel {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-  }
-
-  async renderSettings() {
-    try {
-      const configSnapshot = await this.db.ref('config').once('value');
-      const config = configSnapshot.exists() ? configSnapshot.val() : {};
-      
-      this.elements.mainContent.innerHTML = `
-        <div id="settings" class="page active">
-          <h3>App Settings</h3>
-          
-          <div class="card">
-            <h4>Application Configuration</h4>
-            <div class="form-group">
-              <label for="appName">App Name</label>
-              <input type="text" id="appName" value="${config.appName || this.appConfig.appName}">
-            </div>
-            <div class="form-group">
-              <label for="botUsername">Bot Username (without @)</label>
-              <input type="text" id="botUsername" value="${config.botUsername || this.appConfig.botUsername}">
-            </div>
-            <div class="form-group">
-              <label for="botToken">Bot Token</label>
-              <input type="password" id="botToken" value="${config.botToken || this.appConfig.botToken || this.botToken}">
-              <small style="color: var(--text-secondary);">Current bot: ${config.botUsername || this.appConfig.botUsername}</small>
-            </div>
-            <div class="form-group">
-              <label for="walletAddress">Wallet Address</label>
-              <input type="text" id="walletAddress" value="${config.walletAddress || this.appConfig.walletAddress}">
-            </div>
-            <div class="form-group">
-              <label for="communityLink">Community Link</label>
-              <input type="text" id="communityLink" value="${config.communityLink || this.appConfig.communityLink}">
-            </div>
-            <div class="form-group">
-              <label for="tonkeeperLink">Tonkeeper Link Template</label>
-              <input type="text" id="tonkeeperLink" value="${config.tonkeeperLink || this.appConfig.tonkeeperLink}">
-            </div>
-          </div>
-          
-          <div class="card">
-            <h4>Withdrawal & Deposit Settings</h4>
-            <div class="form-group">
-              <label for="minimumWithdraw">Minimum Withdrawal (TON)</label>
-              <input type="number" id="minimumWithdraw" value="${config.minimumWithdraw || this.appConfig.minimumWithdraw}" step="0.01">
-            </div>
-            <div class="form-group">
-              <label for="minimumDeposit">Minimum Deposit (TON)</label>
-              <input type="number" id="minimumDeposit" value="${config.minimumDeposit || this.appConfig.minimumDeposit}" step="0.01">
-            </div>
-            <div class="form-group">
-              <label for="exchangeRate">Exchange Rate (GOLD per TON)</label>
-              <input type="number" id="exchangeRate" value="${config.exchangeRate || this.appConfig.exchangeRate}" step="1">
-              <small style="color: var(--text-secondary);">Currently: ${config.exchangeRate || this.appConfig.exchangeRate} GOLD = 1 TON</small>
-            </div>
-          </div>
-          
-          <div class="card">
-            <h4>Task Pricing (TON)</h4>
-            <div class="form-group">
-              <label for="taskPrice100">100 Users (TON)</label>
-              <input type="number" id="taskPrice100" value="${config.taskPrices ? (config.taskPrices[100] || this.appConfig.taskPrices[100]) : this.appConfig.taskPrices[100]}" step="0.001">
-            </div>
-            <div class="form-group">
-              <label for="taskPrice250">250 Users (TON)</label>
-              <input type="number" id="taskPrice250" value="${config.taskPrices ? (config.taskPrices[250] || this.appConfig.taskPrices[250]) : this.appConfig.taskPrices[250]}" step="0.001">
-            </div>
-            <div class="form-group">
-              <label for="taskPrice500">500 Users (TON)</label>
-              <input type="number" id="taskPrice500" value="${config.taskPrices ? (config.taskPrices[500] || this.appConfig.taskPrices[500]) : this.appConfig.taskPrices[500]}" step="0.001">
-            </div>
-            <div class="form-group">
-              <label for="taskPrice1000">1000 Users (TON)</label>
-              <input type="number" id="taskPrice1000" value="${config.taskPrices ? (config.taskPrices[1000] || this.appConfig.taskPrices[1000]) : this.appConfig.taskPrices[1000]}" step="0.001">
-            </div>
-            <div class="form-group">
-              <label for="taskPrice2500">2500 Users (TON)</label>
-              <input type="number" id="taskPrice2500" value="${config.taskPrices ? (config.taskPrices[2500] || this.appConfig.taskPrices[2500]) : this.appConfig.taskPrices[2500]}" step="0.001">
-            </div>
-            <div class="form-group">
-              <label for="taskPrice5000">5000 Users (TON)</label>
-              <input type="number" id="taskPrice5000" value="${config.taskPrices ? (config.taskPrices[5000] || this.appConfig.taskPrices[5000]) : this.appConfig.taskPrices[5000]}" step="0.001">
-            </div>
-          </div>
-          
-          <div class="card">
-            <h4>Withdrawal Options</h4>
-            <div id="withdrawal-options-container">
-              ${(config.withdrawalOptions || this.appConfig.withdrawalOptions).map((option, index) => `
-                <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-                  <div style="flex: 1;">
-                    <input type="number" class="form-input" id="withdrawalGold${index}" value="${option.gold}" step="1" placeholder="GOLD">
-                  </div>
-                  <div style="flex: 1;">
-                    <input type="number" class="form-input" id="withdrawalTon${index}" value="${option.ton}" step="0.01" placeholder="TON">
-                  </div>
-                  <div style="flex: 2;">
-                    <input type="text" class="form-input" id="withdrawalLabel${index}" value="${option.label}" placeholder="Label">
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          
-          <div class="card">
-            <h4>Admin Settings</h4>
-            <div class="form-group">
-              <label for="adminPasswords">Admin Passwords (comma separated)</label>
-              <input type="text" id="adminPasswords" value="${ADMIN_PASSWORDS.join(', ')}">
-              <small style="color: var(--text-secondary);">Separate multiple passwords with commas</small>
-            </div>
-            <div class="form-group">
-              <label for="welcomeMessage">Welcome Message</label>
-              <textarea id="welcomeMessage" rows="3">${config.welcomeMessage || this.appConfig.welcomeMessage}</textarea>
-            </div>
-          </div>
-          
-          <button class="action-btn btn-success" style="width: 100%; margin-top: 20px;" onclick="admin.saveSettings()">
-            <i class="fas fa-save"></i> Save All Settings
-          </button>
-          
-          <div id="settingsMessage" class="hidden" style="margin-top: 15px;"></div>
-        </div>
-      `;
-      
-    } catch (error) {
-      console.error("Error loading settings:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="settings" class="page active">
-          <div class="card">
-            <h3>Error loading settings</h3>
-            <p>${error.message}</p>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  async saveSettings() {
-    try {
-      const settings = {
-        appName: document.getElementById('appName').value,
-        botUsername: document.getElementById('botUsername').value,
-        botToken: document.getElementById('botToken').value,
-        walletAddress: document.getElementById('walletAddress').value,
-        communityLink: document.getElementById('communityLink').value,
-        tonkeeperLink: document.getElementById('tonkeeperLink').value,
-        minimumWithdraw: parseFloat(document.getElementById('minimumWithdraw').value),
-        minimumDeposit: parseFloat(document.getElementById('minimumDeposit').value),
-        exchangeRate: parseInt(document.getElementById('exchangeRate').value),
-        taskPrices: {
-          100: parseFloat(document.getElementById('taskPrice100').value),
-          250: parseFloat(document.getElementById('taskPrice250').value),
-          500: parseFloat(document.getElementById('taskPrice500').value),
-          1000: parseFloat(document.getElementById('taskPrice1000').value),
-          2500: parseFloat(document.getElementById('taskPrice2500').value),
-          5000: parseFloat(document.getElementById('taskPrice5000').value)
-        },
-        withdrawalOptions: [
-          {
-            gold: parseInt(document.getElementById('withdrawalGold0').value),
-            ton: parseFloat(document.getElementById('withdrawalTon0').value),
-            label: document.getElementById('withdrawalLabel0').value
-          },
-          {
-            gold: parseInt(document.getElementById('withdrawalGold1').value),
-            ton: parseFloat(document.getElementById('withdrawalTon1').value),
-            label: document.getElementById('withdrawalLabel1').value
-          },
-          {
-            gold: parseInt(document.getElementById('withdrawalGold2').value),
-            ton: parseFloat(document.getElementById('withdrawalTon2').value),
-            label: document.getElementById('withdrawalLabel2').value
-          },
-          {
-            gold: parseInt(document.getElementById('withdrawalGold3').value),
-            ton: parseFloat(document.getElementById('withdrawalTon3').value),
-            label: document.getElementById('withdrawalLabel3').value
-          }
-        ],
-        welcomeMessage: document.getElementById('welcomeMessage').value
-      };
-
-      await this.db.ref('config').update(settings);
-      
-      // Update local config
-      this.appConfig = { ...this.appConfig, ...settings };
-      this.botToken = settings.botToken || this.botToken;
-      
-      const messageEl = document.getElementById('settingsMessage');
-      messageEl.innerHTML = '<div class="success-message">✅ Settings saved successfully!</div>';
-      messageEl.classList.remove('hidden');
-      
-      setTimeout(() => {
-        messageEl.classList.add('hidden');
-      }, 3000);
-      
-    } catch (error) {
-      console.error("Error saving settings:", error);
-      const messageEl = document.getElementById('settingsMessage');
-      messageEl.innerHTML = `<div class="error-message">Error saving settings: ${error.message}</div>`;
-      messageEl.classList.remove('hidden');
-    }
-  }
-
-  async renderBroadcast() {
-    this.elements.mainContent.innerHTML = `
-      <div id="broadcast" class="page active">
-        <div class="card">
-          <h3>Broadcast Message to All Users</h3>
-          
-          <div class="form-group">
-            <label for="broadcastTitle">Title *</label>
-            <input type="text" id="broadcastTitle" placeholder="Enter message title" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="broadcastMessage">Message *</label>
-            <textarea id="broadcastMessage" rows="5" placeholder="Enter your message..." required></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="broadcastType">Message Type</label>
-            <select id="broadcastType" class="form-input">
-              <option value="info">ℹ️ Information</option>
-              <option value="warning">⚠️ Warning</option>
-              <option value="success">✅ Success</option>
-              <option value="update">🔄 Update</option>
-              <option value="promotion">🎁 Promotion</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>Add Inline Buttons (Optional)</label>
-            <div id="inline-buttons-container">
-              <div class="inline-button-row">
-                <input type="text" class="inline-button-input" placeholder="Button Text">
-                <input type="text" class="inline-button-input" placeholder="URL">
-                <button class="action-btn btn-danger remove-inline-btn" type="button">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            <button type="button" class="action-btn btn-primary" onclick="admin.addInlineButton()">
-              <i class="fas fa-plus"></i> Add Button
-            </button>
-            <small style="color: var(--text-secondary);">Maximum 3 buttons allowed</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="broadcastImage">Image URL (Optional)</label>
-            <input type="text" id="broadcastImage" placeholder="https://example.com/image.jpg">
-            <small style="color: var(--text-secondary);">Optional image to include with message</small>
-          </div>
-          
-          <button class="action-btn btn-success" style="width: 100%;" onclick="admin.sendBroadcastToBot()">
-            <i class="fas fa-paper-plane"></i> Send Broadcast via Telegram Bot
-          </button>
-          
-          <div id="broadcastMessageStatus" style="margin-top: 15px;"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  addInlineButton() {
-    const container = document.getElementById('inline-buttons-container');
-    const rows = container.querySelectorAll('.inline-button-row');
-    
-    if (rows.length >= 3) {
-      this.showNotification("Warning", "Maximum 3 buttons allowed", "warning");
-      return;
-    }
-    
-    const newRow = document.createElement('div');
-    newRow.className = 'inline-button-row';
-    newRow.innerHTML = `
-      <input type="text" class="inline-button-input" placeholder="Button Text">
-      <input type="text" class="inline-button-input" placeholder="URL">
-      <button class="action-btn btn-danger remove-inline-btn" type="button" onclick="this.parentElement.remove()">
-        <i class="fas fa-times"></i>
-      </button>
-    `;
-    
-    container.appendChild(newRow);
-  }
-
-  async sendBroadcastToBot() {
-    const title = document.getElementById('broadcastTitle').value.trim();
-    const message = document.getElementById('broadcastMessage').value.trim();
-    const type = document.getElementById('broadcastType').value;
-    const imageUrl = document.getElementById('broadcastImage').value.trim();
-    
-    if (!title || !message) {
-      this.showNotification("Error", "Please enter title and message", "error");
-      return;
-    }
-    
-    // Collect inline buttons
-    const buttons = [];
-    const buttonRows = document.querySelectorAll('.inline-button-row');
-    buttonRows.forEach(row => {
-      const inputs = row.querySelectorAll('.inline-button-input');
-      if (inputs[0].value && inputs[1].value) {
-        buttons.push({
-          text: inputs[0].value,
-          url: inputs[1].value
-        });
-      }
-    });
-    
-    try {
-      // First, save broadcast to database
-      const broadcastData = {
-        title: title,
-        message: message,
-        type: type,
-        imageUrl: imageUrl || null,
-        buttons: buttons,
-        timestamp: Date.now(),
-        sentBy: 'admin',
-        status: 'sending'
-      };
-      
-      const broadcastRef = await this.db.ref('broadcasts').push(broadcastData);
-      const broadcastId = broadcastRef.key;
-      
-      // Get all users
-      const usersSnap = await this.db.ref('users').once('value');
-      const users = [];
-      
-      usersSnap.forEach(child => {
-        const user = child.val();
-        if (user.id) {
-          users.push(user.id);
-        }
-      });
-      
-      if (users.length === 0) {
-        this.showNotification("Error", "No users found to send broadcast", "error");
-        return;
-      }
-      
-      const statusDiv = document.getElementById('broadcastMessageStatus');
-      statusDiv.innerHTML = `
-        <div class="warning-message">
-          <i class="fas fa-spinner fa-spin"></i> Sending broadcast to ${users.length} users...
-        </div>
-      `;
-      
-      // Send to bot
-      const botResponse = await this.sendToTelegramBot(users, title, message, imageUrl, buttons);
-      
-      if (botResponse.ok) {
-        // Update broadcast status
-        await this.db.ref(`broadcasts/${broadcastId}`).update({
-          status: 'sent',
-          sentTo: users.length,
-          sentAt: Date.now(),
-          botResponse: botResponse.result
-        });
-        
-        statusDiv.innerHTML = `
-          <div class="success-message">
-            <h4>✅ Broadcast Sent Successfully!</h4>
-            <p>Sent to ${users.length} users</p>
-            <p><strong>Title:</strong> ${title}</p>
-            <p><strong>Message:</strong> ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-          </div>
-        `;
-        
-        this.showNotification("Success", `Broadcast sent to ${users.length} users`, "success");
-        
-        // Clear form
-        document.getElementById('broadcastTitle').value = '';
-        document.getElementById('broadcastMessage').value = '';
-        document.getElementById('broadcastImage').value = '';
-        document.getElementById('inline-buttons-container').innerHTML = `
-          <div class="inline-button-row">
-            <input type="text" class="inline-button-input" placeholder="Button Text">
-            <input type="text" class="inline-button-input" placeholder="URL">
-            <button class="action-btn btn-danger remove-inline-btn" type="button">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-        `;
-        
-      } else {
-        await this.db.ref(`broadcasts/${broadcastId}`).update({
-          status: 'failed',
-          error: botResponse.description
-        });
-        
-        statusDiv.innerHTML = `
-          <div class="error-message">
-            <h4>❌ Failed to Send Broadcast</h4>
-            <p>Error: ${botResponse.description}</p>
-          </div>
-        `;
-        
-        this.showNotification("Error", `Failed to send broadcast: ${botResponse.description}`, "error");
-      }
-      
-    } catch (error) {
-      console.error("Error sending broadcast:", error);
-      
-      const statusDiv = document.getElementById('broadcastMessageStatus');
-      statusDiv.innerHTML = `
-        <div class="error-message">
-          <h4>❌ Error Sending Broadcast</h4>
-          <p>${error.message}</p>
-        </div>
-      `;
-      
-      this.showNotification("Error", "Failed to send broadcast", "error");
-    }
-  }
-
-  async sendToTelegramBot(userIds, title, message, imageUrl, buttons) {
-    try {
-      // For now, we'll simulate sending
-      // In production, you would call Telegram Bot API
-      const formattedMessage = `*${title}*\n\n${message}`;
-      
-      // Note: In production, implement actual Telegram Bot API calls
-      // This is a simplified version
-      
-      return {
-        ok: true,
-        result: {
-          message_id: Date.now(),
-          date: Date.now(),
-          text: "Broadcast simulated successfully"
-        }
-      };
-      
-    } catch (error) {
-      console.error("Telegram Bot API error:", error);
-      return {
-        ok: false,
-        description: error.message
-      };
-    }
-  }
-
-  async renderAddBalance() {
-    this.elements.mainContent.innerHTML = `
-      <div id="addBalance" class="page active">
-        <h3>Add Balance to User</h3>
-        
-        <div class="card">
-          <h4>Add Balance Form</h4>
-          <div class="form-group">
-            <label for="userId">Telegram User ID *</label>
-            <input type="text" id="userId" placeholder="Enter Telegram ID (e.g., 123456789)">
-            <small style="color: var(--text-secondary);">The unique Telegram ID of the user</small>
-          </div>
-          <div class="form-group">
-            <label for="balanceType">Balance Type</label>
-            <select id="balanceType" class="form-input">
-              <option value="gold">🟡 GOLD</option>
-              <option value="ton">🔵 TON</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="balanceAmount">Amount</label>
-            <input type="number" id="balanceAmount" placeholder="Enter amount" step="0.001" min="0">
-            <small style="color: var(--text-secondary);">For GOLD: whole numbers | For TON: decimals allowed</small>
-          </div>
-          <div class="form-group">
-            <label for="balanceReason">Reason</label>
-            <input type="text" id="balanceReason" placeholder="Enter reason (e.g., Deposit TON, Bonus, etc.)">
-            <small style="color: var(--text-secondary);">This will be recorded in history</small>
-          </div>
-          <button class="action-btn btn-success" style="width: 100%;" onclick="admin.addBalanceToUser()">
-            <i class="fas fa-plus-circle"></i> Add Balance to User
-          </button>
-          <div id="balanceMessage" style="margin-top: 15px;"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  async renderBalanceHistory() {
-    this.elements.mainContent.innerHTML = `
-      <div id="history" class="page active">
-        <div class="loading">
-          <div class="spinner"></div>
-          <p>Loading Balance History...</p>
-        </div>
-      </div>
-    `;
-    
-    try {
-      const historySnap = await this.db.ref('balanceHistory').orderByChild('timestamp').limitToLast(50).once('value');
-      let historyContent = '';
-      let historyCount = 0;
-      
-      if (historySnap.exists()) {
-        historySnap.forEach(child => {
-          const record = child.val();
-          historyCount++;
-          
-          const date = new Date(record.timestamp);
-          const isGold = record.balanceType === 'gold';
-          
-          historyContent += `
-            <div class="balance-history-item">
-              <div class="balance-history-user">
-                <strong>${record.userName || 'Unknown User'}</strong>
-                <div>
-                  <small>ID: ${record.telegramId}</small>
-                </div>
-              </div>
-              
-              <div class="balance-history-amount">
-                <div class="amount-display ${isGold ? 'gold' : 'ton'}">
-                  ${isGold ? '🟡' : '🔵'} ${record.amount}
-                </div>
-                <div class="amount-label">${isGold ? 'GOLD' : 'TON'}</div>
-              </div>
-              
-              <div class="balance-history-details">
-                <div class="balance-history-reason">${record.reason || 'Balance Addition'}</div>
-                <div class="balance-history-meta">
-                  <span><strong>Admin:</strong> ${record.adminId || 'admin'}</span>
-                  <span><strong>Previous:</strong> ${record.previousBalance || 0}</span>
-                  <span><strong>New:</strong> ${record.newBalance || 0}</span>
-                </div>
-              </div>
-              
-              <div class="balance-history-date">
-                ${date.toLocaleDateString()}<br>
-                ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </div>
-            </div>
-          `;
-        });
-      } else {
-        historyContent = `
-          <div class="card">
-            <div style="text-align: center; padding: 40px;">
-              <i class="fas fa-history" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 15px;"></i>
-              <h3 style="color: var(--text-secondary);">No Balance History</h3>
-              <p style="color: var(--text-secondary);">No balance additions have been recorded yet.</p>
-            </div>
-          </div>
-        `;
-      }
-      
-      this.elements.mainContent.innerHTML = `
-        <div id="history" class="page active">
-          <h3>Balance Addition History (${historyCount})</h3>
-          <div class="balance-history-container">
-            ${historyContent}
-          </div>
-        </div>
-      `;
-      
-    } catch (error) {
-      console.error("Error loading history:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="history" class="page active">
-          <div class="card">
-            <h3>Error loading balance history</h3>
-            <p>${error.message}</p>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  async addBalanceToUser() {
-    const telegramId = document.getElementById('userId').value.trim();
-    const balanceType = document.getElementById('balanceType').value;
-    const amount = parseFloat(document.getElementById('balanceAmount').value);
-    const reason = document.getElementById('balanceReason').value.trim() || 'Balance Addition';
-
-    if (!telegramId) {
-      this.showNotification("Error", "Please enter a Telegram ID", "error");
-      return;
-    }
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    const messageEl = document.getElementById('balanceMessage');
-    
-    try {
-      const userSnap = await this.db.ref(`users/${telegramId}`).once('value');
-      if (!userSnap.exists()) {
-        messageEl.innerHTML = `<div class="error-message">User with ID "${telegramId}" not found!</div>`;
-        return;
-      }
-
-      const user = userSnap.val();
-      const currentBalance = balanceType === 'gold' ? (user.gold || 0) : (user.balance || 0);
-      const newBalance = currentBalance + amount;
-
-      const updateData = {};
-      if (balanceType === 'gold') {
-        updateData[`users/${telegramId}/gold`] = newBalance;
-      } else {
-        updateData[`users/${telegramId}/balance`] = newBalance;
-      }
-
-      await this.db.ref().update(updateData);
-
-      const balanceHistory = {
-        telegramId: telegramId,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
-        balanceType: balanceType,
-        amount: amount,
-        reason: reason,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        adminId: 'admin',
-        timestamp: Date.now(),
-        date: new Date().toLocaleString()
-      };
-
-      await this.db.ref('balanceHistory').push(balanceHistory);
-
-      messageEl.innerHTML = `
-        <div class="success-message">
-          <h4>✅ Balance Added Successfully!</h4>
-          <p><strong>User:</strong> ${user.firstName || 'Unknown'} ${user.lastName || ''}</p>
-          <p><strong>Telegram ID:</strong> ${telegramId}</p>
-          <p><strong>Type:</strong> ${balanceType === 'gold' ? '🟡 GOLD' : '🔵 TON'}</p>
-          <p><strong>Amount Added:</strong> ${amount}</p>
-          <p><strong>Reason:</strong> ${reason}</p>
-          <p><strong>Previous Balance:</strong> ${currentBalance.toFixed(balanceType === 'gold' ? 0 : 3)}</p>
-          <p><strong>New Balance:</strong> ${newBalance.toFixed(balanceType === 'gold' ? 0 : 3)}</p>
-          <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-        </div>`;
-
-      // Clear form
-      document.getElementById('balanceAmount').value = '';
-      document.getElementById('balanceReason').value = '';
-
-      this.showNotification("Success", `Added ${amount} ${balanceType.toUpperCase()} to user`, "success");
-
-    } catch (error) {
-      messageEl.innerHTML = `<div class="error-message">Error adding balance: ${error.message}</div>`;
-    }
   }
 
   showNotification(title, message, type = 'info') {
