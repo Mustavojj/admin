@@ -208,31 +208,51 @@ class AdminPanel {
     `;
     
     try {
-      const [usersSnap, withdrawalsSnap] = await Promise.all([
+      const [usersSnap, withdrawalsSnap, tasksSnap, appStatsSnap] = await Promise.all([
         this.db.ref('users').once('value'),
-        this.db.ref('withdrawals/pending').once('value')
+        this.db.ref('withdrawals/pending').once('value'),
+        this.db.ref('config/tasks').once('value'),
+        this.db.ref('appStats').once('value')
       ]);
       
       const totalUsers = usersSnap.numChildren();
       const pendingWithdrawals = withdrawalsSnap.numChildren();
+      const totalTasks = tasksSnap.numChildren();
       
-      // Get top 20 users by balance
+      let appStats = {
+        totalUsers: 0,
+        totalTasks: 0,
+        totalPayments: 0,
+        totalWithdrawals: 0,
+        totalAds: 0
+      };
+      
+      if (appStatsSnap.exists()) {
+        appStats = appStatsSnap.val();
+      }
+      
+      // حساب إجمالي الـ GOLD و TON للمستخدمين
+      let totalGold = 0;
+      let totalTON = 0;
       let usersArray = [];
+      
       usersSnap.forEach(child => {
         const user = child.val();
-        const telegramId = user.id || child.key;
         usersArray.push({
-          id: telegramId,
-          firstName: user.firstName || 'User',
-          username: user.username,
-          gold: user.gold || 0,
-          balance: user.balance || 0,
-          referrals: user.totalReferrals || 0,
-          tasksCompleted: user.tasksCompleted || 0
+          id: user.id || child.key,
+          firstName: user.firstName || '',
+          username: user.username || '',
+          gold: this.safeNumber(user.gold),
+          balance: this.safeNumber(user.balance),
+          referrals: user.totalReferrals || user.referrals || 0,
+          tasksCompleted: user.tasksCompleted || user.totalTasks || 0
         });
+        
+        totalGold += this.safeNumber(user.gold);
+        totalTON += this.safeNumber(user.balance);
       });
       
-      // Sort by balance (gold + ton)
+      // Sort by balance (gold + ton converted to gold)
       const topByBalance = [...usersArray]
         .sort((a, b) => (b.gold + (b.balance * this.appConfig.exchangeRate)) - (a.gold + (a.balance * this.appConfig.exchangeRate)))
         .slice(0, 20);
@@ -244,20 +264,21 @@ class AdminPanel {
       
       let topBalanceHTML = '';
       topByBalance.forEach((user, index) => {
-        const totalGold = user.gold + (user.balance * this.appConfig.exchangeRate);
         topBalanceHTML += `
           <div class="dashboard-user-item">
             <div class="user-rank">${index + 1}</div>
             <div class="user-info">
-              <strong>${user.firstName}</strong>
+              <strong>${user.firstName || 'User'}</strong>
               ${user.username ? `<br><small>@${user.username}</small>` : ''}
             </div>
             <div class="user-stats">
               <span class="stat-badge gold">
-                <i class="fas fa-coins"></i> ${user.gold.toLocaleString()} GOLD
+                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                ${user.gold.toLocaleString()} GOLD
               </span>
               <span class="stat-badge ton">
-                <i class="fab fa-telegram"></i> ${user.balance.toFixed(3)} TON
+                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                ${user.balance.toFixed(3)} TON
               </span>
             </div>
           </div>
@@ -270,7 +291,7 @@ class AdminPanel {
           <div class="dashboard-user-item">
             <div class="user-rank">${index + 1}</div>
             <div class="user-info">
-              <strong>${user.firstName}</strong>
+              <strong>${user.firstName || 'User'}</strong>
               ${user.username ? `<br><small>@${user.username}</small>` : ''}
             </div>
             <div class="user-stats">
@@ -294,7 +315,7 @@ class AdminPanel {
               </div>
               <div class="stat-content">
                 <h3>Total Users</h3>
-                <p>${totalUsers.toLocaleString()}</p>
+                <p>${appStats.totalUsers.toLocaleString()}</p>
               </div>
             </div>
             <div class="stat-card">
@@ -312,7 +333,7 @@ class AdminPanel {
               </div>
               <div class="stat-content">
                 <h3>Total GOLD</h3>
-                <p>${usersArray.reduce((sum, user) => sum + user.gold, 0).toLocaleString()}</p>
+                <p>${totalGold.toLocaleString()}</p>
               </div>
             </div>
             <div class="stat-card">
@@ -321,7 +342,7 @@ class AdminPanel {
               </div>
               <div class="stat-content">
                 <h3>Total TON</h3>
-                <p>${usersArray.reduce((sum, user) => sum + user.balance, 0).toFixed(3)}</p>
+                <p>${totalTON.toFixed(3)}</p>
               </div>
             </div>
           </div>
@@ -404,12 +425,24 @@ class AdminPanel {
       }
 
       const user = userSnap.val();
+      
+      // الحصول على حالة المستخدم من config/id/status مثل التطبيق الأساسي
       const statusSnap = await this.db.ref(`config/${userId}/status`).once('value');
       const userStatus = statusSnap.exists() ? statusSnap.val() : 'free';
       
-      // Get user's tasks completed count
-      const tasksCompleted = user.tasksCompleted || 0;
-      const totalReferrals = user.totalReferrals || 0;
+      // الحصول على المهام المكتملة
+      const tasksCompleted = user.tasksCompleted || user.weeklyCompletedTasks?.length || 0;
+      
+      // الحصول على الإحالات (compatible with both old and new field names)
+      const totalReferrals = user.totalReferrals || user.referrals || 0;
+      const activeReferrals = user.activeReferrals || 0;
+      const referralEarnings = user.referralEarnings || 0;
+      
+      // الحصول على التاريخ المتبقي للـ Hourly Bonus
+      const lastHourlyBonus = user.lastHourlyBonus || 0;
+      const hourlyBonusCooldown = 3600000; // ساعة واحدة
+      const canClaimHourlyBonus = !lastHourlyBonus || (Date.now() - lastHourlyBonus) >= hourlyBonusCooldown;
+      const timeRemaining = canClaimHourlyBonus ? "00:00" : this.formatTimeRemaining(hourlyBonusCooldown - (Date.now() - lastHourlyBonus));
 
       document.getElementById('userDetails').innerHTML = `
         <div class="user-profile-card">
@@ -432,7 +465,7 @@ class AdminPanel {
           <div class="user-stats-grid">
             <div class="user-stat-card">
               <div class="user-stat-icon gold">
-                <i class="fas fa-coins"></i>
+                <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD">
               </div>
               <div class="user-stat-content">
                 <h4>GOLD Balance</h4>
@@ -442,7 +475,7 @@ class AdminPanel {
             
             <div class="user-stat-card">
               <div class="user-stat-icon ton">
-                <i class="fab fa-telegram"></i>
+                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON">
               </div>
               <div class="user-stat-content">
                 <h4>TON Balance</h4>
@@ -467,6 +500,40 @@ class AdminPanel {
               <div class="user-stat-content">
                 <h4>Tasks Completed</h4>
                 <p>${tasksCompleted}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="user-additional-info">
+            <div class="info-section">
+              <h4>Additional Information</h4>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Active Referrals:</span>
+                  <span class="info-value">${activeReferrals}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Referral Earnings:</span>
+                  <span class="info-value gold-text">${referralEarnings.toLocaleString()} GOLD</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Total Earned:</span>
+                  <span class="info-value gold-text">${(user.totalEarned || 0).toLocaleString()} GOLD</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Hourly Bonus:</span>
+                  <span class="info-value ${canClaimHourlyBonus ? 'success-text' : 'warning-text'}">
+                    ${canClaimHourlyBonus ? 'Available' : `Wait ${timeRemaining}`}
+                  </span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Last Active:</span>
+                  <span class="info-value">${user.lastActive ? new Date(user.lastActive).toLocaleString() : 'N/A'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Created:</span>
+                  <span class="info-value">${user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -499,6 +566,12 @@ class AdminPanel {
     }
   }
 
+  formatTimeRemaining(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
   showAddBalanceModal(userId, userName) {
     const modalHTML = `
       <div class="modal-overlay active" id="addBalanceModal">
@@ -511,17 +584,19 @@ class AdminPanel {
             <div class="form-group">
               <label for="addBalanceType">Balance Type</label>
               <select id="addBalanceType" class="form-input">
-                <option value="gold">🟡 GOLD</option>
-                <option value="ton">🔵 TON</option>
+                <option value="gold">GOLD</option>
+                <option value="ton">TON</option>
               </select>
             </div>
             <div class="form-group">
               <label for="addBalanceAmount">Amount</label>
               <input type="number" id="addBalanceAmount" placeholder="Enter amount" step="0.001" min="0">
+              <small>For GOLD: whole numbers | For TON: decimals allowed</small>
             </div>
             <div class="form-group">
               <label for="addBalanceReason">Reason</label>
               <input type="text" id="addBalanceReason" placeholder="Reason for adding balance">
+              <small>This will be recorded in history</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -549,17 +624,19 @@ class AdminPanel {
             <div class="form-group">
               <label for="removeBalanceType">Balance Type</label>
               <select id="removeBalanceType" class="form-input">
-                <option value="gold">🟡 GOLD</option>
-                <option value="ton">🔵 TON</option>
+                <option value="gold">GOLD</option>
+                <option value="ton">TON</option>
               </select>
             </div>
             <div class="form-group">
               <label for="removeBalanceAmount">Amount</label>
               <input type="number" id="removeBalanceAmount" placeholder="Enter amount" step="0.001" min="0">
+              <small>For GOLD: whole numbers | For TON: decimals allowed</small>
             </div>
             <div class="form-group">
               <label for="removeBalanceReason">Reason</label>
               <input type="text" id="removeBalanceReason" placeholder="Reason for removing balance">
+              <small>This will be recorded in history</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -762,21 +839,15 @@ class AdminPanel {
                 <button type="button" class="category-btn" data-category="bot">
                   <i class="fas fa-robot"></i> Website/Bot
                 </button>
-                <button type="button" class="category-btn" data-category="other">
-                  <i class="fas fa-link"></i> Other Links
-                </button>
               </div>
             </div>
             
             <div class="form-group">
               <label>Number of Completions *</label>
               <div class="completion-options-grid">
-                ${Object.entries(this.appConfig.taskPrices).map(([users, price]) => `
-                  <div class="completion-option" data-users="${users}" data-price="${price}">
+                ${Object.keys(this.appConfig.taskPrices).map(users => `
+                  <div class="completion-option" data-users="${users}">
                     <div class="users-count">${users}</div>
-                    <div class="ton-price">
-                      <span class="coin-icon ton"></span> ${price} TON
-                    </div>
                     <small>Users</small>
                   </div>
                 `).join('')}
@@ -816,60 +887,105 @@ class AdminPanel {
       if (tasksSnap.exists()) {
         tasksHTML += '<div class="tasks-list">';
         
+        const tasksArray = [];
         tasksSnap.forEach(child => {
           const task = child.val();
-          const taskId = child.key;
-          const progress = Math.min((task.currentCompletions || 0) / task.maxCompletions * 100, 100);
-          
-          tasksHTML += `
-            <div class="task-item">
-              <div class="task-item-header">
-                <div class="task-title">
-                  <h4>${task.name || 'Unnamed Task'}</h4>
-                  <span class="task-type-badge ${task.type || 'channel'}">${task.type || 'channel'}</span>
-                </div>
-                <div class="task-actions">
-                  <button class="action-btn btn-danger btn-sm" onclick="admin.deleteTask('${taskId}')">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="task-item-details">
-                <div class="task-detail">
-                  <span class="detail-label">URL:</span>
-                  <a href="${task.url}" target="_blank" class="task-link">${task.url}</a>
-                </div>
-                <div class="task-detail">
-                  <span class="detail-label">Reward:</span>
-                  <span class="reward-amount">
-                    <span class="coin-icon gold"></span> ${task.reward || 50} GOLD
-                  </span>
-                </div>
-                <div class="task-detail">
-                  <span class="detail-label">Max Completions:</span>
-                  <span>${task.maxCompletions}</span>
-                </div>
-                <div class="task-detail">
-                  <span class="detail-label">Current:</span>
-                  <span>${task.currentCompletions || 0}</span>
-                </div>
-              </div>
-              
-              <div class="task-progress">
-                <div class="progress-info">
-                  <span>Progress: ${task.currentCompletions || 0}/${task.maxCompletions}</span>
-                  <span>${progress.toFixed(0)}%</span>
-                </div>
-                <div class="progress-bar">
-                  <div class="progress-fill" style="width: ${progress}%"></div>
-                </div>
-              </div>
-            </div>
-          `;
+          // تصفية المهام المحذوفة
+          if (task.status !== 'deleted') {
+            tasksArray.push({
+              id: child.key,
+              ...task
+            });
+          }
         });
         
-        tasksHTML += '</div>';
+        // ترتيب المهام حسب تاريخ الإنشاء (الأحدث أولاً)
+        tasksArray.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        
+        if (tasksArray.length === 0) {
+          tasksHTML = `
+            <div class="empty-state">
+              <i class="fas fa-tasks"></i>
+              <p>No active tasks available</p>
+            </div>
+          `;
+        } else {
+          tasksArray.forEach(task => {
+            // حساب النسبة المئوية للإنجاز
+            const currentCompletions = task.currentCompletions || 0;
+            const maxCompletions = task.maxCompletions || 100;
+            const progress = Math.min((currentCompletions / maxCompletions) * 100, 100);
+            
+            // تحديد الحالة بناءً على النسبة
+            let status = 'active';
+            let statusClass = 'status-active';
+            if (progress >= 100) {
+              status = 'completed';
+              statusClass = 'status-completed';
+            }
+            
+            tasksHTML += `
+              <div class="task-item">
+                <div class="task-item-header">
+                  <div class="task-title">
+                    <h4>${task.name || 'Unnamed Task'}</h4>
+                    <div class="task-meta">
+                      <span class="task-type-badge ${task.type || 'channel'}">${task.type || 'channel'}</span>
+                      <span class="task-status-badge ${statusClass}">${status}</span>
+                    </div>
+                  </div>
+                  <div class="task-actions">
+                    <button class="action-btn btn-danger btn-sm" onclick="admin.deleteTask('${task.id}')">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="task-item-details">
+                  <div class="task-detail">
+                    <span class="detail-label">URL:</span>
+                    <a href="${task.url}" target="_blank" class="task-link">${task.url}</a>
+                  </div>
+                  <div class="task-detail">
+                    <span class="detail-label">Reward per User:</span>
+                    <span class="reward-amount">
+                      <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                      ${task.reward || 50} GOLD
+                    </span>
+                  </div>
+                  <div class="task-detail">
+                    <span class="detail-label">Max Completions:</span>
+                    <span>${maxCompletions}</span>
+                  </div>
+                  <div class="task-detail">
+                    <span class="detail-label">Current Completions:</span>
+                    <span>${currentCompletions}</span>
+                  </div>
+                  <div class="task-detail">
+                    <span class="detail-label">Created By:</span>
+                    <span>${task.createdBy || 'admin'}</span>
+                  </div>
+                  <div class="task-detail">
+                    <span class="detail-label">Created At:</span>
+                    <span>${task.createdAt ? new Date(task.createdAt).toLocaleString() : 'N/A'}</span>
+                  </div>
+                </div>
+                
+                <div class="task-progress">
+                  <div class="progress-info">
+                    <span>Progress: ${currentCompletions}/${maxCompletions}</span>
+                    <span>${progress.toFixed(1)}%</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          
+          tasksHTML += '</div>';
+        }
       } else {
         tasksHTML = `
           <div class="empty-state">
@@ -931,14 +1047,32 @@ class AdminPanel {
     }
     
     const maxCompletions = parseInt(selectedOption.dataset.users);
-    const price = parseFloat(selectedOption.dataset.price);
     
     try {
       let cleanLink = taskLink.trim();
+      
+      // نفس منطق معالجة الروابط في التطبيق الأساسي
       if (!cleanLink.startsWith('http') && !cleanLink.startsWith('@')) {
         cleanLink = 'https://t.me/' + cleanLink;
       } else if (cleanLink.startsWith('@')) {
         cleanLink = 'https://t.me/' + cleanLink.substring(1);
+      }
+      
+      // تحقق من عدم وجود المهمة مسبقاً بنفس الرابط
+      const existingTasksSnap = await this.db.ref('config/tasks').orderByChild('url').equalTo(cleanLink).once('value');
+      if (existingTasksSnap.exists()) {
+        let hasActiveTask = false;
+        existingTasksSnap.forEach(child => {
+          const existingTask = child.val();
+          if (existingTask.status !== 'deleted') {
+            hasActiveTask = true;
+          }
+        });
+        
+        if (hasActiveTask) {
+          this.showNotification("Error", "Task with this link already exists", "error");
+          return;
+        }
       }
       
       const taskData = {
@@ -955,6 +1089,9 @@ class AdminPanel {
       };
       
       await this.db.ref('config/tasks').push(taskData);
+      
+      // تحديث إحصائيات التطبيق
+      await this.updateAppStats('totalTasks', 1);
       
       this.showNotification("Success", `Task "${taskName}" created successfully!`, "success");
       
@@ -976,7 +1113,13 @@ class AdminPanel {
     if (!confirm('Are you sure you want to delete this task?')) return;
     
     try {
-      await this.db.ref(`config/tasks/${taskId}`).remove();
+      // تحديث حالة المهمة بدلاً من حذفها (متوافق مع التطبيق الأساسي)
+      await this.db.ref(`config/tasks/${taskId}`).update({
+        status: 'deleted',
+        deletedAt: Date.now(),
+        deletedBy: 'admin'
+      });
+      
       this.showNotification("Success", "Task deleted successfully", "success");
       await this.loadTasksList();
     } catch (error) {
@@ -1007,10 +1150,20 @@ class AdminPanel {
       }
       
       if (requests.length > 0) {
-        requests.forEach(async (req) => {
-          // Get user details from users collection
-          const userSnap = await this.db.ref(`users/${req.userId}`).once('value');
-          const user = userSnap.exists() ? userSnap.val() : {};
+        // الحصول على بيانات جميع المستخدمين دفعة واحدة لتحسين الأداء
+        const userIds = requests.map(req => req.userId).filter(id => id);
+        const userPromises = userIds.map(userId => this.db.ref(`users/${userId}`).once('value'));
+        const userSnapshots = await Promise.all(userPromises);
+        
+        const usersData = {};
+        userSnapshots.forEach((snap, index) => {
+          if (snap.exists()) {
+            usersData[userIds[index]] = snap.val();
+          }
+        });
+        
+        for (const req of requests) {
+          const user = usersData[req.userId] || {};
           
           withdrawalsContent += `
             <div class="withdrawal-card">
@@ -1023,9 +1176,11 @@ class AdminPanel {
                   </div>
                 </div>
                 <div class="withdrawal-amount">
-                  <span class="coin-icon ton"></span> ${req.tonAmount || req.amount || 0} TON
+                  <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                  ${req.tonAmount || req.amount || 0} TON
                   <div class="gold-amount">
-                    <span class="coin-icon gold"></span> ${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD
+                    <img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold">
+                    ${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD
                   </div>
                 </div>
               </div>
@@ -1040,8 +1195,8 @@ class AdminPanel {
                   <span class="detail-value">${user.username ? '@' + user.username : 'N/A'}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">Referrals:</span>
-                  <span class="detail-value">${user.totalReferrals || 0}</span>
+                  <span class="detail-label">Total Referrals:</span>
+                  <span class="detail-value">${user.totalReferrals || user.referrals || 0}</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Tasks Completed:</span>
@@ -1050,7 +1205,8 @@ class AdminPanel {
                 <div class="detail-item full-width">
                   <span class="detail-label">Amount:</span>
                   <span class="detail-value amount-highlight">
-                    <span class="coin-icon ton"></span> ${req.tonAmount || req.amount || 0} TON
+                    <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton">
+                    ${req.tonAmount || req.amount || 0} TON
                     (${req.goldAmount ? req.goldAmount.toLocaleString() : '0'} GOLD)
                   </span>
                 </div>
@@ -1078,7 +1234,7 @@ class AdminPanel {
               </div>
             </div>
           `;
-        });
+        }
       } else {
         withdrawalsContent = `
           <div class="empty-state">
@@ -1135,6 +1291,11 @@ class AdminPanel {
       
       await requestRef.remove();
       
+      // تحديث إحصائيات التطبيق
+      if (status === 'completed') {
+        await this.updateAppStats('totalWithdrawals', 1);
+      }
+      
       this.showNotification("Success", `Withdrawal ${status} successfully`, "success");
       this.renderWithdrawals();
       
@@ -1170,8 +1331,8 @@ class AdminPanel {
                 <div class="promo-code">${promo.code}</div>
                 <div class="promo-reward">
                   ${promo.type === 'ton' ? 
-                    `<span class="coin-icon ton"></span> ${promo.reward} TON` : 
-                    `<span class="coin-icon gold"></span> ${promo.reward} GOLD`
+                    `<img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon ton"> ${promo.reward} TON` : 
+                    `<img src="https://cdn-icons-png.flaticon.com/512/16035/16035538.png" alt="GOLD" class="coin-icon gold"> ${promo.reward} GOLD`
                   }
                 </div>
               </div>
@@ -1206,8 +1367,8 @@ class AdminPanel {
               <div class="form-group">
                 <label for="promoType">Reward Type</label>
                 <select id="promoType" class="form-input">
-                  <option value="gold">🟡 GOLD</option>
-                  <option value="ton">🔵 TON</option>
+                  <option value="gold">GOLD</option>
+                  <option value="ton">TON</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1355,6 +1516,20 @@ class AdminPanel {
     container.className = 'notification-container';
     document.body.appendChild(container);
     return container;
+  }
+
+  async updateAppStats(stat, value = 1) {
+    try {
+      if (!this.db) return;
+      await this.db.ref(`appStats/${stat}`).transaction(current => (current || 0) + value);
+    } catch (error) {
+      console.error("Update stats error:", error);
+    }
+  }
+
+  safeNumber(value) {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
   }
 }
 
