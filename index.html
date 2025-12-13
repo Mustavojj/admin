@@ -6,7 +6,7 @@
     <title>Admin Panel - X BOSS APP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -14,15 +14,23 @@
     <!-- Login Interface -->
     <div id="login-container">
         <div class="login-card">
-            <h2 class="login-title"><i class="fas fa-shield-alt"></i> X BOSS Admin Panel</h2>
-            <div class="form-group">
-                <label for="login-password">Password</label>
-                <input type="password" id="login-password" placeholder="Enter admin password">
+            <div class="login-logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>X BOSS Admin</h1>
             </div>
-            <button class="login-btn" id="login-button">Login</button>
+            <div class="form-group">
+                <label for="login-password">Admin Password</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="login-password" placeholder="Enter admin password">
+                </div>
+            </div>
+            <button class="login-btn" id="login-button">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
             <div id="login-message" class="login-message"></div>
-            <p style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary);">
-                Manage X BOSS APP users, tasks, withdrawals, and settings
+            <p class="login-footer">
+                <i class="fas fa-info-circle"></i> Manage X BOSS APP users, tasks, withdrawals, and settings
             </p>
         </div>
     </div>
@@ -32,36 +40,27 @@
         <aside id="sidebar">
             <div>
                 <div id="sidebar-header">
-                    <h2><i class="fas fa-shield-alt"></i> X BOSS Admin</h2>
+                    <div class="sidebar-logo">
+                        <i class="fas fa-shield-alt"></i>
+                        <h2>X BOSS Admin</h2>
+                    </div>
                     <button class="close-btn">&times;</button>
                 </div>
                 <ul class="nav-menu">
                     <li data-page="dashboard" class="active">
                         <i class="fas fa-tachometer-alt"></i> Dashboard
                     </li>
+                    <li data-page="users">
+                        <i class="fas fa-users"></i> Users
+                    </li>
                     <li data-page="tasks">
-                        <i class="fas fa-plus"></i> Add Tasks
+                        <i class="fas fa-tasks"></i> Tasks
                     </li>
                     <li data-page="withdrawals">
                         <i class="fas fa-wallet"></i> Withdrawals
                     </li>
-                    <li data-page="addBalance">
-                        <i class="fas fa-plus-circle"></i> Add Balance
-                    </li>
-                    <li data-page="history">
-                        <i class="fas fa-history"></i> Balance History
-                    </li>
-                    <li data-page="wallet">
-                        <i class="fas fa-coins"></i> Wallet History
-                    </li>
                     <li data-page="promoCodes">
                         <i class="fas fa-gift"></i> Promo Codes
-                    </li>
-                    <li data-page="broadcast">
-                        <i class="fas fa-bullhorn"></i> Broadcast
-                    </li>
-                    <li data-page="settings">
-                        <i class="fas fa-cog"></i> App Settings
                     </li>
                 </ul>
             </div>
@@ -90,4 +89,4 @@
     <script src="config.js"></script>
     <script src="js/app.js"></script>
 </body>
-</html>
+    </html>
