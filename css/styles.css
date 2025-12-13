@@ -1,4 +1,3 @@
-/* styles.css */
 :root {
   --primary: #0088cc;
   --primary-dark: #006699;
@@ -1525,4 +1524,42 @@ h3 {
     flex-direction: column;
     gap: 10px;
   }
+}
+
+.coin-icon-sm {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 5px;
+    margin-bottom: 1px;
+}
+
+.stat-badge .coin-icon-sm,
+.reward-amount .coin-icon-sm,
+.promo-reward .coin-icon-sm,
+.amount-highlight .coin-icon-sm,
+.withdrawal-amount .coin-icon-sm,
+.gold-amount .coin-icon-sm {
+    width: 16px !important;
+    height: 16px !important;
+    vertical-align: text-bottom;
+}
+
+.user-stat-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.dashboard-user-item .stat-badge .coin-icon-sm {
+    margin-right: 4px;
+    vertical-align: text-bottom;
+}
+
+.promo-card .promo-reward .coin-icon-sm {
+    vertical-align: text-bottom;
+    margin-right: 4px;
 }
