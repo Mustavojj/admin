@@ -4,7 +4,7 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.appConfig = APP_DEFAULT_CONFIG;
-    this.botToken = "8315477063:AAFztM82m2p0Md03SYNWUB9SJ6cN_EMGcI4"; // Ninja bot token
+    this.botToken = "8315477063:AAFztM82m2p0Md03SYNWUB9SJ6cN_EMGcI4";
     
     this.elements = {
       appContainer: document.getElementById('app-container'),
@@ -232,7 +232,6 @@ class AdminPanel {
         appStats = appStatsSnap.val();
       }
       
-      // حساب إجمالي البيانات للمستخدمين
       let totalBalance = 0;
       let totalDicePlays = 0;
       let totalReferrals = 0;
@@ -259,12 +258,10 @@ class AdminPanel {
         totalTasksCompleted += (user.tasksCompleted || user.totalTasks || 0);
       });
       
-      // Sort by balance
       const topByBalance = [...usersArray]
         .sort((a, b) => b.balance - a.balance)
         .slice(0, 20);
       
-      // Sort by dice plays
       const topByDicePlays = [...usersArray]
         .sort((a, b) => b.dicePlays - a.dicePlays)
         .slice(0, 20);
@@ -276,7 +273,7 @@ class AdminPanel {
             <div class="user-rank">${index + 1}</div>
             <div class="user-info">
               <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>@${user.username}</small>` : ''}
+              ${user.username ? `<br><small>${user.username}</small>` : ''}
             </div>
             <div class="user-stats">
               <span class="stat-badge ton">
@@ -299,7 +296,7 @@ class AdminPanel {
             <div class="user-rank">${index + 1}</div>
             <div class="user-info">
               <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>@${user.username}</small>` : ''}
+              ${user.username ? `<br><small>${user.username}</small>` : ''}
             </div>
             <div class="user-stats">
               <span class="stat-badge games">
@@ -322,7 +319,7 @@ class AdminPanel {
               </div>
               <div class="stat-content">
                 <h3>Total Users</h3>
-                <p>${totalUsers.toLocaleString()}</p>
+                <p>${appStats.totalUsers.toLocaleString()}</p>
               </div>
             </div>
             <div class="stat-card">
@@ -470,129 +467,115 @@ class AdminPanel {
       const dailyAdsWatched = user.dailyAdsWatched || 0;
       
       document.getElementById('userDetails').innerHTML = `
-        <div class="user-profile-card">
-          <div class="user-profile-header">
-            <div class="user-avatar">
+        <div class="compact-user-card">
+          <div class="compact-user-header">
+            <div class="compact-user-avatar">
               ${user.photoUrl ? 
                 `<img src="${user.photoUrl}" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
                 `<i class="fas fa-user-circle"></i>`
               }
             </div>
-            <div class="user-profile-info">
-              <h3>${user.firstName || 'User'} ${user.lastName || ''}</h3>
-              <div class="user-meta">
-                ${user.username ? `<span><i class="fab fa-telegram"></i> @${user.username}</span>` : ''}
-                <span><i class="fas fa-id-card"></i> ID: ${userId}</span>
-                <span class="user-status ${userStatus}">
-                  <i class="fas fa-circle"></i> ${userStatus.toUpperCase()}
+            <div class="compact-user-info">
+              <div class="compact-user-name">
+                <h3>${user.firstName || 'User'} ${user.lastName || ''}</h3>
+                <span class="user-status-badge ${userStatus}">
+                  <i class="fas fa-circle"></i> ${userStatus === 'ban' ? 'BANNED' : 'ACTIVE'}
                 </span>
               </div>
+              <div class="compact-user-meta">
+                <span><i class="fab fa-telegram"></i> ${user.username || 'No username'}</span>
+                <span><i class="fas fa-id-card"></i> ID: ${userId}</span>
+              </div>
             </div>
           </div>
           
-          <div class="user-stats-grid">
-            <div class="user-stat-card">
-              <div class="user-stat-icon ton">
-                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+          <div class="compact-user-stats">
+            <div class="compact-stat">
+              <div class="compact-stat-icon ton">
+                <i class="fas fa-coins"></i>
               </div>
-              <div class="user-stat-content">
-                <h4>TON Balance</h4>
-                <p>${balance.toFixed(3)} TON</p>
+              <div class="compact-stat-content">
+                <div class="compact-stat-value">${balance.toFixed(3)} TON</div>
+                <div class="compact-stat-label">Balance</div>
               </div>
             </div>
             
-            <div class="user-stat-card">
-              <div class="user-stat-icon games">
+            <div class="compact-stat">
+              <div class="compact-stat-icon games">
                 <i class="fas fa-dice"></i>
               </div>
-              <div class="user-stat-content">
-                <h4>Dice Games</h4>
-                <p>${dicePlays}</p>
+              <div class="compact-stat-content">
+                <div class="compact-stat-value">${dicePlays}</div>
+                <div class="compact-stat-label">Games</div>
               </div>
             </div>
             
-            <div class="user-stat-card">
-              <div class="user-stat-icon referral">
+            <div class="compact-stat">
+              <div class="compact-stat-icon referrals">
                 <i class="fas fa-users"></i>
               </div>
-              <div class="user-stat-content">
-                <h4>Referrals</h4>
-                <p>${referrals}</p>
+              <div class="compact-stat-content">
+                <div class="compact-stat-value">${referrals}</div>
+                <div class="compact-stat-label">Referrals</div>
               </div>
             </div>
             
-            <div class="user-stat-card">
-              <div class="user-stat-icon task">
+            <div class="compact-stat">
+              <div class="compact-stat-icon tasks">
                 <i class="fas fa-tasks"></i>
               </div>
-              <div class="user-stat-content">
-                <h4>Tasks Completed</h4>
-                <p>${tasksCompleted}</p>
+              <div class="compact-stat-content">
+                <div class="compact-stat-value">${tasksCompleted}</div>
+                <div class="compact-stat-label">Tasks</div>
               </div>
             </div>
           </div>
           
-          <div class="user-additional-info">
-            <div class="info-section">
-              <h4><i class="fas fa-info-circle"></i> Additional Information</h4>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Referral Earnings:</span>
-                  <span class="info-value ton-text">${referralEarnings.toFixed(3)} TON</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Total Earned:</span>
-                  <span class="info-value ton-text">${totalEarned.toFixed(3)} TON</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Total Withdrawals:</span>
-                  <span class="info-value">${totalWithdrawals}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Dice Points:</span>
-                  <span class="info-value">${dicePoints.toLocaleString()}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Ads Watched:</span>
-                  <span class="info-value">${dailyAdsWatched}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Referral Code:</span>
-                  <span class="info-value">${user.referralCode || 'N/A'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Last Active:</span>
-                  <span class="info-value">${formatDateTime(user.lastActive)}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Account Created:</span>
-                  <span class="info-value">${formatDate(user.createdAt)}</span>
-                </div>
-              </div>
+          <div class="compact-user-details">
+            <div class="detail-row">
+              <span class="detail-label">Referral Earnings:</span>
+              <span class="detail-value">${referralEarnings.toFixed(3)} TON</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Total Earned:</span>
+              <span class="detail-value">${totalEarned.toFixed(3)} TON</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Ads Watched:</span>
+              <span class="detail-value">${dailyAdsWatched}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Dice Points:</span>
+              <span class="detail-value">${dicePoints.toLocaleString()}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Last Active:</span>
+              <span class="detail-value">${formatDateTime(user.lastActive)}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Created:</span>
+              <span class="detail-value">${formatDate(user.createdAt)}</span>
             </div>
           </div>
           
-          <div class="user-actions">
-            <h4><i class="fas fa-cogs"></i> User Management</h4>
-            <div class="action-buttons-grid">
-              <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
-                <i class="fas fa-plus-circle"></i> Add TON
-              </button>
-              <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
-                <i class="fas fa-minus-circle"></i> Remove TON
-              </button>
-              <button class="action-btn btn-info" onclick="admin.showAddGamesModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
-                <i class="fas fa-dice"></i> Add Games
-              </button>
-              ${userStatus === 'free' ? 
-                `<button class="action-btn btn-warning" onclick="admin.banUser('${userId}')">
-                  <i class="fas fa-ban"></i> Ban User
-                </button>` : 
-                `<button class="action-btn btn-success" onclick="admin.unbanUser('${userId}')">
-                  <i class="fas fa-check-circle"></i> Unban User
-                </button>`
-              }
-            </div>
+          <div class="compact-user-actions">
+            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
+              <i class="fas fa-plus"></i> Add TON
+            </button>
+            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
+              <i class="fas fa-minus"></i> Remove TON
+            </button>
+            <button class="action-btn btn-sm btn-info" onclick="admin.showAddGamesModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
+              <i class="fas fa-dice"></i> Add Games
+            </button>
+            ${userStatus === 'free' ? 
+              `<button class="action-btn btn-sm btn-warning" onclick="admin.banUser('${userId}')">
+                <i class="fas fa-ban"></i> Ban
+              </button>` : 
+              `<button class="action-btn btn-sm btn-success" onclick="admin.unbanUser('${userId}')">
+                <i class="fas fa-check"></i> Unban
+              </button>`
+            }
           </div>
         </div>
       `;
@@ -867,7 +850,7 @@ class AdminPanel {
 
     try {
       await this.db.ref(`config/${userId}`).update({
-        status: 'banned',
+        status: 'ban',
         bannedAt: Date.now(),
         bannedBy: 'admin'
       });
@@ -915,7 +898,18 @@ class AdminPanel {
             <div class="form-group">
               <label for="taskLink">Task Link (URL) *</label>
               <input type="text" id="taskLink" placeholder="https://t.me/..." required>
-              <small>For channels/groups</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Task Type *</label>
+              <div class="task-type-buttons">
+                <button type="button" class="task-type-btn active" data-type="channel">
+                  <i class="fas fa-bullhorn"></i> Channel / Group
+                </button>
+                <button type="button" class="task-type-btn" data-type="bot">
+                  <i class="fas fa-robot"></i> Website / Bot
+                </button>
+              </div>
             </div>
             
             <div class="form-group">
@@ -945,7 +939,18 @@ class AdminPanel {
       </div>
     `;
     
+    this.setupTaskTypeButtons();
     await this.loadTasksList();
+  }
+
+  setupTaskTypeButtons() {
+    const typeButtons = document.querySelectorAll('.task-type-btn');
+    typeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        typeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
   }
 
   async loadTasksList() {
@@ -959,7 +964,6 @@ class AdminPanel {
         const tasksArray = [];
         tasksSnap.forEach(child => {
           const task = child.val();
-          // تصفية المهام المحذوفة
           if (task.status !== 'deleted') {
             tasksArray.push({
               id: child.key,
@@ -968,7 +972,6 @@ class AdminPanel {
           }
         });
         
-        // ترتيب المهام حسب تاريخ الإنشاء (الأحدث أولاً)
         tasksArray.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         
         if (tasksArray.length === 0) {
@@ -1007,14 +1010,11 @@ class AdminPanel {
                   <div class="task-title">
                     <h4>${task.name || 'Unnamed Task'}</h4>
                     <div class="task-meta">
-                      <span class="task-type-badge ${task.type || 'channel'}">${task.type || 'channel'}</span>
+                      <span class="task-type-badge ${task.type || 'channel'}">
+                        ${task.type === 'channel' ? 'Channel / Group' : 'Website / Bot'}
+                      </span>
                       <span class="task-status-badge ${statusClass}">${status}</span>
                     </div>
-                  </div>
-                  <div class="task-actions">
-                    <button class="action-btn btn-danger btn-sm" onclick="admin.deleteTask('${task.id}')">
-                      <i class="fas fa-trash"></i>
-                    </button>
                   </div>
                 </div>
                 
@@ -1024,38 +1024,51 @@ class AdminPanel {
                     <a href="${task.url}" target="_blank" class="task-link">${task.url.substring(0, 50)}${task.url.length > 50 ? '...' : ''}</a>
                   </div>
                   <div class="task-detail">
-                    <span class="detail-label">Reward per User:</span>
+                    <span class="detail-label">Reward:</span>
                     <span class="reward-amount">
                       <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
                       ${task.reward || 0.001} TON
                     </span>
                   </div>
                   <div class="task-detail">
-                    <span class="detail-label">Max Completions:</span>
-                    <span>${maxCompletions}</span>
+                    <span class="detail-label">Completions:</span>
+                    <span>${currentCompletions}/${maxCompletions}</span>
                   </div>
                   <div class="task-detail">
-                    <span class="detail-label">Current Completions:</span>
-                    <span>${currentCompletions}</span>
-                  </div>
-                  <div class="task-detail">
-                    <span class="detail-label">Created By:</span>
-                    <span>${task.createdBy || 'admin'}</span>
-                  </div>
-                  <div class="task-detail">
-                    <span class="detail-label">Created Date:</span>
+                    <span class="detail-label">Created:</span>
                     <span>${formatDate(task.createdAt)}</span>
                   </div>
                 </div>
                 
                 <div class="task-progress">
                   <div class="progress-info">
-                    <span>Progress: ${currentCompletions}/${maxCompletions}</span>
-                    <span>${progress.toFixed(1)}%</span>
+                    <span>Progress: ${progress.toFixed(1)}%</span>
+                    <span>${currentCompletions}/${maxCompletions}</span>
                   </div>
                   <div class="progress-bar">
                     <div class="progress-fill" style="width: ${progress}%"></div>
                   </div>
+                </div>
+                
+                <div class="task-actions-horizontal">
+                  <div class="task-completion-control">
+                    <button class="action-btn btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', -10)">
+                      <i class="fas fa-minus"></i> -10
+                    </button>
+                    <button class="action-btn btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', -1)">
+                      <i class="fas fa-minus"></i> -1
+                    </button>
+                    <span class="completion-count">${currentCompletions}</span>
+                    <button class="action-btn btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', 1)">
+                      <i class="fas fa-plus"></i> +1
+                    </button>
+                    <button class="action-btn btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', 10)">
+                      <i class="fas fa-plus"></i> +10
+                    </button>
+                  </div>
+                  <button class="action-btn btn-sm btn-danger" onclick="admin.deleteTask('${task.id}')">
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
                 </div>
               </div>
             `;
@@ -1090,6 +1103,7 @@ class AdminPanel {
     const taskLink = document.getElementById('taskLink').value.trim();
     const taskReward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
+    const taskType = document.querySelector('.task-type-btn.active').dataset.type;
     
     if (!taskName || !taskLink) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1109,14 +1123,12 @@ class AdminPanel {
     try {
       let cleanLink = taskLink.trim();
       
-      // تنظيف الرابط
       if (!cleanLink.startsWith('http') && !cleanLink.startsWith('@')) {
         cleanLink = 'https://t.me/' + cleanLink;
       } else if (cleanLink.startsWith('@')) {
         cleanLink = 'https://t.me/' + cleanLink.substring(1);
       }
       
-      // تحقق من عدم وجود المهمة مسبقاً بنفس الرابط
       const existingTasksSnap = await this.db.ref('config/tasks').orderByChild('url').equalTo(cleanLink).once('value');
       if (existingTasksSnap.exists()) {
         let hasActiveTask = false;
@@ -1135,7 +1147,7 @@ class AdminPanel {
       
       const taskData = {
         name: taskName,
-        type: cleanLink.includes('t.me') ? 'channel' : 'bot',
+        type: taskType,
         url: cleanLink,
         maxCompletions: maxCompletions,
         reward: taskReward,
@@ -1147,18 +1159,15 @@ class AdminPanel {
       
       await this.db.ref('config/tasks').push(taskData);
       
-      // تحديث إحصائيات التطبيق
       await this.updateAppStats('totalTasks', 1);
       
       this.showNotification("Success", `Task "${taskName}" created successfully!`, "success");
       
-      // Reset form
       document.getElementById('taskName').value = '';
       document.getElementById('taskLink').value = '';
       document.getElementById('taskReward').value = '0.001';
       document.getElementById('taskMaxCompletions').value = '100';
       
-      // Refresh tasks list
       await this.loadTasksList();
       
     } catch (error) {
@@ -1167,11 +1176,37 @@ class AdminPanel {
     }
   }
 
+  async updateTaskCompletion(taskId, change) {
+    try {
+      const taskRef = this.db.ref(`config/tasks/${taskId}`);
+      const snapshot = await taskRef.once('value');
+      const task = snapshot.val();
+      
+      if (!task) {
+        this.showNotification("Error", "Task not found", "error");
+        return;
+      }
+      
+      const currentCompletions = task.currentCompletions || 0;
+      const newCompletions = Math.max(0, currentCompletions + change);
+      
+      await taskRef.update({
+        currentCompletions: newCompletions
+      });
+      
+      this.showNotification("Success", `Updated task completions to ${newCompletions}`, "success");
+      await this.loadTasksList();
+      
+    } catch (error) {
+      console.error("Error updating task completion:", error);
+      this.showNotification("Error", "Failed to update task completion", "error");
+    }
+  }
+
   async deleteTask(taskId) {
     if (!confirm('Are you sure you want to delete this task?')) return;
     
     try {
-      // تحديث حالة المهمة بدلاً من حذفها
       await this.db.ref(`config/tasks/${taskId}`).update({
         status: 'deleted',
         deletedAt: Date.now(),
@@ -1208,30 +1243,38 @@ class AdminPanel {
       }
       
       if (requests.length > 0) {
-        // تنسيق التاريخ
-        const formatDateTime = (timestamp) => {
-          if (!timestamp) return 'N/A';
-          const date = new Date(timestamp);
-          const day = date.getDate();
-          const month = date.getMonth() + 1;
-          const year = date.getFullYear();
-          const hours = date.getHours().toString().padStart(2, '0');
-          const minutes = date.getMinutes().toString().padStart(2, '0');
-          return `${day}-${month}-${year} ${hours}:${minutes}`;
-        };
-        
         for (const req of requests) {
           const userSnap = await this.db.ref(`users/${req.userId}`).once('value');
           const user = userSnap.exists() ? userSnap.val() : {};
+          
+          // تنسيق التاريخ
+          const formatDateTime = (timestamp) => {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            const day = date.getDate();
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${day}-${month}-${year} ${hours}:${minutes}`;
+          };
           
           withdrawalsContent += `
             <div class="withdrawal-card">
               <div class="withdrawal-header">
                 <div class="withdrawal-user">
-                  <strong>${req.userName || user.firstName || 'Unknown User'}</strong>
-                  <div class="user-meta">
-                    <span><i class="fab fa-telegram"></i> ${user.username ? '@' + user.username : 'No username'}</span>
-                    <span><i class="fas fa-id-card"></i> ID: ${req.userId}</span>
+                  <div class="user-avatar-small">
+                    ${user.photoUrl ? 
+                      `<img src="${user.photoUrl}" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
+                      `<i class="fas fa-user-circle"></i>`
+                    }
+                  </div>
+                  <div class="user-info">
+                    <strong>${req.userName || user.firstName || 'Unknown User'}</strong>
+                    <div class="user-meta">
+                      <span><i class="fab fa-telegram"></i> ${user.username || 'No username'}</span>
+                      <span><i class="fas fa-id-card"></i> ID: ${req.userId}</span>
+                    </div>
                   </div>
                 </div>
                 <div class="withdrawal-amount">
@@ -1240,15 +1283,45 @@ class AdminPanel {
                 </div>
               </div>
               
+              <div class="withdrawal-user-stats">
+                <div class="user-stat">
+                  <i class="fas fa-eye"></i>
+                  <div>
+                    <div class="stat-value">${user.dailyAdsWatched || 0}</div>
+                    <div class="stat-label">Ads Watched</div>
+                  </div>
+                </div>
+                <div class="user-stat">
+                  <i class="fas fa-users"></i>
+                  <div>
+                    <div class="stat-value">${user.referrals || 0}</div>
+                    <div class="stat-label">Referrals</div>
+                  </div>
+                </div>
+                <div class="user-stat">
+                  <i class="fas fa-coins"></i>
+                  <div>
+                    <div class="stat-value">${user.totalEarned ? user.totalEarned.toFixed(3) : '0.000'}</div>
+                    <div class="stat-label">Total Earned</div>
+                  </div>
+                </div>
+                <div class="user-stat">
+                  <i class="fas fa-money-bill-wave"></i>
+                  <div>
+                    <div class="stat-value">${user.referralEarnings ? user.referralEarnings.toFixed(3) : '0.000'}</div>
+                    <div class="stat-label">Ref Earnings</div>
+                  </div>
+                </div>
+                <div class="user-stat">
+                  <i class="fas fa-dice"></i>
+                  <div>
+                    <div class="stat-value">${user.dicePlays || 0}</div>
+                    <div class="stat-label">Games Played</div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="withdrawal-details-grid">
-                <div class="detail-item">
-                  <span class="detail-label">User Name:</span>
-                  <span class="detail-value">${user.firstName || 'N/A'}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Username:</span>
-                  <span class="detail-value">${user.username ? '@' + user.username : 'N/A'}</span>
-                </div>
                 <div class="detail-item">
                   <span class="detail-label">Amount:</span>
                   <span class="detail-value amount-highlight">
@@ -1271,7 +1344,7 @@ class AdminPanel {
               </div>
               
               <div class="withdrawal-actions">
-                <button class="action-btn btn-success" onclick="admin.handleWithdrawal('${req.id}', 'approve')">
+                <button class="action-btn btn-success" onclick="admin.showConfirmWithdrawalModal('${req.id}', '${req.userId}', ${req.amount}, '${req.walletAddress}', '${req.userName || user.firstName || ''}')">
                   <i class="fas fa-check"></i> Approve
                 </button>
                 <button class="action-btn btn-danger" onclick="admin.handleWithdrawal('${req.id}', 'reject')">
@@ -1314,8 +1387,58 @@ class AdminPanel {
     }
   }
 
-  async handleWithdrawal(requestId, action) {
+  showConfirmWithdrawalModal(requestId, userId, amount, wallet, userName) {
+    const modalHTML = `
+      <div class="modal-overlay active" id="confirmWithdrawalModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Confirm Withdrawal</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>You are about to approve a withdrawal for <strong>${userName}</strong>:</p>
+            <div class="withdrawal-summary">
+              <div class="summary-item">
+                <span>Amount:</span>
+                <span class="ton-amount">${amount.toFixed(5)} TON</span>
+              </div>
+              <div class="summary-item">
+                <span>Wallet:</span>
+                <span class="wallet-address">${wallet}</span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="transactionLink">
+                <i class="fas fa-link"></i> What is the transaction link?
+              </label>
+              <input type="text" id="transactionLink" placeholder="Enter the link here" required>
+              <small>Transaction explorer link (TONScan, Tonviewer, etc.)</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            <button class="action-btn btn-success" onclick="admin.confirmWithdrawal('${requestId}', '${userId}', ${amount}, '${wallet}')">
+              <i class="fas fa-check"></i> Confirm Withdrawal
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async confirmWithdrawal(requestId, userId, amount, wallet) {
+    const transactionLink = document.getElementById('transactionLink')?.value.trim();
+    
+    if (!transactionLink) {
+      this.showNotification("Error", "Please enter the transaction link", "error");
+      return;
+    }
+
     try {
+      // أولاً، قم بنقل الطلب إلى القسم المكتمل
       const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
       const snapshot = await requestRef.once('value');
       const request = snapshot.val();
@@ -1325,29 +1448,105 @@ class AdminPanel {
         return;
       }
       
-      const status = action === 'approve' ? 'completed' : 'rejected';
+      const status = 'completed';
       const targetPath = `withdrawals/${status}/${requestId}`;
       
       await this.db.ref(targetPath).set({
         ...request,
         status: status,
         processedAt: Date.now(),
-        processedBy: 'admin'
+        processedBy: 'admin',
+        transactionLink: transactionLink
       });
       
       await requestRef.remove();
       
       // تحديث إحصائيات التطبيق
-      if (status === 'completed') {
-        await this.updateAppStats('totalWithdrawals', 1);
-      }
+      await this.updateAppStats('totalWithdrawals', 1);
       
-      this.showNotification("Success", `Withdrawal ${status} successfully`, "success");
+      // إرسال رسالة إلى المستخدم عبر Telegram
+      await this.sendTelegramNotification(userId, amount, wallet, transactionLink);
+      
+      this.showNotification("Success", "Withdrawal approved successfully", "success");
+      
+      // إغلاق المودال وتحديث الصفحة
+      document.querySelector('#confirmWithdrawalModal')?.remove();
       this.renderWithdrawals();
       
     } catch (error) {
-      console.error("Error processing withdrawal:", error);
+      console.error("Error confirming withdrawal:", error);
       this.showNotification("Error", "Failed to process withdrawal", "error");
+    }
+  }
+
+  async sendTelegramNotification(userId, amount, wallet, transactionLink) {
+    try {
+      const message = `✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n💼 Wallet: ${wallet}\n📊 State: Success\n\nView on Explorer 👇`;
+      
+      const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: userId,
+          text: message,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              {
+                text: 'View on Explorer',
+                url: transactionLink
+              }
+            ]]
+          }
+        })
+      });
+      
+      const data = await response.json();
+      if (data.ok) {
+        console.log("✅ Telegram notification sent successfully");
+      } else {
+        console.error("❌ Failed to send Telegram notification:", data);
+      }
+    } catch (error) {
+      console.error("❌ Error sending Telegram notification:", error);
+    }
+  }
+
+  async handleWithdrawal(requestId, action) {
+    if (action === 'reject') {
+      if (!confirm('Are you sure you want to reject this withdrawal?')) return;
+      
+      try {
+        const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
+        const snapshot = await requestRef.once('value');
+        const request = snapshot.val();
+        
+        if (!request) {
+          this.showNotification("Error", "Request not found", "error");
+          return;
+        }
+        
+        const status = 'rejected';
+        const targetPath = `withdrawals/${status}/${requestId}`;
+        
+        await this.db.ref(targetPath).set({
+          ...request,
+          status: status,
+          processedAt: Date.now(),
+          processedBy: 'admin'
+        });
+        
+        await requestRef.remove();
+        
+        this.showNotification("Success", "Withdrawal rejected successfully", "success");
+        this.renderWithdrawals();
+        
+      } catch (error) {
+        console.error("Error rejecting withdrawal:", error);
+        this.showNotification("Error", "Failed to reject withdrawal", "error");
+      }
     }
   }
 
@@ -1369,17 +1568,7 @@ class AdminPanel {
       
       let totalGames = 0;
       let totalPoints = 0;
-      let gamesByDay = {};
       let usersArray = [];
-      
-      const now = new Date();
-      // إنشاء بيانات افتراضية للأيام السبعة الماضية
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        const dayKey = date.toISOString().split('T')[0];
-        gamesByDay[dayKey] = 0;
-      }
       
       usersSnap.forEach(child => {
         const user = child.val();
@@ -1389,7 +1578,6 @@ class AdminPanel {
         totalGames += userGames;
         totalPoints += userPoints;
         
-        // جمع بيانات للمستخدمين النشطين
         if (userGames > 0) {
           usersArray.push({
             id: user.id || child.key,
@@ -1400,39 +1588,11 @@ class AdminPanel {
             balance: this.safeNumber(user.balance)
           });
         }
-        
-        // تحليل تاريخ آخر لعبة
-        if (user.lastDicePlay) {
-          const date = new Date(user.lastDicePlay);
-          const dayKey = date.toISOString().split('T')[0];
-          if (gamesByDay.hasOwnProperty(dayKey)) {
-            gamesByDay[dayKey] = (gamesByDay[dayKey] || 0) + 1;
-          }
-        }
       });
       
-      // توليد بيانات عشوائية للمخطط إذا كانت البيانات قليلة
-      const dayKeys = Object.keys(gamesByDay).sort();
-      const maxGames = Math.max(1, totalGames / 7);
-      
-      dayKeys.forEach((day, index) => {
-        if (gamesByDay[day] === 0) {
-          // توليد بيانات عشوائية ولكن واقعية
-          const baseGames = Math.floor(maxGames * 0.3);
-          const randomGames = Math.floor(Math.random() * (maxGames * 0.7));
-          gamesByDay[day] = baseGames + randomGames;
-        }
-      });
-      
-      // ترتيب المستخدمين حسب الألعاب
       const topPlayers = [...usersArray]
         .sort((a, b) => b.games - a.games)
         .slice(0, 20);
-      
-      // تحضير بيانات الرسم البياني
-      const sortedDays = dayKeys;
-      const gamesData = sortedDays.map(day => gamesByDay[day] || 0);
-      const maxGamesValue = Math.max(...gamesData, 1);
       
       let topPlayersHTML = '';
       topPlayers.forEach((user, index) => {
@@ -1441,7 +1601,7 @@ class AdminPanel {
             <div class="user-rank">${index + 1}</div>
             <div class="user-info">
               <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>@${user.username}</small>` : ''}
+              ${user.username ? `<br><small>${user.username}</small>` : ''}
             </div>
             <div class="user-stats">
               <span class="stat-badge games">
@@ -1454,22 +1614,6 @@ class AdminPanel {
           </div>
         `;
       });
-      
-      // إنشاء مخطط الشارت
-      const chartBars = sortedDays.map((day, index) => {
-        const date = new Date(day);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-        const percentage = (gamesData[index] / maxGamesValue) * 100;
-        
-        return `
-          <div class="chart-bar-container">
-            <div class="chart-bar" style="height: ${percentage}%">
-              <span class="chart-bar-value">${gamesData[index]}</span>
-            </div>
-            <div class="chart-bar-label">${dayName}</div>
-          </div>
-        `;
-      }).join('');
       
       this.elements.mainContent.innerHTML = `
         <div id="games" class="page active">
@@ -1516,15 +1660,6 @@ class AdminPanel {
             <h3><i class="fas fa-trophy"></i> Top 20 Dice Players</h3>
             <div class="user-list-container" style="max-height: 500px;">
               ${topPlayersHTML || '<div class="empty-state">No players found</div>'}
-            </div>
-          </div>
-          
-          <div class="card">
-            <h3><i class="fas fa-chart-bar"></i> Games Activity (Last 7 Days)</h3>
-            <div class="games-chart">
-              <div class="chart-container">
-                ${chartBars}
-              </div>
             </div>
           </div>
         </div>
