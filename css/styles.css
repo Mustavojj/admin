@@ -567,6 +567,18 @@ h3 {
 
 .search-container input {
   flex: 1;
+  padding: 12px 15px;
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.search-container input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--glow-blue);
 }
 
 /* User Profile */
@@ -600,11 +612,19 @@ h3 {
   justify-content: center;
   font-size: 2.5rem;
   color: white;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-profile-info h3 {
   margin-bottom: 10px;
   font-size: 1.5rem;
+  color: var(--text-primary);
 }
 
 .user-meta {
@@ -617,7 +637,7 @@ h3 {
   background: var(--surface-light);
   padding: 5px 12px;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -699,10 +719,71 @@ h3 {
   color: var(--text-primary);
 }
 
-/* User Actions */
-.user-actions h4 {
-  margin-bottom: 15px;
+/* User Additional Info */
+.user-additional-info {
+  margin-bottom: 25px;
+}
+
+.info-section {
+  background: var(--surface-light);
+  border-radius: var(--border-radius-sm);
+  padding: 20px;
+}
+
+.info-section h4 {
   color: var(--text-primary);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.info-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.info-value.ton-text {
+  color: var(--primary-color);
+}
+
+/* User Actions */
+.user-actions {
+  background: var(--surface-light);
+  border-radius: var(--border-radius-sm);
+  padding: 20px;
+}
+
+.user-actions h4 {
+  color: var(--text-primary);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .action-buttons-grid {
@@ -834,6 +915,11 @@ h3 {
   margin-bottom: 10px;
 }
 
+.empty-state p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 .empty-state.error i {
   color: var(--error-color);
   opacity: 1;
@@ -899,6 +985,13 @@ h3 {
 .task-title h4 {
   margin: 0;
   font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.task-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .task-type-badge {
@@ -921,10 +1014,24 @@ h3 {
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.task-type-badge.other {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.task-status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-completed {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .task-item-details {
@@ -949,12 +1056,14 @@ h3 {
 .detail-value {
   font-weight: 600;
   color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .task-link {
   color: var(--primary-color);
   text-decoration: none;
   word-break: break-all;
+  font-size: 0.9rem;
 }
 
 .task-link:hover {
@@ -967,6 +1076,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 5px;
+  font-size: 0.95rem;
 }
 
 /* Task Progress */
@@ -1009,6 +1119,7 @@ h3 {
   padding: 20px;
   background: var(--surface-light);
   border-radius: var(--border-radius-sm);
+  gap: 10px;
 }
 
 .chart-bar-container {
@@ -1016,7 +1127,7 @@ h3 {
   flex-direction: column;
   align-items: center;
   flex: 1;
-  margin: 0 5px;
+  height: 100%;
 }
 
 .chart-bar {
@@ -1025,6 +1136,7 @@ h3 {
   border-radius: 6px 6px 0 0;
   position: relative;
   transition: height 0.3s ease;
+  min-height: 10px;
 }
 
 .chart-bar-value {
@@ -1035,105 +1147,138 @@ h3 {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .chart-bar-label {
   margin-top: 10px;
   font-size: 0.8rem;
   color: var(--text-secondary);
+  text-align: center;
 }
 
-/* Quests Styles */
-.quests-container {
-  display: grid;
-  gap: 25px;
-}
-
-.quests-section {
-  background: var(--card-bg);
-  border-radius: var(--border-radius);
-  padding: 20px;
-  border: 1px solid var(--border);
-}
-
-.quests-section h3 {
+/* Withdrawals */
+.withdrawals-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  color: var(--text-primary);
-}
-
-.quests-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 15px;
+  margin-bottom: 25px;
 }
 
-.quest-card {
-  background: var(--surface-light);
-  border-radius: var(--border-radius-sm);
-  padding: 15px;
-  border: 1px solid var(--border-light);
-  transition: all 0.3s;
+.badge {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.quest-card:hover {
-  transform: translateY(-3px);
+.withdrawal-card {
+  background: var(--surface);
+  border-radius: var(--border-radius);
+  padding: 25px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-light);
 }
 
-.quest-card-header {
+.withdrawal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.quest-type-badge {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
+.withdrawal-user strong {
+  font-size: 1.2rem;
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
-.quest-type-badge.dice {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--primary-color);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+.user-meta {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
-.quest-type-badge.tasks {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--success-color);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.quest-type-badge.referral {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.quest-target {
+.user-meta span {
+  background: var(--surface-light);
+  padding: 5px 10px;
+  border-radius: 15px;
   font-size: 0.85rem;
   color: var(--text-secondary);
-}
-
-.quest-card-body {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  align-items: center;
+  gap: 5px;
 }
 
-.quest-reward {
+.withdrawal-amount {
+  text-align: right;
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.3rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.1rem;
-  font-weight: 700;
+}
+
+.withdrawal-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  padding: 12px;
+  background: var(--surface-light);
+  border-radius: var(--border-radius-sm);
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.amount-highlight {
   color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-address {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 8px;
+  margin-top: 5px;
+  display: block;
+}
+
+.status-pending {
+  color: var(--warning-color);
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.withdrawal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
 }
 
 /* Modal */
@@ -1178,6 +1323,7 @@ h3 {
 
 .modal-header h3 {
   margin: 0;
+  color: var(--text-primary);
 }
 
 .modal-close {
@@ -1287,14 +1433,14 @@ h3 {
 
 /* Coin Icons */
 .coin-icon-sm {
-    width: 16px !important;
-    height: 16px !important;
-    border-radius: 50%;
-    object-fit: cover;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 5px;
-    margin-bottom: 1px;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+  margin-bottom: 1px;
 }
 
 /* Responsive */
@@ -1353,16 +1499,21 @@ h3 {
     grid-template-columns: 1fr;
   }
   
-  .quests-grid {
-    grid-template-columns: 1fr;
-  }
-  
   .user-stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
   .action-buttons-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .withdrawal-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .withdrawal-amount {
+    text-align: left;
   }
 }
 
@@ -1373,5 +1524,21 @@ h3 {
   
   .user-stats-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .task-item-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-container {
+    gap: 5px;
+  }
+  
+  .chart-bar {
+    width: 30px;
   }
 }
