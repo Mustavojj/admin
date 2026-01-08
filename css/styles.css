@@ -1659,3 +1659,455 @@ h3 {
     flex-direction: column;
   }
 }
+
+  /* إضافة CSS للأقسام الجديدة */
+
+/* === قسم Promo Codes === */
+.promo-codes-management {
+  display: grid;
+  gap: 25px;
+}
+
+.promo-codes-list {
+  display: grid;
+  gap: 15px;
+}
+
+.promo-code-item {
+  background: var(--surface-light);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  border: 2px solid var(--border-light);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.promo-code-item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-light);
+  border-color: var(--primary-color);
+}
+
+.promo-code-item.expired {
+  opacity: 0.7;
+  border-color: var(--error-color);
+}
+
+.promo-code-item.expired::before {
+  content: 'EXPIRED';
+  position: absolute;
+  top: 10px;
+  right: -30px;
+  background: var(--error-color);
+  color: white;
+  padding: 5px 30px;
+  transform: rotate(45deg);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.promo-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.promo-code-title {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.promo-code-title h4 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.promo-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.promo-status-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-active {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-completed {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-expired {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.promo-reward-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.promo-code-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.promo-code-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.promo-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.promo-detail:last-child {
+  border-bottom: none;
+}
+
+.promo-detail .detail-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.promo-detail .ton-amount {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.promo-code-progress {
+  margin-top: 15px;
+}
+
+.text-sm {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.text-danger {
+  color: var(--error-color) !important;
+}
+
+/* === قسم Broadcast === */
+.broadcast-management {
+  display: grid;
+  gap: 25px;
+}
+
+#broadcastButtons .button-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+#broadcastButtons .button-text,
+#broadcastButtons .button-url {
+  flex: 1;
+  padding: 10px;
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+}
+
+.broadcast-preview {
+  margin: 20px 0;
+  padding: 20px;
+  background: var(--surface-light);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-light);
+}
+
+.preview-content {
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  color: var(--text-secondary);
+}
+
+.preview-placeholder i {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.preview-image img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--border-radius-sm);
+}
+
+.preview-message {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-sm);
+  line-height: 1.6;
+}
+
+.preview-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preview-button {
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius-sm);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.preview-button:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.broadcast-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Broadcast History */
+.broadcast-history-list {
+  display: grid;
+  gap: 15px;
+}
+
+.broadcast-history-item {
+  background: var(--surface-light);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  border: 1px solid var(--border-light);
+  transition: all 0.3s;
+}
+
+.broadcast-history-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-light);
+}
+
+.broadcast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.broadcast-info h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.broadcast-meta {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.broadcast-meta span {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-badge.completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.broadcast-message-preview {
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+  border-left: 3px solid var(--primary-color);
+}
+
+.broadcast-message-preview p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.broadcast-stats {
+  display: flex;
+  gap: 20px;
+  margin: 15px 0;
+}
+
+.broadcast-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.broadcast-stats .stat i {
+  font-size: 1.1rem;
+}
+
+.broadcast-stats .stat i.success {
+  color: var(--success-color);
+}
+
+.broadcast-stats .stat i.error {
+  color: var(--error-color);
+}
+
+/* Select Styles */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-size: 1em;
+  padding-right: 40px;
+}
+
+/* Textarea Styles */
+textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: var(--font-primary);
+  line-height: 1.6;
+}
+
+/* Responsive للأقسام الجديدة */
+@media (max-width: 768px) {
+  .promo-code-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .promo-code-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .promo-code-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .broadcast-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  #broadcastButtons .button-row {
+    flex-direction: column;
+  }
+  
+  .preview-buttons {
+    flex-direction: column;
+  }
+  
+  .broadcast-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .promo-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .broadcast-actions {
+    flex-direction: column;
+  }
+  
+  .broadcast-actions button {
+    width: 100%;
+  }
+}
