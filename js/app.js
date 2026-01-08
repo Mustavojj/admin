@@ -178,6 +178,9 @@ class AdminPanel {
       case 'users':
         await this.renderUsers();
         break;
+      case 'promoCodes':
+        await this.renderPromoCodes();
+        break;
       case 'tasks':
         await this.renderTasks();
         break;
@@ -186,6 +189,9 @@ class AdminPanel {
         break;
       case 'games':
         await this.renderGames();
+        break;
+      case 'broadcast':
+        await this.renderBroadcast();
         break;
       default:
         await this.renderDashboard();
@@ -208,16 +214,18 @@ class AdminPanel {
     `;
     
     try {
-      const [usersSnap, withdrawalsSnap, tasksSnap, appStatsSnap] = await Promise.all([
+      const [usersSnap, withdrawalsSnap, tasksSnap, appStatsSnap, promoCodesSnap] = await Promise.all([
         this.db.ref('users').once('value'),
         this.db.ref('withdrawals/pending').once('value'),
         this.db.ref('config/tasks').once('value'),
-        this.db.ref('appStats').once('value')
+        this.db.ref('appStats').once('value'),
+        this.db.ref('config/promoCodes').once('value')
       ]);
       
       const totalUsers = usersSnap.numChildren();
       const pendingWithdrawals = withdrawalsSnap.numChildren();
       const totalTasks = tasksSnap.numChildren();
+      const totalPromoCodes = promoCodesSnap.exists() ? Object.keys(promoCodesSnap.val()).length : 0;
       
       let appStats = {
         totalUsers: 0,
@@ -225,11 +233,12 @@ class AdminPanel {
         totalPayments: 0,
         totalWithdrawals: 0,
         totalAds: 0,
-        totalDicePlays: 0
+        totalDicePlays: 0,
+        totalPromoCodes: totalPromoCodes
       };
       
       if (appStatsSnap.exists()) {
-        appStats = appStatsSnap.val();
+        appStats = { ...appStats, ...appStatsSnap.val() };
       }
       
       let totalBalance = 0;
@@ -349,6 +358,15 @@ class AdminPanel {
                 <p>${totalDicePlays.toLocaleString()}</p>
               </div>
             </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <i class="fas fa-ticket-alt"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Promo Codes</h3>
+                <p>${totalPromoCodes}</p>
+              </div>
+            </div>
           </div>
           
           <div class="dashboard-columns">
@@ -430,11 +448,9 @@ class AdminPanel {
 
       const user = userSnap.val();
       
-      // الحصول على حالة المستخدم
       const statusSnap = await this.db.ref(`config/${userId}/status`).once('value');
       const userStatus = statusSnap.exists() ? statusSnap.val() : 'free';
       
-      // تنسيق التواريخ
       const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
         const date = new Date(timestamp);
@@ -455,7 +471,6 @@ class AdminPanel {
         return `${day}-${month}-${year} ${hours}:${minutes}`;
       };
       
-      // الحصول على بيانات المستخدم
       const balance = this.safeNumber(user.balance);
       const dicePlays = this.safeNumber(user.dicePlays);
       const referrals = user.totalReferrals || user.referrals || 0;
@@ -710,7 +725,6 @@ class AdminPanel {
         totalEarned: this.safeNumber(user.totalEarned) + amount
       });
 
-      // Add to balance history
       const balanceHistory = {
         telegramId: userId,
         userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
@@ -727,7 +741,6 @@ class AdminPanel {
 
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
       
-      // Close modal and refresh user details
       document.querySelector('#addBalanceModal')?.remove();
       await this.searchUser();
       
@@ -767,7 +780,6 @@ class AdminPanel {
         balance: newBalance
       });
 
-      // Add to balance history
       const balanceHistory = {
         telegramId: userId,
         userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
@@ -784,7 +796,6 @@ class AdminPanel {
 
       this.showNotification("Success", `Removed ${amount} TON from user`, "success");
       
-      // Close modal and refresh user details
       document.querySelector('#removeBalanceModal')?.remove();
       await this.searchUser();
       
@@ -818,7 +829,6 @@ class AdminPanel {
         dicePlays: newGames
       });
 
-      // Add to games history
       const gamesHistory = {
         telegramId: userId,
         userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
@@ -835,7 +845,6 @@ class AdminPanel {
 
       this.showNotification("Success", `Added ${amount} dice games to user`, "success");
       
-      // Close modal and refresh user details
       document.querySelector('#addGamesModal')?.remove();
       await this.searchUser();
       
@@ -994,7 +1003,6 @@ class AdminPanel {
               statusClass = 'status-completed';
             }
             
-            // تنسيق التاريخ
             const formatDate = (timestamp) => {
               if (!timestamp) return 'N/A';
               const date = new Date(timestamp);
@@ -1247,7 +1255,6 @@ class AdminPanel {
           const userSnap = await this.db.ref(`users/${req.userId}`).once('value');
           const user = userSnap.exists() ? userSnap.val() : {};
           
-          // تنسيق التاريخ
           const formatDateTime = (timestamp) => {
             if (!timestamp) return 'N/A';
             const date = new Date(timestamp);
@@ -1438,7 +1445,6 @@ class AdminPanel {
     }
 
     try {
-      // أولاً، قم بنقل الطلب إلى القسم المكتمل
       const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
       const snapshot = await requestRef.once('value');
       const request = snapshot.val();
@@ -1461,15 +1467,12 @@ class AdminPanel {
       
       await requestRef.remove();
       
-      // تحديث إحصائيات التطبيق
       await this.updateAppStats('totalWithdrawals', 1);
       
-      // إرسال رسالة إلى المستخدم عبر Telegram
       await this.sendTelegramNotification(userId, amount, wallet, transactionLink);
       
       this.showNotification("Success", "Withdrawal approved successfully", "success");
       
-      // إغلاق المودال وتحديث الصفحة
       document.querySelector('#confirmWithdrawalModal')?.remove();
       this.renderWithdrawals();
       
@@ -1678,6 +1681,747 @@ class AdminPanel {
     }
   }
 
+  // === قسم Promo Codes ===
+  async renderPromoCodes() {
+    this.elements.mainContent.innerHTML = `
+      <div id="promoCodes" class="page active">
+        <div class="promo-codes-management">
+          <div class="card">
+            <h3><i class="fas fa-plus-circle"></i> Create New Promo Code</h3>
+            
+            <div class="form-group">
+              <label for="promoCode"><i class="fas fa-ticket-alt"></i> Promo Code *</label>
+              <input type="text" id="promoCode" placeholder="e.g., NINJA50" style="text-transform: uppercase;" maxlength="20">
+              <small>Code will be automatically converted to uppercase</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="promoReward"><i class="fas fa-gift"></i> Reward (TON) *</label>
+              <input type="number" id="promoReward" placeholder="0.010" value="0.010" min="0.001" step="0.001">
+              <small>Amount users will receive when using this code</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="promoMaxUses"><i class="fas fa-users"></i> Max Uses (0 = unlimited)</label>
+              <input type="number" id="promoMaxUses" placeholder="0" value="0" min="0" step="1">
+              <small>Maximum number of times this code can be used</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="promoExpiry"><i class="fas fa-calendar-times"></i> Expiry Date (Optional)</label>
+              <input type="date" id="promoExpiry">
+              <small>Leave empty for no expiration</small>
+            </div>
+            
+            <button class="action-btn btn-success" style="width: 100%;" onclick="admin.createPromoCode()">
+              <i class="fas fa-plus-circle"></i> Create Promo Code
+            </button>
+          </div>
+          
+          <div class="card" id="promoCodesListContainer">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Loading Promo Codes...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    await this.loadPromoCodesList();
+  }
+
+  async loadPromoCodesList() {
+    try {
+      const promoCodesSnap = await this.db.ref('config/promoCodes').once('value');
+      let promoCodesHTML = '<h3><i class="fas fa-list"></i> Active Promo Codes</h3>';
+      
+      if (promoCodesSnap.exists()) {
+        promoCodesHTML += '<div class="promo-codes-list">';
+        
+        const promoCodesArray = [];
+        promoCodesSnap.forEach(child => {
+          const promo = child.val();
+          if (promo.status !== 'deleted') {
+            promoCodesArray.push({
+              id: child.key,
+              ...promo
+            });
+          }
+        });
+        
+        promoCodesArray.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        
+        if (promoCodesArray.length === 0) {
+          promoCodesHTML = `
+            <div class="empty-state">
+              <i class="fas fa-ticket-alt"></i>
+              <p>No active promo codes available</p>
+              <p class="text-sm">Create your first promo code above</p>
+            </div>
+          `;
+        } else {
+          promoCodesArray.forEach(promo => {
+            const usedCount = promo.usedCount || 0;
+            const maxUses = promo.maxUses || 0;
+            const remainingUses = maxUses > 0 ? maxUses - usedCount : '∞';
+            const isExpired = promo.expiryDate && Date.now() > promo.expiryDate;
+            const isFullyUsed = maxUses > 0 && usedCount >= maxUses;
+            
+            let status = 'active';
+            let statusClass = 'status-active';
+            let statusIcon = 'fa-check-circle';
+            
+            if (isExpired) {
+              status = 'expired';
+              statusClass = 'status-expired';
+              statusIcon = 'fa-calendar-times';
+            } else if (isFullyUsed) {
+              status = 'used up';
+              statusClass = 'status-completed';
+              statusIcon = 'fa-users';
+            }
+            
+            const formatDate = (timestamp) => {
+              if (!timestamp) return 'N/A';
+              const date = new Date(timestamp);
+              const day = date.getDate().toString().padStart(2, '0');
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const year = date.getFullYear();
+              return `${day}-${month}-${year}`;
+            };
+            
+            const expiryDate = promo.expiryDate ? formatDate(promo.expiryDate) : 'No expiry';
+            
+            promoCodesHTML += `
+              <div class="promo-code-item ${isExpired ? 'expired' : ''}">
+                <div class="promo-code-header">
+                  <div class="promo-code-title">
+                    <h4>
+                      <i class="fas fa-ticket-alt"></i> 
+                      ${promo.code || 'No Code'}
+                    </h4>
+                    <div class="promo-meta">
+                      <span class="promo-status-badge ${statusClass}">
+                        <i class="fas ${statusIcon}"></i> ${status}
+                      </span>
+                      <span class="promo-reward-badge">
+                        <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+                        ${promo.reward || 0.010} TON
+                      </span>
+                    </div>
+                  </div>
+                  <div class="promo-code-actions">
+                    <button class="action-btn btn-sm btn-info" onclick="admin.copyPromoCode('${promo.code}')">
+                      <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <button class="action-btn btn-sm btn-danger" onclick="admin.deletePromoCode('${promo.id}')">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="promo-code-details">
+                  <div class="promo-detail">
+                    <span class="detail-label"><i class="fas fa-users"></i> Usage:</span>
+                    <span>${usedCount} / ${maxUses > 0 ? maxUses : '∞'} used</span>
+                  </div>
+                  <div class="promo-detail">
+                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Created:</span>
+                    <span>${formatDate(promo.createdAt)}</span>
+                  </div>
+                  <div class="promo-detail">
+                    <span class="detail-label"><i class="fas fa-calendar-times"></i> Expires:</span>
+                    <span class="${isExpired ? 'text-danger' : ''}">${expiryDate}</span>
+                  </div>
+                  <div class="promo-detail">
+                    <span class="detail-label"><i class="fas fa-gift"></i> Total Distributed:</span>
+                    <span class="ton-amount">${(usedCount * (promo.reward || 0)).toFixed(3)} TON</span>
+                  </div>
+                </div>
+                
+                <div class="promo-code-progress">
+                  <div class="progress-info">
+                    <span>${maxUses > 0 ? `Used: ${((usedCount / maxUses) * 100).toFixed(1)}%` : 'Unlimited uses'}</span>
+                    <span>${usedCount}/${maxUses > 0 ? maxUses : '∞'}</span>
+                  </div>
+                  ${maxUses > 0 ? `
+                    <div class="progress-bar">
+                      <div class="progress-fill" style="width: ${Math.min((usedCount / maxUses) * 100, 100)}%"></div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          });
+          
+          promoCodesHTML += '</div>';
+        }
+      } else {
+        promoCodesHTML = `
+          <div class="empty-state">
+            <i class="fas fa-ticket-alt"></i>
+            <p>No promo codes created yet</p>
+            <p class="text-sm">Create your first promo code above</p>
+          </div>
+        `;
+      }
+      
+      document.getElementById('promoCodesListContainer').innerHTML = promoCodesHTML;
+      
+    } catch (error) {
+      console.error("Error loading promo codes:", error);
+      document.getElementById('promoCodesListContainer').innerHTML = `
+        <div class="error-message">
+          <h3>Error loading promo codes</h3>
+          <p>${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  async createPromoCode() {
+    const codeInput = document.getElementById('promoCode');
+    const rewardInput = document.getElementById('promoReward');
+    const maxUsesInput = document.getElementById('promoMaxUses');
+    const expiryInput = document.getElementById('promoExpiry');
+    
+    const code = codeInput.value.trim().toUpperCase();
+    const reward = parseFloat(rewardInput.value) || 0.010;
+    const maxUses = parseInt(maxUsesInput.value) || 0;
+    const expiryDate = expiryInput.value ? new Date(expiryInput.value).getTime() : null;
+    
+    if (!code) {
+      this.showNotification("Error", "Please enter a promo code", "error");
+      return;
+    }
+    
+    if (reward <= 0) {
+      this.showNotification("Error", "Please enter a valid reward amount", "error");
+      return;
+    }
+    
+    if (maxUses < 0) {
+      this.showNotification("Error", "Max uses cannot be negative", "error");
+      return;
+    }
+    
+    if (expiryDate && expiryDate <= Date.now()) {
+      this.showNotification("Error", "Expiry date must be in the future", "error");
+      return;
+    }
+    
+    try {
+      const existingCodesSnap = await this.db.ref('config/promoCodes').once('value');
+      let isDuplicate = false;
+      
+      if (existingCodesSnap.exists()) {
+        existingCodesSnap.forEach(child => {
+          const existingCode = child.val();
+          if (existingCode.code === code && existingCode.status !== 'deleted') {
+            isDuplicate = true;
+          }
+        });
+      }
+      
+      if (isDuplicate) {
+        this.showNotification("Error", "Promo code already exists", "error");
+        return;
+      }
+      
+      const promoData = {
+        code: code,
+        reward: reward,
+        maxUses: maxUses,
+        usedCount: 0,
+        status: 'active',
+        createdBy: 'admin',
+        createdAt: Date.now()
+      };
+      
+      if (expiryDate) {
+        promoData.expiryDate = expiryDate;
+      }
+      
+      await this.db.ref('config/promoCodes').push(promoData);
+      
+      this.showNotification("Success", `Promo code "${code}" created successfully!`, "success");
+      
+      codeInput.value = '';
+      rewardInput.value = '0.010';
+      maxUsesInput.value = '0';
+      expiryInput.value = '';
+      
+      await this.loadPromoCodesList();
+      await this.updateAppStats('totalPromoCodes', 1);
+      
+    } catch (error) {
+      console.error("Error creating promo code:", error);
+      this.showNotification("Error", "Failed to create promo code", "error");
+    }
+  }
+
+  copyPromoCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+      this.showNotification("Copied!", `Promo code "${code}" copied to clipboard`, "success");
+    }).catch(err => {
+      console.error("Failed to copy:", err);
+      this.showNotification("Error", "Failed to copy promo code", "error");
+    });
+  }
+
+  async deletePromoCode(promoId) {
+    if (!confirm('Are you sure you want to delete this promo code?')) return;
+    
+    try {
+      await this.db.ref(`config/promoCodes/${promoId}`).update({
+        status: 'deleted',
+        deletedAt: Date.now(),
+        deletedBy: 'admin'
+      });
+      
+      this.showNotification("Success", "Promo code deleted successfully", "success");
+      await this.loadPromoCodesList();
+      await this.updateAppStats('totalPromoCodes', -1);
+      
+    } catch (error) {
+      console.error("Error deleting promo code:", error);
+      this.showNotification("Error", "Failed to delete promo code", "error");
+    }
+  }
+
+  // === قسم Broadcast ===
+  async renderBroadcast() {
+    this.elements.mainContent.innerHTML = `
+      <div id="broadcast" class="page active">
+        <div class="broadcast-management">
+          <div class="card">
+            <h3><i class="fas fa-bullhorn"></i> Send Broadcast Message</h3>
+            
+            <div class="form-group">
+              <label for="broadcastType"><i class="fas fa-broadcast-tower"></i> Broadcast Type</label>
+              <select id="broadcastType" onchange="admin.toggleBroadcastTarget()">
+                <option value="all">All Users</option>
+                <option value="specific">Specific User</option>
+              </select>
+            </div>
+            
+            <div id="specificUserField" class="form-group" style="display: none;">
+              <label for="broadcastUserId"><i class="fas fa-user"></i> User ID</label>
+              <input type="text" id="broadcastUserId" placeholder="Enter Telegram User ID">
+              <small>Leave empty to send to all users</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="broadcastImage"><i class="fas fa-image"></i> Image URL (Optional)</label>
+              <input type="text" id="broadcastImage" placeholder="https://example.com/image.jpg">
+              <small>Enter a direct image link</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="broadcastMessage"><i class="fas fa-comment-alt"></i> Message *</label>
+              <textarea id="broadcastMessage" rows="6" placeholder="Enter your message here..."></textarea>
+              <small>Supports HTML formatting</small>
+            </div>
+            
+            <div class="form-group">
+              <label><i class="fas fa-link"></i> Add Buttons (Optional)</label>
+              <div id="broadcastButtons">
+                <div class="button-row">
+                  <input type="text" class="button-text" placeholder="Button text">
+                  <input type="text" class="button-url" placeholder="URL">
+                  <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              <button class="action-btn btn-sm btn-secondary" onclick="admin.addBroadcastButton()" style="margin-top: 10px;">
+                <i class="fas fa-plus"></i> Add Button
+              </button>
+            </div>
+            
+            <div class="broadcast-preview">
+              <h4><i class="fas fa-eye"></i> Preview</h4>
+              <div id="broadcastPreview" class="preview-content">
+                <div class="preview-placeholder">
+                  <i class="fas fa-comment-alt"></i>
+                  <p>Your message will appear here</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="broadcast-actions">
+              <button class="action-btn btn-secondary" onclick="admin.updateBroadcastPreview()">
+                <i class="fas fa-sync"></i> Update Preview
+              </button>
+              <button class="action-btn btn-success" onclick="admin.sendBroadcast()">
+                <i class="fas fa-paper-plane"></i> Send Broadcast
+              </button>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3><i class="fas fa-history"></i> Broadcast History</h3>
+            <div id="broadcastHistoryContainer">
+              <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading history...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    this.updateBroadcastPreview();
+    await this.loadBroadcastHistory();
+  }
+
+  toggleBroadcastTarget() {
+    const type = document.getElementById('broadcastType').value;
+    const specificUserField = document.getElementById('specificUserField');
+    specificUserField.style.display = type === 'specific' ? 'block' : 'none';
+  }
+
+  addBroadcastButton() {
+    const buttonsContainer = document.getElementById('broadcastButtons');
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'button-row';
+    buttonRow.innerHTML = `
+      <input type="text" class="button-text" placeholder="Button text">
+      <input type="text" class="button-url" placeholder="URL">
+      <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    buttonsContainer.appendChild(buttonRow);
+  }
+
+  updateBroadcastPreview() {
+    const message = document.getElementById('broadcastMessage').value;
+    const imageUrl = document.getElementById('broadcastImage').value;
+    const preview = document.getElementById('broadcastPreview');
+    
+    let previewHTML = '';
+    
+    if (imageUrl) {
+      previewHTML += `
+        <div class="preview-image">
+          <img src="${imageUrl}" alt="Preview" onerror="this.style.display='none'">
+        </div>
+      `;
+    }
+    
+    if (message) {
+      previewHTML += `
+        <div class="preview-message">
+          ${message.replace(/\n/g, '<br>')}
+        </div>
+      `;
+    } else {
+      previewHTML = `
+        <div class="preview-placeholder">
+          <i class="fas fa-comment-alt"></i>
+          <p>Your message will appear here</p>
+        </div>
+      `;
+    }
+    
+    const buttonRows = document.querySelectorAll('#broadcastButtons .button-row');
+    if (buttonRows.length > 0) {
+      previewHTML += '<div class="preview-buttons">';
+      buttonRows.forEach(row => {
+        const text = row.querySelector('.button-text').value;
+        const url = row.querySelector('.button-url').value;
+        if (text && url) {
+          previewHTML += `
+            <a href="${url}" class="preview-button" target="_blank">
+              ${text}
+            </a>
+          `;
+        }
+      });
+      previewHTML += '</div>';
+    }
+    
+    preview.innerHTML = previewHTML;
+  }
+
+  async sendBroadcast() {
+    const message = document.getElementById('broadcastMessage').value.trim();
+    const imageUrl = document.getElementById('broadcastImage').value.trim();
+    const broadcastType = document.getElementById('broadcastType').value;
+    const userId = document.getElementById('broadcastUserId')?.value.trim();
+    
+    if (!message) {
+      this.showNotification("Error", "Please enter a message", "error");
+      return;
+    }
+    
+    if (broadcastType === 'specific' && !userId) {
+      this.showNotification("Error", "Please enter a User ID for specific broadcast", "error");
+      return;
+    }
+    
+    const buttons = [];
+    document.querySelectorAll('#broadcastButtons .button-row').forEach(row => {
+      const text = row.querySelector('.button-text').value.trim();
+      const url = row.querySelector('.button-url').value.trim();
+      if (text && url) {
+        buttons.push({ text, url });
+      }
+    });
+    
+    if (!confirm(`Are you sure you want to send this broadcast${broadcastType === 'all' ? ' to ALL users' : ' to specific user'}?`)) {
+      return;
+    }
+    
+    try {
+      let usersToSend = [];
+      
+      if (broadcastType === 'all') {
+        const usersSnap = await this.db.ref('users').once('value');
+        usersSnap.forEach(child => {
+          const user = child.val();
+          usersToSend.push({
+            id: child.key,
+            firstName: user.firstName || 'User',
+            username: user.username
+          });
+        });
+      } else {
+        const userSnap = await this.db.ref(`users/${userId}`).once('value');
+        if (userSnap.exists()) {
+          const user = userSnap.val();
+          usersToSend.push({
+            id: userId,
+            firstName: user.firstName || 'User',
+            username: user.username
+          });
+        } else {
+          this.showNotification("Error", "User not found", "error");
+          return;
+        }
+      }
+      
+      const broadcastData = {
+        message: message,
+        imageUrl: imageUrl || null,
+        buttons: buttons.length > 0 ? buttons : null,
+        sentBy: 'admin',
+        sentAt: Date.now(),
+        targetType: broadcastType,
+        targetCount: usersToSend.length
+      };
+      
+      const broadcastRef = await this.db.ref('broadcastHistory').push(broadcastData);
+      const broadcastId = broadcastRef.key;
+      
+      let sentCount = 0;
+      let failedCount = 0;
+      
+      for (const user of usersToSend) {
+        try {
+          await this.sendTelegramMessage(user.id, message, imageUrl, buttons);
+          sentCount++;
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          console.error(`Failed to send to user ${user.id}:`, error);
+          failedCount++;
+        }
+      }
+      
+      await this.db.ref(`broadcastHistory/${broadcastId}`).update({
+        status: 'completed',
+        sentCount: sentCount,
+        failedCount: failedCount,
+        completedAt: Date.now()
+      });
+      
+      this.showNotification(
+        "Success", 
+        `Broadcast sent! Success: ${sentCount}, Failed: ${failedCount}`, 
+        "success"
+      );
+      
+      await this.loadBroadcastHistory();
+      
+    } catch (error) {
+      console.error("Error sending broadcast:", error);
+      this.showNotification("Error", "Failed to send broadcast", "error");
+    }
+  }
+
+  async sendTelegramMessage(userId, message, imageUrl, buttons) {
+    try {
+      let payload = {
+        chat_id: userId,
+        parse_mode: 'HTML'
+      };
+      
+      if (imageUrl) {
+        payload.photo = imageUrl;
+        payload.caption = message;
+        
+        const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendPhoto`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!data.ok) {
+          throw new Error(data.description || 'Failed to send photo');
+        }
+      } else {
+        payload.text = message;
+        
+        if (buttons && buttons.length > 0) {
+          payload.reply_markup = {
+            inline_keyboard: buttons.map(btn => [{
+              text: btn.text,
+              url: btn.url
+            }])
+          };
+        }
+        
+        const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!data.ok) {
+          throw new Error(data.description || 'Failed to send message');
+        }
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error(`Error sending to ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async loadBroadcastHistory() {
+    try {
+      const historySnap = await this.db.ref('broadcastHistory').orderByChild('sentAt').limitToLast(20).once('value');
+      let historyHTML = '';
+      
+      if (historySnap.exists()) {
+        const historyArray = [];
+        historySnap.forEach(child => {
+          historyArray.push({
+            id: child.key,
+            ...child.val()
+          });
+        });
+        
+        historyArray.reverse();
+        
+        if (historyArray.length === 0) {
+          historyHTML = `
+            <div class="empty-state">
+              <i class="fas fa-history"></i>
+              <p>No broadcast history yet</p>
+            </div>
+          `;
+        } else {
+          historyHTML = '<div class="broadcast-history-list">';
+          
+          historyArray.forEach(broadcast => {
+            const formatDateTime = (timestamp) => {
+              if (!timestamp) return 'N/A';
+              const date = new Date(timestamp);
+              const day = date.getDate();
+              const month = date.getMonth() + 1;
+              const year = date.getFullYear();
+              const hours = date.getHours().toString().padStart(2, '0');
+              const minutes = date.getMinutes().toString().padStart(2, '0');
+              return `${day}-${month}-${year} ${hours}:${minutes}`;
+            };
+            
+            const messagePreview = broadcast.message.length > 100 
+              ? broadcast.message.substring(0, 100) + '...' 
+              : broadcast.message;
+            
+            historyHTML += `
+              <div class="broadcast-history-item">
+                <div class="broadcast-header">
+                  <div class="broadcast-info">
+                    <h4>${broadcast.targetType === 'all' ? 'All Users' : 'Specific User'}</h4>
+                    <div class="broadcast-meta">
+                      <span><i class="fas fa-calendar-alt"></i> ${formatDateTime(broadcast.sentAt)}</span>
+                      <span><i class="fas fa-users"></i> ${broadcast.targetCount || 0} users</span>
+                    </div>
+                  </div>
+                  <div class="broadcast-status">
+                    <span class="status-badge ${broadcast.status || 'pending'}">
+                      ${broadcast.status || 'pending'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="broadcast-message-preview">
+                  <p>${messagePreview}</p>
+                </div>
+                
+                ${broadcast.sentCount !== undefined ? `
+                  <div class="broadcast-stats">
+                    <div class="stat">
+                      <i class="fas fa-check-circle success"></i>
+                      <span>Sent: ${broadcast.sentCount || 0}</span>
+                    </div>
+                    <div class="stat">
+                      <i class="fas fa-times-circle error"></i>
+                      <span>Failed: ${broadcast.failedCount || 0}</span>
+                    </div>
+                  </div>
+                ` : ''}
+                
+                <button class="action-btn btn-sm btn-info" onclick="admin.viewBroadcastDetails('${broadcast.id}')">
+                  <i class="fas fa-eye"></i> View Details
+                </button>
+              </div>
+            `;
+          });
+          
+          historyHTML += '</div>';
+        }
+      } else {
+        historyHTML = `
+          <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <p>No broadcast history yet</p>
+          </div>
+        `;
+      }
+      
+      document.getElementById('broadcastHistoryContainer').innerHTML = historyHTML;
+      
+    } catch (error) {
+      console.error("Error loading broadcast history:", error);
+      document.getElementById('broadcastHistoryContainer').innerHTML = `
+        <div class="error-message">
+          <h3>Error loading history</h3>
+          <p>${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  viewBroadcastDetails(broadcastId) {
+    this.showNotification("Info", "View details feature coming soon", "info");
+  }
+
   showNotification(title, message, type = 'info') {
     const container = document.querySelector('.notification-container') || this.createNotificationContainer();
     const notificationId = `notification-${Date.now()}`;
@@ -1720,7 +2464,10 @@ class AdminPanel {
   async updateAppStats(stat, value = 1) {
     try {
       if (!this.db) return;
-      await this.db.ref(`appStats/${stat}`).transaction(current => (current || 0) + value);
+      const ref = this.db.ref(`appStats/${stat}`);
+      const snapshot = await ref.once('value');
+      const currentValue = snapshot.exists() ? snapshot.val() : 0;
+      await ref.set(currentValue + value);
     } catch (error) {
       console.error("Update stats error:", error);
     }
