@@ -1,3 +1,28 @@
+// Configurations moved from config.js
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBzD_BXXDGhBDrZOo3bT-JGPS_Wy2ZDJn8",
+  authDomain: "ton-hub-test.firebaseapp.com",
+  databaseURL: "https://ton-hub-test-default-rtdb.firebaseio.com",
+  projectId: "ton-hub-test",
+  storageBucket: "ton-hub-test.firebasestorage.app",
+  messagingSenderId: "385199729501",
+  appId: "1:385199729501:web:5025e8b979fc2b984f56b4",
+  measurementId: "G-2FVGQDMJ12"
+};
+
+const ADMIN_PASSWORDS = ["Mostafa$500"];
+
+const APP_DEFAULT_CONFIG = {
+  appName: "Ninja TON Admin",
+  botUsername: "NinjaTONS_Bot",
+  botToken: "8315477063:AAFztM82m2p0Md03SYNWUB9SJ6cN_EMGcI4",
+  walletAddress: "UQCMATcdykmpWDSLdI5ob-NScl55FSna3OOVy1l3i_2ICcPZ",
+  minimumWithdraw: 0.10,
+  minimumDeposit: 0.10,
+  exchangeRate: 10000,
+  welcomeMessage: "Welcome to Ninja TON!"
+};
+
 class AdminPanel {
   constructor() {
     this.db = null;
@@ -187,9 +212,6 @@ class AdminPanel {
       case 'withdrawals':
         await this.renderWithdrawals();
         break;
-      case 'games':
-        await this.renderGames();
-        break;
       case 'broadcast':
         await this.renderBroadcast();
         break;
@@ -233,7 +255,6 @@ class AdminPanel {
         totalPayments: 0,
         totalWithdrawals: 0,
         totalAds: 0,
-        totalDicePlays: 0,
         totalPromoCodes: totalPromoCodes
       };
       
@@ -242,7 +263,6 @@ class AdminPanel {
       }
       
       let totalBalance = 0;
-      let totalDicePlays = 0;
       let totalReferrals = 0;
       let totalTasksCompleted = 0;
       let usersArray = [];
@@ -250,70 +270,47 @@ class AdminPanel {
       usersSnap.forEach(child => {
         const user = child.val();
         usersArray.push({
-          id: user.id || child.key,
-          firstName: user.firstName || '',
+          id: child.key,
           username: user.username || '',
+          firstName: user.firstName || '',
+          photoUrl: user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png',
           balance: this.safeNumber(user.balance),
-          dicePlays: this.safeNumber(user.dicePlays),
-          referrals: user.totalReferrals || user.referrals || 0,
+          referrals: user.referrals || 0,
           tasksCompleted: user.tasksCompleted || user.totalTasks || 0,
           referralEarnings: this.safeNumber(user.referralEarnings),
-          totalEarned: this.safeNumber(user.totalEarned)
+          totalEarned: this.safeNumber(user.totalEarned),
+          lastActive: user.lastActive
         });
         
         totalBalance += this.safeNumber(user.balance);
-        totalDicePlays += this.safeNumber(user.dicePlays);
-        totalReferrals += (user.totalReferrals || user.referrals || 0);
+        totalReferrals += (user.referrals || 0);
         totalTasksCompleted += (user.tasksCompleted || user.totalTasks || 0);
       });
       
-      const topByBalance = [...usersArray]
+      // عرض المستخدمين بالتصميم الجديد
+      const topUsers = [...usersArray]
         .sort((a, b) => b.balance - a.balance)
         .slice(0, 20);
       
-      const topByDicePlays = [...usersArray]
-        .sort((a, b) => b.dicePlays - a.dicePlays)
-        .slice(0, 20);
-      
-      let topBalanceHTML = '';
-      topByBalance.forEach((user, index) => {
-        topBalanceHTML += `
-          <div class="dashboard-user-item">
-            <div class="user-rank">${index + 1}</div>
-            <div class="user-info">
-              <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>${user.username}</small>` : ''}
+      let topUsersHTML = '';
+      topUsers.forEach((user, index) => {
+        topUsersHTML += `
+          <div class="user-display-item">
+            <div class="user-display-avatar">
+              ${user.photoUrl ? 
+                `<img src="${user.photoUrl}" alt="${user.username}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
+                `<i class="fas fa-user-circle"></i>`
+              }
             </div>
-            <div class="user-stats">
-              <span class="stat-badge ton">
-                <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
-                ${user.balance.toFixed(3)} TON
-              </span>
-              <span class="stat-badge games">
-                <i class="fas fa-dice"></i>
-                ${user.dicePlays} Games
+            <div class="user-display-info">
+              <span class="user-display-username">${user.username || `User ${user.id.substring(0, 6)}`}</span>
+              <span class="user-display-id">
+                <i class="fas fa-id-card"></i> ID: ${user.id}
               </span>
             </div>
-          </div>
-        `;
-      });
-      
-      let topDicePlaysHTML = '';
-      topByDicePlays.forEach((user, index) => {
-        topDicePlaysHTML += `
-          <div class="dashboard-user-item">
-            <div class="user-rank">${index + 1}</div>
-            <div class="user-info">
-              <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>${user.username}</small>` : ''}
-            </div>
-            <div class="user-stats">
-              <span class="stat-badge games">
-                <i class="fas fa-dice"></i> ${user.dicePlays} Games
-              </span>
-              <span class="stat-badge referral">
-                <i class="fas fa-users"></i> ${user.referrals} Referrals
-              </span>
+            <div class="user-display-balance">
+              <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+              ${user.balance.toFixed(3)} TON
             </div>
           </div>
         `;
@@ -351,11 +348,11 @@ class AdminPanel {
             </div>
             <div class="stat-card">
               <div class="stat-icon">
-                <i class="fas fa-dice"></i>
+                <i class="fas fa-tasks"></i>
               </div>
               <div class="stat-content">
-                <h3>Total Games</h3>
-                <p>${totalDicePlays.toLocaleString()}</p>
+                <h3>Tasks Completed</h3>
+                <p>${totalTasksCompleted.toLocaleString()}</p>
               </div>
             </div>
             <div class="stat-card">
@@ -367,25 +364,21 @@ class AdminPanel {
                 <p>${totalPromoCodes}</p>
               </div>
             </div>
-          </div>
-          
-          <div class="dashboard-columns">
-            <div class="dashboard-column">
-              <div class="card">
-                <h3><i class="fas fa-trophy"></i> Top 20 Users by Balance</h3>
-                <div class="user-list-container">
-                  ${topBalanceHTML || '<div class="empty-state">No users found</div>'}
-                </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Total Referrals</h3>
+                <p>${totalReferrals.toLocaleString()}</p>
               </div>
             </div>
-            
-            <div class="dashboard-column">
-              <div class="card">
-                <h3><i class="fas fa-chart-line"></i> Top 20 Users by Games</h3>
-                <div class="user-list-container">
-                  ${topDicePlaysHTML || '<div class="empty-state">No users found</div>'}
-                </div>
-              </div>
+          </div>
+          
+          <div class="card">
+            <h3><i class="fas fa-trophy"></i> Top 20 Users by Balance</h3>
+            <div class="user-list-container">
+              ${topUsersHTML || '<div class="empty-state">No users found</div>'}
             </div>
           </div>
         </div>
@@ -472,32 +465,29 @@ class AdminPanel {
       };
       
       const balance = this.safeNumber(user.balance);
-      const dicePlays = this.safeNumber(user.dicePlays);
-      const referrals = user.totalReferrals || user.referrals || 0;
+      const referrals = user.referrals || 0;
       const tasksCompleted = user.tasksCompleted || user.totalTasks || 0;
       const referralEarnings = this.safeNumber(user.referralEarnings);
       const totalEarned = this.safeNumber(user.totalEarned);
       const totalWithdrawals = user.totalWithdrawals || 0;
-      const dicePoints = user.dicePoints || 0;
       const dailyAdsWatched = user.dailyAdsWatched || 0;
+      const photoUrl = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png';
       
       document.getElementById('userDetails').innerHTML = `
         <div class="compact-user-card">
           <div class="compact-user-header">
             <div class="compact-user-avatar">
-              ${user.photoUrl ? 
-                `<img src="${user.photoUrl}" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
-                `<i class="fas fa-user-circle"></i>`
-              }
+              <img src="${photoUrl}" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
             </div>
             <div class="compact-user-info">
               <div class="compact-user-name">
-                <h3>${user.firstName || 'User'} ${user.lastName || ''}</h3>
+                <h3>${user.username || `User ${userId.substring(0, 6)}`}</h3>
                 <span class="user-status-badge ${userStatus}">
                   <i class="fas fa-circle"></i> ${userStatus === 'ban' ? 'BANNED' : 'ACTIVE'}
                 </span>
               </div>
               <div class="compact-user-meta">
+                ${user.firstName ? `<span><i class="fas fa-user"></i> ${user.firstName}</span>` : ''}
                 <span><i class="fab fa-telegram"></i> ${user.username || 'No username'}</span>
                 <span><i class="fas fa-id-card"></i> ID: ${userId}</span>
               </div>
@@ -512,16 +502,6 @@ class AdminPanel {
               <div class="compact-stat-content">
                 <div class="compact-stat-value">${balance.toFixed(3)} TON</div>
                 <div class="compact-stat-label">Balance</div>
-              </div>
-            </div>
-            
-            <div class="compact-stat">
-              <div class="compact-stat-icon games">
-                <i class="fas fa-dice"></i>
-              </div>
-              <div class="compact-stat-content">
-                <div class="compact-stat-value">${dicePlays}</div>
-                <div class="compact-stat-label">Games</div>
               </div>
             </div>
             
@@ -556,12 +536,12 @@ class AdminPanel {
               <span class="detail-value">${totalEarned.toFixed(3)} TON</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Ads Watched:</span>
-              <span class="detail-value">${dailyAdsWatched}</span>
+              <span class="detail-label">Total Withdrawals:</span>
+              <span class="detail-value">${totalWithdrawals}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Dice Points:</span>
-              <span class="detail-value">${dicePoints.toLocaleString()}</span>
+              <span class="detail-label">Ads Watched:</span>
+              <span class="detail-value">${dailyAdsWatched}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Last Active:</span>
@@ -574,14 +554,11 @@ class AdminPanel {
           </div>
           
           <div class="compact-user-actions">
-            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
+            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
               <i class="fas fa-plus"></i> Add TON
             </button>
-            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
+            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
               <i class="fas fa-minus"></i> Remove TON
-            </button>
-            <button class="action-btn btn-sm btn-info" onclick="admin.showAddGamesModal('${userId}', '${(user.firstName || 'User').replace(/'/g, "\\'")}')">
-              <i class="fas fa-dice"></i> Add Games
             </button>
             ${userStatus === 'free' ? 
               `<button class="action-btn btn-sm btn-warning" onclick="admin.banUser('${userId}')">
@@ -667,39 +644,6 @@ class AdminPanel {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
   }
 
-  showAddGamesModal(userId, userName) {
-    const modalHTML = `
-      <div class="modal-overlay active" id="addGamesModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Add Dice Games to ${userName}</h3>
-            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="addGamesAmount">Number of Games</label>
-              <input type="number" id="addGamesAmount" placeholder="Enter number of games" step="1" min="1">
-              <small>Each game allows the user to play dice once</small>
-            </div>
-            <div class="form-group">
-              <label for="addGamesReason">Reason</label>
-              <input type="text" id="addGamesReason" placeholder="Reason for adding games">
-              <small>This will be recorded in history</small>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-            <button class="action-btn btn-success" onclick="admin.addGames('${userId}')">
-              <i class="fas fa-check"></i> Add Games
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-  }
-
   async addBalance(userId) {
     const amount = parseFloat(document.getElementById('addBalanceAmount').value);
     const reason = document.getElementById('addBalanceReason').value.trim() || 'Admin added balance';
@@ -727,7 +671,7 @@ class AdminPanel {
 
       const balanceHistory = {
         telegramId: userId,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+        userName: user.username || `User ${userId.substring(0, 6)}`,
         amount: amount,
         reason: reason,
         previousBalance: currentBalance,
@@ -782,7 +726,7 @@ class AdminPanel {
 
       const balanceHistory = {
         telegramId: userId,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+        userName: user.username || `User ${userId.substring(0, 6)}`,
         amount: -amount,
         reason: reason,
         previousBalance: currentBalance,
@@ -802,55 +746,6 @@ class AdminPanel {
     } catch (error) {
       console.error("Error removing balance:", error);
       this.showNotification("Error", "Failed to remove balance", "error");
-    }
-  }
-
-  async addGames(userId) {
-    const amount = parseInt(document.getElementById('addGamesAmount').value);
-    const reason = document.getElementById('addGamesReason').value.trim() || 'Admin added games';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid number of games", "error");
-      return;
-    }
-
-    try {
-      const userSnap = await this.db.ref(`users/${userId}`).once('value');
-      if (!userSnap.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = userSnap.val();
-      const currentGames = this.safeNumber(user.dicePlays);
-      const newGames = currentGames + amount;
-
-      await this.db.ref(`users/${userId}`).update({
-        dicePlays: newGames
-      });
-
-      const gamesHistory = {
-        telegramId: userId,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
-        amount: amount,
-        reason: reason,
-        previousGames: currentGames,
-        newGames: newGames,
-        adminId: 'admin',
-        timestamp: Date.now(),
-        date: new Date().toLocaleString()
-      };
-
-      await this.db.ref('gamesHistory').push(gamesHistory);
-
-      this.showNotification("Success", `Added ${amount} dice games to user`, "success");
-      
-      document.querySelector('#addGamesModal')?.remove();
-      await this.searchUser();
-      
-    } catch (error) {
-      console.error("Error adding games:", error);
-      this.showNotification("Error", "Failed to add games", "error");
     }
   }
 
@@ -905,6 +800,11 @@ class AdminPanel {
             </div>
             
             <div class="form-group">
+              <label for="taskDescription">Description</label>
+              <input type="text" id="taskDescription" placeholder="Short description of the task">
+            </div>
+            
+            <div class="form-group">
               <label for="taskLink">Task Link (URL) *</label>
               <input type="text" id="taskLink" placeholder="https://t.me/..." required>
             </div>
@@ -917,6 +817,18 @@ class AdminPanel {
                 </button>
                 <button type="button" class="task-type-btn" data-type="bot">
                   <i class="fas fa-robot"></i> Website / Bot
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Task Category *</label>
+              <div class="task-category-buttons">
+                <button type="button" class="task-category-btn active" data-category="partner">
+                  <i class="fas fa-handshake"></i> Partner Task
+                </button>
+                <button type="button" class="task-category-btn" data-category="social">
+                  <i class="fas fa-share-alt"></i> Social Task
                 </button>
               </div>
             </div>
@@ -949,6 +861,7 @@ class AdminPanel {
     `;
     
     this.setupTaskTypeButtons();
+    this.setupTaskCategoryButtons();
     await this.loadTasksList();
   }
 
@@ -957,6 +870,16 @@ class AdminPanel {
     typeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         typeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  }
+
+  setupTaskCategoryButtons() {
+    const categoryButtons = document.querySelectorAll('.task-category-btn');
+    categoryButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        categoryButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
@@ -1012,6 +935,9 @@ class AdminPanel {
               return `${day}-${month}-${year}`;
             };
             
+            const categoryClass = task.category === 'partner' ? 'category-partner' : 'category-social';
+            const categoryText = task.category === 'partner' ? 'Partner' : 'Social';
+            
             tasksHTML += `
               <div class="task-item">
                 <div class="task-item-header">
@@ -1021,10 +947,15 @@ class AdminPanel {
                       <span class="task-type-badge ${task.type || 'channel'}">
                         ${task.type === 'channel' ? 'Channel / Group' : 'Website / Bot'}
                       </span>
+                      <span class="task-category-badge ${categoryClass}">
+                        ${categoryText}
+                      </span>
                       <span class="task-status-badge ${statusClass}">${status}</span>
                     </div>
                   </div>
                 </div>
+                
+                ${task.description ? `<p style="margin-bottom: 10px; color: var(--text-secondary);">${task.description}</p>` : ''}
                 
                 <div class="task-item-details">
                   <div class="task-detail">
@@ -1108,10 +1039,12 @@ class AdminPanel {
 
   async addNewTask() {
     const taskName = document.getElementById('taskName').value.trim();
+    const taskDescription = document.getElementById('taskDescription').value.trim();
     const taskLink = document.getElementById('taskLink').value.trim();
     const taskReward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const taskType = document.querySelector('.task-type-btn.active').dataset.type;
+    const taskCategory = document.querySelector('.task-category-btn.active').dataset.category;
     
     if (!taskName || !taskLink) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1155,13 +1088,17 @@ class AdminPanel {
       
       const taskData = {
         name: taskName,
+        description: taskDescription,
         type: taskType,
+        category: taskCategory,
         url: cleanLink,
         maxCompletions: maxCompletions,
         reward: taskReward,
         createdBy: 'admin',
         status: 'active',
+        taskStatus: 'active',
         currentCompletions: 0,
+        isBotAdmin: false,
         createdAt: Date.now()
       };
       
@@ -1172,6 +1109,7 @@ class AdminPanel {
       this.showNotification("Success", `Task "${taskName}" created successfully!`, "success");
       
       document.getElementById('taskName').value = '';
+      document.getElementById('taskDescription').value = '';
       document.getElementById('taskLink').value = '';
       document.getElementById('taskReward').value = '0.001';
       document.getElementById('taskMaxCompletions').value = '100';
@@ -1240,17 +1178,29 @@ class AdminPanel {
     `;
     
     try {
-      const withdrawalsSnap = await this.db.ref('withdrawals/pending').once('value');
+      const [pendingSnap, completedSnap, rejectedSnap] = await Promise.all([
+        this.db.ref('withdrawals/pending').once('value'),
+        this.db.ref('withdrawals/completed').limitToLast(10).once('value'),
+        this.db.ref('withdrawals/rejected').limitToLast(10).once('value')
+      ]);
+      
       let withdrawalsContent = '';
       let requests = [];
       
-      if (withdrawalsSnap.exists()) {
-        withdrawalsSnap.forEach(child => {
-          requests.push({ id: child.key, ...child.val() });
+      if (pendingSnap.exists()) {
+        pendingSnap.forEach(child => {
+          requests.push({ id: child.key, ...child.val(), status: 'pending' });
         });
       }
       
       if (requests.length > 0) {
+        withdrawalsContent += `
+          <div class="withdrawals-header">
+            <h3><i class="fas fa-wallet"></i> Pending Withdrawals</h3>
+            <span class="badge">${requests.length}</span>
+          </div>
+        `;
+        
         for (const req of requests) {
           const userSnap = await this.db.ref(`users/${req.userId}`).once('value');
           const user = userSnap.exists() ? userSnap.val() : {};
@@ -1277,7 +1227,7 @@ class AdminPanel {
                     }
                   </div>
                   <div class="user-info">
-                    <strong>${req.userName || user.firstName || 'Unknown User'}</strong>
+                    <strong>${req.userName || user.username || 'Unknown User'}</strong>
                     <div class="user-meta">
                       <span><i class="fab fa-telegram"></i> ${user.username || 'No username'}</span>
                       <span><i class="fas fa-id-card"></i> ID: ${req.userId}</span>
@@ -1319,13 +1269,6 @@ class AdminPanel {
                     <div class="stat-label">Ref Earnings</div>
                   </div>
                 </div>
-                <div class="user-stat">
-                  <i class="fas fa-dice"></i>
-                  <div>
-                    <div class="stat-value">${user.dicePlays || 0}</div>
-                    <div class="stat-label">Games Played</div>
-                  </div>
-                </div>
               </div>
               
               <div class="withdrawal-details-grid">
@@ -1351,7 +1294,7 @@ class AdminPanel {
               </div>
               
               <div class="withdrawal-actions">
-                <button class="action-btn btn-success" onclick="admin.showConfirmWithdrawalModal('${req.id}', '${req.userId}', ${req.amount}, '${req.walletAddress}', '${req.userName || user.firstName || ''}')">
+                <button class="action-btn btn-success" onclick="admin.showConfirmWithdrawalModal('${req.id}', '${req.userId}', ${req.amount}, '${req.walletAddress}', '${req.userName || user.username || ''}')">
                   <i class="fas fa-check"></i> Approve
                 </button>
                 <button class="action-btn btn-danger" onclick="admin.handleWithdrawal('${req.id}', 'reject')">
@@ -1363,6 +1306,9 @@ class AdminPanel {
         }
       } else {
         withdrawalsContent = `
+          <div class="withdrawals-header">
+            <h3><i class="fas fa-wallet"></i> Pending Withdrawals</h3>
+          </div>
           <div class="empty-state">
             <i class="fas fa-wallet"></i>
             <h3>No Pending Withdrawals</h3>
@@ -1371,13 +1317,68 @@ class AdminPanel {
         `;
       }
       
+      // عرض آخر السحوبات
+      let lastWithdrawalsHTML = '';
+      const lastWithdrawals = [];
+      
+      if (completedSnap.exists()) {
+        completedSnap.forEach(child => {
+          lastWithdrawals.push({ id: child.key, ...child.val(), status: 'completed' });
+        });
+      }
+      
+      if (rejectedSnap.exists()) {
+        rejectedSnap.forEach(child => {
+          lastWithdrawals.push({ id: child.key, ...child.val(), status: 'rejected' });
+        });
+      }
+      
+      lastWithdrawals.sort((a, b) => (b.processedAt || b.createdAt) - (a.processedAt || a.createdAt));
+      
+      if (lastWithdrawals.length > 0) {
+        lastWithdrawalsHTML = `
+          <div class="last-withdrawals-container">
+            <h3><i class="fas fa-history"></i> Last 10 Withdrawals</h3>
+            <div class="last-withdrawals-grid">
+        `;
+        
+        for (const withdrawal of lastWithdrawals.slice(0, 10)) {
+          const userSnap = await this.db.ref(`users/${withdrawal.userId}`).once('value');
+          const user = userSnap.exists() ? userSnap.val() : {};
+          
+          lastWithdrawalsHTML += `
+            <div class="last-withdrawal-item">
+              <div class="last-withdrawal-avatar">
+                ${user.photoUrl ? 
+                  `<img src="${user.photoUrl}" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
+                  `<i class="fas fa-user-circle"></i>`
+                }
+              </div>
+              <div class="last-withdrawal-details">
+                <span class="last-withdrawal-user">${withdrawal.userName || user.username || 'Unknown User'}</span>
+                <span class="last-withdrawal-amount">
+                  <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+                  ${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON
+                </span>
+                <span class="last-withdrawal-wallet">${withdrawal.walletAddress ? withdrawal.walletAddress.substring(0, 12) + '...' : 'N/A'}</span>
+                <span class="last-withdrawal-status status-${withdrawal.status}">
+                  ${withdrawal.status === 'completed' ? 'Completed' : 'Rejected'}
+                </span>
+              </div>
+            </div>
+          `;
+        }
+        
+        lastWithdrawalsHTML += `
+            </div>
+          </div>
+        `;
+      }
+      
       this.elements.mainContent.innerHTML = `
         <div id="withdrawals" class="page active">
-          <div class="withdrawals-header">
-            <h3><i class="fas fa-wallet"></i> Pending Withdrawals</h3>
-            <span class="badge">${requests.length}</span>
-          </div>
           ${withdrawalsContent}
+          ${lastWithdrawalsHTML}
         </div>
       `;
       
@@ -1417,9 +1418,9 @@ class AdminPanel {
             
             <div class="form-group">
               <label for="transactionLink">
-                <i class="fas fa-link"></i> What is the transaction link?
+                <i class="fas fa-link"></i> Transaction Link
               </label>
-              <input type="text" id="transactionLink" placeholder="Enter the link here" required>
+              <input type="text" id="transactionLink" placeholder="https://tonscan.org/tx/..." required>
               <small>Transaction explorer link (TONScan, Tonviewer, etc.)</small>
             </div>
           </div>
@@ -1553,135 +1554,6 @@ class AdminPanel {
     }
   }
 
-  async renderGames() {
-    this.elements.mainContent.innerHTML = `
-      <div id="games" class="page active">
-        <div class="card">
-          <h3><i class="fas fa-dice"></i> Dice Games Statistics</h3>
-          <div class="loading">
-            <div class="spinner"></div>
-            <p>Loading Games Statistics...</p>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      
-      let totalGames = 0;
-      let totalPoints = 0;
-      let usersArray = [];
-      
-      usersSnap.forEach(child => {
-        const user = child.val();
-        const userGames = this.safeNumber(user.dicePlays);
-        const userPoints = this.safeNumber(user.dicePoints);
-        
-        totalGames += userGames;
-        totalPoints += userPoints;
-        
-        if (userGames > 0) {
-          usersArray.push({
-            id: user.id || child.key,
-            firstName: user.firstName || '',
-            username: user.username || '',
-            games: userGames,
-            points: userPoints,
-            balance: this.safeNumber(user.balance)
-          });
-        }
-      });
-      
-      const topPlayers = [...usersArray]
-        .sort((a, b) => b.games - a.games)
-        .slice(0, 20);
-      
-      let topPlayersHTML = '';
-      topPlayers.forEach((user, index) => {
-        topPlayersHTML += `
-          <div class="dashboard-user-item">
-            <div class="user-rank">${index + 1}</div>
-            <div class="user-info">
-              <strong>${user.firstName || 'User'}</strong>
-              ${user.username ? `<br><small>${user.username}</small>` : ''}
-            </div>
-            <div class="user-stats">
-              <span class="stat-badge games">
-                <i class="fas fa-dice"></i> ${user.games} Games
-              </span>
-              <span class="stat-badge points">
-                <i class="fas fa-star"></i> ${user.points.toLocaleString()} Pts
-              </span>
-            </div>
-          </div>
-        `;
-      });
-      
-      this.elements.mainContent.innerHTML = `
-        <div id="games" class="page active">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
-                <i class="fas fa-dice"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Total Games Played</h3>
-                <p>${totalGames.toLocaleString()}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-                <i class="fas fa-star"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Total Points Earned</h3>
-                <p>${totalPoints.toLocaleString()}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                <i class="fas fa-users"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Active Players</h3>
-                <p>${usersArray.length}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                <i class="fas fa-chart-line"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Avg Games/Player</h3>
-                <p>${usersArray.length > 0 ? Math.round(totalGames / usersArray.length) : 0}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="card">
-            <h3><i class="fas fa-trophy"></i> Top 20 Dice Players</h3>
-            <div class="user-list-container" style="max-height: 500px;">
-              ${topPlayersHTML || '<div class="empty-state">No players found</div>'}
-            </div>
-          </div>
-        </div>
-      `;
-      
-    } catch (error) {
-      console.error("Error loading games statistics:", error);
-      this.elements.mainContent.innerHTML = `
-        <div id="games" class="page active">
-          <div class="card">
-            <h3>Error loading games statistics</h3>
-            <p>${error.message}</p>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  // === قسم Promo Codes ===
   async renderPromoCodes() {
     this.elements.mainContent.innerHTML = `
       <div id="promoCodes" class="page active">
@@ -1990,7 +1862,6 @@ class AdminPanel {
     }
   }
 
-  // === قسم Broadcast ===
   async renderBroadcast() {
     this.elements.mainContent.innerHTML = `
       <div id="broadcast" class="page active">
@@ -2022,6 +1893,16 @@ class AdminPanel {
               <label for="broadcastMessage"><i class="fas fa-comment-alt"></i> Message *</label>
               <textarea id="broadcastMessage" rows="6" placeholder="Enter your message here..."></textarea>
               <small>Supports HTML formatting</small>
+            </div>
+            
+            <div class="html-helpers">
+              <span style="color: var(--text-secondary); font-size: 0.9rem; margin-right: 10px;">Quick HTML Tags:</span>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('<b>', '</b>')"><b>Bold</b></button>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('<i>', '</i>')"><i>Italic</i></button>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('<u>', '</u>')"><u>Underline</u></button>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('<code>', '</code>')"><code>Code</code></button>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('<a href=\"URL\">', '</a>')">Link</button>
+              <button class="html-tag-btn" onclick="admin.insertHTMLTag('\\n', '')">New Line</button>
             </div>
             
             <div class="form-group">
@@ -2075,6 +1956,33 @@ class AdminPanel {
     
     this.updateBroadcastPreview();
     await this.loadBroadcastHistory();
+  }
+
+  insertHTMLTag(startTag, endTag) {
+    const textarea = document.getElementById('broadcastMessage');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    
+    if (startTag === '\n') {
+      textarea.value = textarea.value.substring(0, start) + '\n' + textarea.value.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + 1;
+    } else if (startTag.includes('href="URL"')) {
+      const url = prompt('Enter URL:', 'https://');
+      if (url) {
+        const linkTag = `<a href="${url}">`;
+        textarea.value = textarea.value.substring(0, start) + linkTag + selectedText + endTag + textarea.value.substring(end);
+        textarea.selectionStart = start + linkTag.length;
+        textarea.selectionEnd = start + linkTag.length + selectedText.length;
+      }
+    } else {
+      textarea.value = textarea.value.substring(0, start) + startTag + selectedText + endTag + textarea.value.substring(end);
+      textarea.selectionStart = start + startTag.length;
+      textarea.selectionEnd = start + startTag.length + selectedText.length;
+    }
+    
+    textarea.focus();
+    this.updateBroadcastPreview();
   }
 
   toggleBroadcastTarget() {
@@ -2185,7 +2093,6 @@ class AdminPanel {
           const user = child.val();
           usersToSend.push({
             id: child.key,
-            firstName: user.firstName || 'User',
             username: user.username
           });
         });
@@ -2195,7 +2102,6 @@ class AdminPanel {
           const user = userSnap.val();
           usersToSend.push({
             id: userId,
-            firstName: user.firstName || 'User',
             username: user.username
           });
         } else {
@@ -2261,9 +2167,20 @@ class AdminPanel {
         parse_mode: 'HTML'
       };
       
+      const inlineKeyboard = buttons && buttons.length > 0 ? {
+        inline_keyboard: buttons.map(btn => [{
+          text: btn.text,
+          url: btn.url
+        }])
+      } : null;
+      
       if (imageUrl) {
         payload.photo = imageUrl;
         payload.caption = message;
+        
+        if (inlineKeyboard) {
+          payload.reply_markup = inlineKeyboard;
+        }
         
         const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendPhoto`, {
           method: 'POST',
@@ -2280,13 +2197,8 @@ class AdminPanel {
       } else {
         payload.text = message;
         
-        if (buttons && buttons.length > 0) {
-          payload.reply_markup = {
-            inline_keyboard: buttons.map(btn => [{
-              text: btn.text,
-              url: btn.url
-            }])
-          };
+        if (inlineKeyboard) {
+          payload.reply_markup = inlineKeyboard;
         }
         
         const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
