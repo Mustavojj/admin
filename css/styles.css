@@ -24,7 +24,6 @@
   
   --glow-blue: rgba(59, 130, 246, 0.3);
   
-  /* تطابق مع الألوان الرئيسية */
   --primary: var(--primary-color);
   --primary-dark: var(--secondary-color);
   --secondary: rgba(17, 43, 66, 0.9);
@@ -1660,8 +1659,6 @@ h3 {
   }
 }
 
-  /* إضافة CSS للأقسام الجديدة */
-
 /* === قسم Promo Codes === */
 .promo-codes-management {
   display: grid;
@@ -2044,6 +2041,272 @@ h3 {
   color: var(--error-color);
 }
 
+/* HTML Helpers */
+.html-helpers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+}
+
+.html-tag-btn {
+  padding: 6px 12px;
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-xs);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+}
+
+.html-tag-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+/* Last Withdrawals */
+.last-withdrawals-container {
+  margin-top: 30px;
+}
+
+.last-withdrawals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.last-withdrawal-item {
+  background: var(--surface-light);
+  border-radius: var(--border-radius-sm);
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--border-light);
+  transition: all 0.3s;
+}
+
+.last-withdrawal-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.last-withdrawal-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.last-withdrawal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.last-withdrawal-details {
+  flex: 1;
+}
+
+.last-withdrawal-user {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.last-withdrawal-amount {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.last-withdrawal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.last-withdrawal-wallet {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.last-withdrawal-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.status-completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+}
+
+/* Task Category Badges */
+.task-category-badge {
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.category-partner {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.category-social {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Task Category Selector */
+.task-category-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.task-category-btn {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--border-radius-sm);
+  background: var(--surface-light);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.task-category-btn:hover {
+  transform: translateY(-2px);
+}
+
+.task-category-btn.active {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.task-category-btn.partner {
+  border-color: #8b5cf6;
+}
+
+.task-category-btn.partner.active {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.task-category-btn.social {
+  border-color: var(--success-color);
+}
+
+.task-category-btn.social.active {
+  border-color: var(--success-color);
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* User Display Improvements */
+.user-display-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--surface-light);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-light);
+  transition: all 0.3s;
+}
+
+.user-display-item:hover {
+  transform: translateX(5px);
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.user-display-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+}
+
+.user-display-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-display-info {
+  flex: 1;
+}
+
+.user-display-username {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  display: block;
+}
+
+.user-display-id {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.user-display-balance {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* Select Styles */
 select {
   appearance: none;
@@ -2095,6 +2358,14 @@ textarea {
     flex-direction: column;
     gap: 10px;
   }
+  
+  .last-withdrawals-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .task-category-buttons {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2109,5 +2380,15 @@ textarea {
   
   .broadcast-actions button {
     width: 100%;
+  }
+  
+  .user-display-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .user-display-info {
+    text-align: center;
   }
 }
