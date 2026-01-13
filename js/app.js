@@ -1,4 +1,3 @@
-// Configurations moved from config.js
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBzD_BXXDGhBDrZOo3bT-JGPS_Wy2ZDJn8",
   authDomain: "ton-hub-test.firebaseapp.com",
@@ -1485,7 +1484,7 @@ class AdminPanel {
 
   async sendTelegramNotification(userId, amount, wallet, transactionLink) {
     try {
-      const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b> `
+      const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b> `
       const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
         method: 'POST',
         headers: {
