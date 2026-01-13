@@ -1485,8 +1485,7 @@ class AdminPanel {
 
   async sendTelegramNotification(userId, amount, wallet, transactionLink) {
     try {
-      const message = `✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n💼 Wallet: ${wallet}\n📊 State: Success\n\nView on Explorer 👇`;
-      
+      const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b> `
       const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
         method: 'POST',
         headers: {
