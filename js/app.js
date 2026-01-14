@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBzD_BXXDGhBDrZOo3bT-JGPS_Wy2ZDJn8",
-  authDomain: "ton-hub-test.firebaseapp.com",
-  databaseURL: "https://ton-hub-test-default-rtdb.firebaseio.com",
-  projectId: "ton-hub-test",
-  storageBucket: "ton-hub-test.firebasestorage.app",
-  messagingSenderId: "385199729501",
-  appId: "1:385199729501:web:5025e8b979fc2b984f56b4",
-  measurementId: "G-2FVGQDMJ12"
+  apiKey: "AIzaSyAtfSs6bKAfMOzaOTQ_Ct9cD0Sdzeub5KA",
+  authDomain: "ninja-gos.firebaseapp.com",
+  databaseURL: "https://ninja-gos-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ninja-gos",
+  storageBucket: "ninja-gos.firebasestorage.app",
+  messagingSenderId: "970369133278",
+  appId: "1:970369133278:web:bacb4cf80f095a62d5f04f",
+  measurementId: "G-YHWV8817C1"
 };
 
 const ADMIN_PASSWORDS = ["Mostafa$500"];
@@ -14,7 +14,7 @@ const ADMIN_PASSWORDS = ["Mostafa$500"];
 const APP_DEFAULT_CONFIG = {
   appName: "Ninja TON Admin",
   botUsername: "NinjaTONS_Bot",
-  botToken: "8315477063:AAFztM82m2p0Md03SYNWUB9SJ6cN_EMGcI4",
+  botToken: "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs",
   walletAddress: "UQCMATcdykmpWDSLdI5ob-NScl55FSna3OOVy1l3i_2ICcPZ",
   minimumWithdraw: 0.10,
   minimumDeposit: 0.10,
@@ -28,7 +28,7 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.appConfig = APP_DEFAULT_CONFIG;
-    this.botToken = "8315477063:AAFztM82m2p0Md03SYNWUB9SJ6cN_EMGcI4";
+    this.botToken = "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs";
     
     this.elements = {
       appContainer: document.getElementById('app-container'),
