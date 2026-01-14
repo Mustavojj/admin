@@ -14,7 +14,7 @@ const ADMIN_PASSWORDS = ["Mostafa$500"];
 const APP_DEFAULT_CONFIG = {
   appName: "Ninja TON Admin",
   botUsername: "NinjaTONS_Bot",
-  botToken: "8557334769:AAFPuE9lkToXrLNiKeymMhUgdOmE5hGc49A",
+  botToken: "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs",
   walletAddress: "UQCMATcdykmpWDSLdI5ob-NScl55FSna3OOVy1l3i_2ICcPZ",
   minimumWithdraw: 0.10,
   minimumDeposit: 0.10,
@@ -28,7 +28,7 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.appConfig = APP_DEFAULT_CONFIG;
-    this.botToken = "8557334769:AAFPuE9lkToXrLNiKeymMhUgdOmE5hGc49A";
+    this.botToken = "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs";
     
     this.elements = {
       appContainer: document.getElementById('app-container'),
