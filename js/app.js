@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAtfSs6bKAfMOzaOTQ_Ct9cD0Sdzeub5KA",
-  authDomain: "ninja-gos.firebaseapp.com",
-  databaseURL: "https://ninja-gos-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "ninja-gos",
-  storageBucket: "ninja-gos.firebasestorage.app",
-  messagingSenderId: "970369133278",
-  appId: "1:970369133278:web:bacb4cf80f095a62d5f04f",
-  measurementId: "G-YHWV8817C1"
+  apiKey: "AIzaSyA0APJwsUQd1kTg3y8J-9yVukiZzUBdRos",
+  authDomain: "neja-go.firebaseapp.com",
+  databaseURL: "https://neja-go-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "neja-go",
+  storageBucket: "neja-go.firebasestorage.app",
+  messagingSenderId: "60526443918",
+  appId: "1:60526443918:web:fca257ab5c782e0f1178df",
+  measurementId: "G-SJGF6HVQRE"
 };
 
 const ADMIN_PASSWORDS = ["Mostafa$500"];
