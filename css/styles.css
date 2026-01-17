@@ -381,7 +381,7 @@ h3 {
   font-size: 1.3rem;
 }
 
-/* Stats Cards - Improved */
+/* Stats Cards */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -398,30 +398,12 @@ h3 {
   display: flex;
   align-items: center;
   gap: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  opacity: 0;
-  transition: opacity 0.3s;
 }
 
 .stat-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
   border-color: var(--primary-color);
-}
-
-.stat-card:hover::before {
-  opacity: 1;
 }
 
 .stat-icon {
@@ -435,11 +417,6 @@ h3 {
   font-size: 1.8rem;
   color: white;
   flex-shrink: 0;
-  transition: all 0.3s;
-}
-
-.stat-card:hover .stat-icon {
-  transform: scale(1.1) rotate(5deg);
 }
 
 .stat-content {
@@ -452,7 +429,6 @@ h3 {
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-weight: 600;
 }
 
 .stat-number {
@@ -461,10 +437,6 @@ h3 {
   color: var(--text-primary);
   line-height: 1;
   margin-bottom: 5px;
-  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .stat-sub {
@@ -473,14 +445,18 @@ h3 {
   font-weight: 500;
 }
 
-/* Dashboard User List */
-.user-list-container {
-  max-height: 500px;
-  overflow-y: auto;
-  padding-right: 10px;
+/* Top Users Container */
+.top-users-container {
+  margin-top: 20px;
 }
 
-.user-display-item {
+.top-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.top-user-item {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -489,16 +465,15 @@ h3 {
   border-radius: var(--border-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s;
-  margin-bottom: 10px;
 }
 
-.user-display-item:hover {
+.top-user-item:hover {
   background: rgba(59, 130, 246, 0.1);
   transform: translateX(5px);
   border-color: var(--primary-color);
 }
 
-.user-rank {
+.top-user-rank {
   width: 40px;
   height: 40px;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
@@ -512,7 +487,7 @@ h3 {
   flex-shrink: 0;
 }
 
-.user-display-avatar {
+.top-user-avatar {
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -526,43 +501,50 @@ h3 {
   flex-shrink: 0;
 }
 
-.user-display-avatar img {
+.top-user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.user-display-info {
+.top-user-info {
   flex: 1;
   min-width: 0;
 }
 
-.user-display-username {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 3px;
+.top-user-name {
+  margin-bottom: 8px;
+}
+
+.top-user-name strong {
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-display-id {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.user-display-balance {
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--primary-color);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.top-user-username {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.top-user-stats {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.top-user-stat {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.top-user-stat i {
+  color: var(--primary-color);
+  font-size: 0.9rem;
 }
 
 /* Search Container */
@@ -805,26 +787,6 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  position: relative;
-  overflow: hidden;
-}
-
-.action-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.action-btn:hover::before {
-  width: 300px;
-  height: 300px;
 }
 
 .action-btn:hover { 
@@ -985,7 +947,6 @@ h3 {
   padding: 25px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
 }
 
 .task-item:hover {
@@ -1023,22 +984,25 @@ h3 {
   flex-wrap: wrap;
 }
 
-.task-type-badge {
+.task-category-badge {
   padding: 6px 15px;
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.task-type-badge.channel {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--primary-color);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+.category-partner {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
-.task-type-badge.bot {
+.category-social {
   background: rgba(16, 185, 129, 0.15);
   color: var(--success-color);
   border: 1px solid rgba(16, 185, 129, 0.3);
@@ -1131,7 +1095,6 @@ h3 {
   border-radius: 12px;
   height: 12px;
   overflow: hidden;
-  position: relative;
 }
 
 .progress-fill {
@@ -1139,34 +1102,16 @@ h3 {
   height: 100%;
   border-radius: 12px;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
 }
 
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* Task Type Buttons */
-.task-type-buttons {
+/* Task Category Buttons */
+.task-category-buttons {
   display: flex;
   gap: 15px;
   margin: 15px 0;
 }
 
-.task-type-btn {
+.task-category-btn {
   flex: 1;
   padding: 20px;
   border: 2px solid rgba(255, 255, 255, 0.1);
@@ -1184,21 +1129,21 @@ h3 {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.task-type-btn:hover {
+.task-category-btn:hover {
   border-color: var(--primary-color);
   background: rgba(59, 130, 246, 0.1);
   transform: translateY(-3px);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
 }
 
-.task-type-btn.active {
+.task-category-btn.active {
   border-color: var(--primary-color);
   background: rgba(59, 130, 246, 0.15);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   transform: translateY(-2px);
 }
 
-.task-type-btn i {
+.task-category-btn i {
   font-size: 1.5rem;
 }
 
@@ -1339,6 +1284,53 @@ h3 {
   gap: 10px;
 }
 
+.withdrawal-user-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-stat {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-stat i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  width: 45px;
+  height: 45px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-stat div {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .withdrawal-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1428,6 +1420,132 @@ h3 {
   color: var(--primary-color);
   font-weight: 800;
   font-size: 1.2rem;
+}
+
+/* Last Withdrawals */
+.last-withdrawals-container {
+  margin-top: 40px;
+}
+
+.last-withdrawals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.last-withdrawal-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s;
+}
+
+.last-withdrawal-item:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.last-withdrawal-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.last-withdrawal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.last-withdrawal-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.last-withdrawal-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.last-withdrawal-user {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.last-withdrawal-username {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.last-withdrawal-user-id {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.last-withdrawal-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 5px;
+}
+
+.last-withdrawal-amount {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.last-withdrawal-status {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 15px;
+  display: inline-block;
+}
+
+.status-completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.last-withdrawal-wallet {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  margin-top: 5px;
 }
 
 /* Modal */
@@ -1542,7 +1660,6 @@ h3 {
   animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
   border: 1px solid var(--card-border);
-  transform-origin: right;
 }
 
 .notification.success {
@@ -1781,6 +1898,23 @@ h3 {
   gap: 30px;
 }
 
+#broadcastButtons .button-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+#broadcastButtons .button-text,
+#broadcastButtons .button-url {
+  flex: 1;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+}
+
 .broadcast-preview {
   margin: 25px 0;
   padding: 25px;
@@ -1827,110 +1961,32 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.preview-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preview-button {
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius-sm);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.preview-button:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
 .broadcast-actions {
   display: flex;
   justify-content: flex-end;
   gap: 15px;
   margin-top: 25px;
-}
-
-/* Last Withdrawals */
-.last-withdrawals-container {
-  margin-top: 40px;
-}
-
-.last-withdrawals-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.last-withdrawal-item {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--border-radius-sm);
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s;
-}
-
-.last-withdrawal-item:hover {
-  transform: translateY(-3px);
-  border-color: var(--primary-color);
-  background: rgba(59, 130, 246, 0.05);
-}
-
-.last-withdrawal-avatar {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.3rem;
-  flex-shrink: 0;
-}
-
-.last-withdrawal-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.last-withdrawal-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.last-withdrawal-user {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 1.1rem;
-}
-
-.last-withdrawal-amount {
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.last-withdrawal-wallet {
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  word-break: break-all;
-}
-
-.last-withdrawal-status {
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 15px;
-  display: inline-block;
-  width: fit-content;
-}
-
-.status-completed {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--success-color);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.status-rejected {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--error-color);
-  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* HTML Helpers */
@@ -2026,11 +2082,11 @@ h3 {
   }
   
   .compact-user-actions {
-    justify-content: stretch;
+    flex-direction: column;
   }
   
   .compact-user-actions .action-btn {
-    flex: 1;
+    width: 100%;
     justify-content: center;
   }
   
@@ -2042,6 +2098,10 @@ h3 {
   .withdrawal-amount {
     text-align: left;
     width: 100%;
+  }
+  
+  .withdrawal-user-stats {
+    grid-template-columns: 1fr;
   }
   
   .withdrawal-actions {
@@ -2085,6 +2145,14 @@ h3 {
     width: 100%;
     justify-content: center;
   }
+  
+  #broadcastButtons .button-row {
+    flex-direction: column;
+  }
+  
+  .task-category-buttons {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2116,14 +2184,19 @@ h3 {
     font-size: 1.8rem;
   }
   
-  .user-display-item {
+  .top-user-item {
     flex-direction: column;
     text-align: center;
     gap: 10px;
   }
   
-  .user-display-info {
-    text-align: center;
+  .top-user-avatar {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .top-user-stats {
+    justify-content: center;
   }
   
   .compact-user-header {
