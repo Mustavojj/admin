@@ -10,6 +10,7 @@ const FIREBASE_CONFIG = {
 };
 
 const ADMIN_PASSWORDS = ["Mostafa$500"];
+const ADMIN_TELEGRAM_ID = "1891231976";
 
 const APP_DEFAULT_CONFIG = {
   appName: "Ninja TON Admin",
@@ -29,6 +30,7 @@ class AdminPanel {
     this.currentUser = null;
     this.appConfig = APP_DEFAULT_CONFIG;
     this.botToken = "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs";
+    this.dailyReportSent = false;
     
     this.elements = {
       appContainer: document.getElementById('app-container'),
@@ -43,6 +45,7 @@ class AdminPanel {
     };
     
     this.initializeFirebase();
+    this.setupDailyReport();
   }
 
   async initializeFirebase() {
@@ -62,6 +65,62 @@ class AdminPanel {
     } catch (error) {
       console.error("❌ Firebase initialization error:", error);
       this.showLoginMessage("Failed to initialize Firebase", "error");
+    }
+  }
+
+  setupDailyReport() {
+    const now = new Date();
+    const utcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+    const timeUntilMidnight = utcMidnight.getTime() - Date.now();
+    
+    setTimeout(() => {
+      this.sendDailyReport();
+      setInterval(() => this.sendDailyReport(), 24 * 60 * 60 * 1000);
+    }, timeUntilMidnight);
+  }
+
+  async sendDailyReport() {
+    try {
+      const [usersSnap, withdrawalsSnap] = await Promise.all([
+        this.db.ref('users').once('value'),
+        this.db.ref('withdrawals/completed').once('value')
+      ]);
+      
+      const totalUsers = usersSnap.numChildren();
+      const today = new Date().toISOString().split('T')[0];
+      let newUsers = 0;
+      let todayPayments = 0;
+      
+      usersSnap.forEach(child => {
+        const user = child.val();
+        if (user.createdAt) {
+          const userDate = new Date(user.createdAt).toISOString().split('T')[0];
+          if (userDate === today) newUsers++;
+        }
+      });
+      
+      withdrawalsSnap.forEach(child => {
+        const withdrawal = child.val();
+        if (withdrawal.processedAt) {
+          const withdrawalDate = new Date(withdrawal.processedAt).toISOString().split('T')[0];
+          if (withdrawalDate === today) {
+            todayPayments += withdrawal.amount || 0;
+          }
+        }
+      });
+      
+      const message = `
+🔔 <b>Daily Report Notification</b>
+
+🥷 Total Users: ${totalUsers}
+📉 New Users: ${newUsers}
+💸 Today Payments: ${todayPayments.toFixed(3)} TON
+      `;
+      
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
+      
+    } catch (error) {
+      console.error("❌ Error sending daily report:", error);
     }
   }
 
@@ -235,149 +294,138 @@ class AdminPanel {
     `;
     
     try {
-      const [usersSnap, withdrawalsSnap, tasksSnap, appStatsSnap, promoCodesSnap] = await Promise.all([
+      const [usersSnap, tasksSnap, withdrawalsSnap, promoCodesSnap] = await Promise.all([
         this.db.ref('users').once('value'),
-        this.db.ref('withdrawals/pending').once('value'),
         this.db.ref('config/tasks').once('value'),
-        this.db.ref('appStats').once('value'),
+        this.db.ref('withdrawals').once('value'),
         this.db.ref('config/promoCodes').once('value')
       ]);
       
-      const totalUsers = usersSnap.numChildren();
-      const pendingWithdrawals = withdrawalsSnap.numChildren();
-      const totalTasks = tasksSnap.numChildren();
-      const totalPromoCodes = promoCodesSnap.exists() ? Object.keys(promoCodesSnap.val()).length : 0;
+      // Calculate statistics
+      const today = new Date().toISOString().split('T')[0];
+      let totalUsers = 0;
+      let todayUsers = 0;
+      let totalTasks = 0;
+      let completedTasks = 0;
+      let totalWithdrawals = 0;
+      let confirmedWithdrawals = 0;
+      let rejectedWithdrawals = 0;
+      let totalPromoCodes = 0;
+      let activePromoCodes = 0;
+      let pausedPromoCodes = 0;
       
-      let appStats = {
-        totalUsers: 0,
-        totalTasks: 0,
-        totalPayments: 0,
-        totalWithdrawals: 0,
-        totalAds: 0,
-        totalPromoCodes: totalPromoCodes
-      };
+      // Users
+      usersSnap.forEach(child => {
+        totalUsers++;
+        const user = child.val();
+        if (user.createdAt) {
+          const userDate = new Date(user.createdAt).toISOString().split('T')[0];
+          if (userDate === today) todayUsers++;
+        }
+      });
       
-      if (appStatsSnap.exists()) {
-        appStats = { ...appStats, ...appStatsSnap.val() };
+      // Tasks
+      if (tasksSnap.exists()) {
+        const tasks = tasksSnap.val();
+        Object.values(tasks).forEach(task => {
+          if (task.status !== 'deleted') {
+            totalTasks++;
+            if (task.currentCompletions >= task.maxCompletions) {
+              completedTasks++;
+            }
+          }
+        });
       }
       
-      let totalBalance = 0;
-      let totalReferrals = 0;
-      let totalTasksCompleted = 0;
-      let usersArray = [];
-      
-      usersSnap.forEach(child => {
-        const user = child.val();
-        usersArray.push({
-          id: child.key,
-          username: user.username || '',
-          firstName: user.firstName || '',
-          photoUrl: user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png',
-          balance: this.safeNumber(user.balance),
-          referrals: user.referrals || 0,
-          tasksCompleted: user.tasksCompleted || user.totalTasks || 0,
-          referralEarnings: this.safeNumber(user.referralEarnings),
-          totalEarned: this.safeNumber(user.totalEarned),
-          lastActive: user.lastActive
-        });
+      // Withdrawals
+      if (withdrawalsSnap.exists()) {
+        const withdrawals = withdrawalsSnap.val();
         
-        totalBalance += this.safeNumber(user.balance);
-        totalReferrals += (user.referrals || 0);
-        totalTasksCompleted += (user.tasksCompleted || user.totalTasks || 0);
-      });
+        if (withdrawals.pending) {
+          totalWithdrawals += Object.keys(withdrawals.pending).length;
+        }
+        
+        if (withdrawals.completed) {
+          const completed = Object.keys(withdrawals.completed).length;
+          totalWithdrawals += completed;
+          confirmedWithdrawals += completed;
+        }
+        
+        if (withdrawals.rejected) {
+          const rejected = Object.keys(withdrawals.rejected).length;
+          totalWithdrawals += rejected;
+          rejectedWithdrawals += rejected;
+        }
+      }
       
-      // عرض المستخدمين بالتصميم الجديد
-      const topUsers = [...usersArray]
-        .sort((a, b) => b.balance - a.balance)
-        .slice(0, 20);
+      // Promo Codes
+      if (promoCodesSnap.exists()) {
+        const promoCodes = promoCodesSnap.val();
+        Object.values(promoCodes).forEach(promo => {
+          if (promo.status !== 'deleted') {
+            totalPromoCodes++;
+            if (promo.status === 'active') {
+              activePromoCodes++;
+            } else {
+              pausedPromoCodes++;
+            }
+          }
+        });
+      }
       
-      let topUsersHTML = '';
-      topUsers.forEach((user, index) => {
-        topUsersHTML += `
-          <div class="user-display-item">
-            <div class="user-display-avatar">
-              ${user.photoUrl ? 
-                `<img src="${user.photoUrl}" alt="${user.username}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
-                `<i class="fas fa-user-circle"></i>`
-              }
-            </div>
-            <div class="user-display-info">
-              <span class="user-display-username">${user.username || `User ${user.id.substring(0, 6)}`}</span>
-              <span class="user-display-id">
-                <i class="fas fa-id-card"></i> ID: ${user.id}
-              </span>
-            </div>
-            <div class="user-display-balance">
-              <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
-              ${user.balance.toFixed(3)} TON
-            </div>
-          </div>
-        `;
-      });
-      
+      // Display statistics in the new format
       this.elements.mainContent.innerHTML = `
         <div id="dashboard" class="page active">
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="stat-icon">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
                 <i class="fas fa-users"></i>
               </div>
               <div class="stat-content">
                 <h3>Total Users</h3>
-                <p>${appStats.totalUsers.toLocaleString()}</p>
+                <p class="stat-number">${totalUsers}</p>
+                <div class="stat-sub">Today: ${todayUsers}</div>
               </div>
             </div>
+            
             <div class="stat-card">
-              <div class="stat-icon">
-                <i class="fas fa-wallet"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Pending Withdrawals</h3>
-                <p>${pendingWithdrawals}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">
-                <i class="fas fa-coins"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Total Balance</h3>
-                <p>${totalBalance.toFixed(3)} TON</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
                 <i class="fas fa-tasks"></i>
               </div>
               <div class="stat-content">
-                <h3>Tasks Completed</h3>
-                <p>${totalTasksCompleted.toLocaleString()}</p>
+                <h3>Total Tasks</h3>
+                <p class="stat-number">${totalTasks}</p>
+                <div class="stat-sub">Completed: ${completedTasks}</div>
               </div>
             </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <i class="fas fa-wallet"></i>
+              </div>
+              <div class="stat-content">
+                <h3>Withdrawals</h3>
+                <p class="stat-number">${totalWithdrawals}</p>
+                <div class="stat-sub">✓ ${confirmedWithdrawals} | ✗ ${rejectedWithdrawals}</div>
+              </div>
+            </div>
+            
             <div class="stat-card">
               <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
                 <i class="fas fa-ticket-alt"></i>
               </div>
               <div class="stat-content">
                 <h3>Promo Codes</h3>
-                <p>${totalPromoCodes}</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-                <i class="fas fa-users"></i>
-              </div>
-              <div class="stat-content">
-                <h3>Total Referrals</h3>
-                <p>${totalReferrals.toLocaleString()}</p>
+                <p class="stat-number">${totalPromoCodes}</p>
+                <div class="stat-sub">Active: ${activePromoCodes} | Paused: ${pausedPromoCodes}</div>
               </div>
             </div>
           </div>
           
           <div class="card">
-            <h3><i class="fas fa-trophy"></i> Top 20 Users by Balance</h3>
+            <h3><i class="fas fa-trophy"></i> Top Users by Balance</h3>
             <div class="user-list-container">
-              ${topUsersHTML || '<div class="empty-state">No users found</div>'}
+              ${await this.getTopUsersHTML()}
             </div>
           </div>
         </div>
@@ -393,6 +441,61 @@ class AdminPanel {
           </div>
         </div>
       `;
+    }
+  }
+
+  async getTopUsersHTML() {
+    try {
+      const usersSnap = await this.db.ref('users').once('value');
+      const usersArray = [];
+      
+      usersSnap.forEach(child => {
+        const user = child.val();
+        usersArray.push({
+          id: child.key,
+          username: user.username || `User ${child.key.substring(0, 6)}`,
+          balance: this.safeNumber(user.balance),
+          photoUrl: user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'
+        });
+      });
+      
+      const topUsers = usersArray
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 20);
+      
+      if (topUsers.length === 0) {
+        return '<div class="empty-state">No users found</div>';
+      }
+      
+      let html = '';
+      topUsers.forEach((user, index) => {
+        html += `
+          <div class="user-display-item">
+            <div class="user-rank">${index + 1}</div>
+            <div class="user-display-avatar">
+              ${user.photoUrl ? 
+                `<img src="${user.photoUrl}" alt="${user.username}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
+                `<i class="fas fa-user-circle"></i>`
+              }
+            </div>
+            <div class="user-display-info">
+              <span class="user-display-username">${user.username}</span>
+              <span class="user-display-id">
+                <i class="fas fa-id-card"></i> ID: ${user.id.substring(0, 8)}
+              </span>
+            </div>
+            <div class="user-display-balance">
+              <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+              ${user.balance.toFixed(3)} TON
+            </div>
+          </div>
+        `;
+      });
+      
+      return html;
+    } catch (error) {
+      console.error("Error getting top users:", error);
+      return '<div class="empty-state error">Error loading users</div>';
     }
   }
 
@@ -440,27 +543,20 @@ class AdminPanel {
 
       const user = userSnap.val();
       
-      const statusSnap = await this.db.ref(`config/${userId}/status`).once('value');
+      // Get user status from users/{userId}/status
+      const statusSnap = await this.db.ref(`users/${userId}/status`).once('value');
       const userStatus = statusSnap.exists() ? statusSnap.val() : 'free';
       
       const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
         const date = new Date(timestamp);
-        const day = date.getDate();
-        const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
+        return date.toLocaleDateString('en-GB');
       };
       
       const formatDateTime = (timestamp) => {
         if (!timestamp) return 'N/A';
         const date = new Date(timestamp);
-        const day = date.getDate();
-        const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${day}-${month}-${year} ${hours}:${minutes}`;
+        return date.toLocaleString('en-GB');
       };
       
       const balance = this.safeNumber(user.balance);
@@ -594,7 +690,6 @@ class AdminPanel {
             <div class="form-group">
               <label for="addBalanceReason">Reason</label>
               <input type="text" id="addBalanceReason" placeholder="Reason for adding balance">
-              <small>This will be recorded in history</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -627,7 +722,6 @@ class AdminPanel {
             <div class="form-group">
               <label for="removeBalanceReason">Reason</label>
               <input type="text" id="removeBalanceReason" placeholder="Reason for removing balance">
-              <small>This will be recorded in history</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -667,20 +761,6 @@ class AdminPanel {
         balance: newBalance,
         totalEarned: this.safeNumber(user.totalEarned) + amount
       });
-
-      const balanceHistory = {
-        telegramId: userId,
-        userName: user.username || `User ${userId.substring(0, 6)}`,
-        amount: amount,
-        reason: reason,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        adminId: 'admin',
-        timestamp: Date.now(),
-        date: new Date().toLocaleString()
-      };
-
-      await this.db.ref('balanceHistory').push(balanceHistory);
 
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
       
@@ -723,20 +803,6 @@ class AdminPanel {
         balance: newBalance
       });
 
-      const balanceHistory = {
-        telegramId: userId,
-        userName: user.username || `User ${userId.substring(0, 6)}`,
-        amount: -amount,
-        reason: reason,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        adminId: 'admin',
-        timestamp: Date.now(),
-        date: new Date().toLocaleString()
-      };
-
-      await this.db.ref('balanceHistory').push(balanceHistory);
-
       this.showNotification("Success", `Removed ${amount} TON from user`, "success");
       
       document.querySelector('#removeBalanceModal')?.remove();
@@ -752,11 +818,7 @@ class AdminPanel {
     if (!confirm('Are you sure you want to ban this user?')) return;
 
     try {
-      await this.db.ref(`config/${userId}`).update({
-        status: 'ban',
-        bannedAt: Date.now(),
-        bannedBy: 'admin'
-      });
+      await this.db.ref(`users/${userId}/status`).set('ban');
 
       this.showNotification("Success", "User has been banned", "success");
       await this.searchUser();
@@ -771,11 +833,7 @@ class AdminPanel {
     if (!confirm('Are you sure you want to unban this user?')) return;
 
     try {
-      await this.db.ref(`config/${userId}`).update({
-        status: 'free',
-        unbannedAt: Date.now(),
-        unbannedBy: 'admin'
-      });
+      await this.db.ref(`users/${userId}/status`).set('free');
 
       this.showNotification("Success", "User has been unbanned", "success");
       await this.searchUser();
@@ -821,18 +879,6 @@ class AdminPanel {
             </div>
             
             <div class="form-group">
-              <label>Task Category *</label>
-              <div class="task-category-buttons">
-                <button type="button" class="task-category-btn active" data-category="partner">
-                  <i class="fas fa-handshake"></i> Partner Task
-                </button>
-                <button type="button" class="task-category-btn" data-category="social">
-                  <i class="fas fa-share-alt"></i> Social Task
-                </button>
-              </div>
-            </div>
-            
-            <div class="form-group">
               <label for="taskReward">Reward per User (TON) *</label>
               <input type="number" id="taskReward" placeholder="0.001" value="0.001" min="0.001" step="0.001">
               <small>How much TON each user gets for completing</small>
@@ -860,7 +906,6 @@ class AdminPanel {
     `;
     
     this.setupTaskTypeButtons();
-    this.setupTaskCategoryButtons();
     await this.loadTasksList();
   }
 
@@ -869,16 +914,6 @@ class AdminPanel {
     typeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         typeButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
-    });
-  }
-
-  setupTaskCategoryButtons() {
-    const categoryButtons = document.querySelectorAll('.task-category-btn');
-    categoryButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        categoryButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
@@ -928,14 +963,8 @@ class AdminPanel {
             const formatDate = (timestamp) => {
               if (!timestamp) return 'N/A';
               const date = new Date(timestamp);
-              const day = date.getDate();
-              const month = date.getMonth() + 1;
-              const year = date.getFullYear();
-              return `${day}-${month}-${year}`;
+              return date.toLocaleDateString('en-GB');
             };
-            
-            const categoryClass = task.category === 'partner' ? 'category-partner' : 'category-social';
-            const categoryText = task.category === 'partner' ? 'Partner' : 'Social';
             
             tasksHTML += `
               <div class="task-item">
@@ -945,9 +974,6 @@ class AdminPanel {
                     <div class="task-meta">
                       <span class="task-type-badge ${task.type || 'channel'}">
                         ${task.type === 'channel' ? 'Channel / Group' : 'Website / Bot'}
-                      </span>
-                      <span class="task-category-badge ${categoryClass}">
-                        ${categoryText}
                       </span>
                       <span class="task-status-badge ${statusClass}">${status}</span>
                     </div>
@@ -1043,7 +1069,6 @@ class AdminPanel {
     const taskReward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const taskType = document.querySelector('.task-type-btn.active').dataset.type;
-    const taskCategory = document.querySelector('.task-category-btn.active').dataset.category;
     
     if (!taskName || !taskLink) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1089,7 +1114,6 @@ class AdminPanel {
         name: taskName,
         description: taskDescription,
         type: taskType,
-        category: taskCategory,
         url: cleanLink,
         maxCompletions: maxCompletions,
         reward: taskReward,
@@ -1102,8 +1126,6 @@ class AdminPanel {
       };
       
       await this.db.ref('config/tasks').push(taskData);
-      
-      await this.updateAppStats('totalTasks', 1);
       
       this.showNotification("Success", `Task "${taskName}" created successfully!`, "success");
       
@@ -1207,12 +1229,7 @@ class AdminPanel {
           const formatDateTime = (timestamp) => {
             if (!timestamp) return 'N/A';
             const date = new Date(timestamp);
-            const day = date.getDate();
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            return `${day}-${month}-${year} ${hours}:${minutes}`;
+            return date.toLocaleString('en-GB');
           };
           
           withdrawalsContent += `
@@ -1236,37 +1253,6 @@ class AdminPanel {
                 <div class="withdrawal-amount">
                   <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
                   ${req.amount ? req.amount.toFixed(5) : '0.00000'} TON
-                </div>
-              </div>
-              
-              <div class="withdrawal-user-stats">
-                <div class="user-stat">
-                  <i class="fas fa-eye"></i>
-                  <div>
-                    <div class="stat-value">${user.dailyAdsWatched || 0}</div>
-                    <div class="stat-label">Ads Watched</div>
-                  </div>
-                </div>
-                <div class="user-stat">
-                  <i class="fas fa-users"></i>
-                  <div>
-                    <div class="stat-value">${user.referrals || 0}</div>
-                    <div class="stat-label">Referrals</div>
-                  </div>
-                </div>
-                <div class="user-stat">
-                  <i class="fas fa-coins"></i>
-                  <div>
-                    <div class="stat-value">${user.totalEarned ? user.totalEarned.toFixed(3) : '0.000'}</div>
-                    <div class="stat-label">Total Earned</div>
-                  </div>
-                </div>
-                <div class="user-stat">
-                  <i class="fas fa-money-bill-wave"></i>
-                  <div>
-                    <div class="stat-value">${user.referralEarnings ? user.referralEarnings.toFixed(3) : '0.000'}</div>
-                    <div class="stat-label">Ref Earnings</div>
-                  </div>
                 </div>
               </div>
               
@@ -1299,6 +1285,9 @@ class AdminPanel {
                 <button class="action-btn btn-danger" onclick="admin.handleWithdrawal('${req.id}', 'reject')">
                   <i class="fas fa-times"></i> Reject
                 </button>
+                <button class="action-btn btn-info" onclick="admin.getUserReferrals('${req.userId}', '${user.username || req.userName || 'User'}')">
+                  <i class="fas fa-users"></i> Get referrals
+                </button>
               </div>
             </div>
           `;
@@ -1316,7 +1305,7 @@ class AdminPanel {
         `;
       }
       
-      // عرض آخر السحوبات
+      // Display recent withdrawals
       let lastWithdrawalsHTML = '';
       const lastWithdrawals = [];
       
@@ -1394,6 +1383,31 @@ class AdminPanel {
     }
   }
 
+  async getUserReferrals(userId, username) {
+    try {
+      const referralsSnap = await this.db.ref(`referrals/${userId}`).limitToLast(10).once('value');
+      let referralsMessage = `📉 <b>Last 10 referrals (${username}):</b>\n\n`;
+      
+      if (referralsSnap.exists()) {
+        let counter = 1;
+        referralsSnap.forEach(child => {
+          const referral = child.val();
+          referralsMessage += `${counter}- ${referral.username || 'Unknown'}\n`;
+          counter++;
+        });
+      } else {
+        referralsMessage += "No referrals found";
+      }
+      
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, referralsMessage);
+      this.showNotification("Success", "Referrals sent to admin", "success");
+      
+    } catch (error) {
+      console.error("Error getting referrals:", error);
+      this.showNotification("Error", "Failed to get referrals", "error");
+    }
+  }
+
   showConfirmWithdrawalModal(requestId, userId, amount, wallet, userName) {
     const modalHTML = `
       <div class="modal-overlay active" id="confirmWithdrawalModal">
@@ -1467,8 +1481,6 @@ class AdminPanel {
       
       await requestRef.remove();
       
-      await this.updateAppStats('totalWithdrawals', 1);
-      
       await this.sendTelegramNotification(userId, amount, wallet, transactionLink);
       
       this.showNotification("Success", "Withdrawal approved successfully", "success");
@@ -1485,32 +1497,8 @@ class AdminPanel {
   async sendTelegramNotification(userId, amount, wallet, transactionLink) {
     try {
       const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b> `
-      const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: userId,
-          text: message,
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [[
-              {
-                text: 'View on Explorer',
-                url: transactionLink
-              }
-            ]]
-          }
-        })
-      });
+      await this.sendTelegramMessage(userId, message);
       
-      const data = await response.json();
-      if (data.ok) {
-        console.log("✅ Telegram notification sent successfully");
-      } else {
-        console.error("❌ Failed to send Telegram notification:", data);
-      }
     } catch (error) {
       console.error("❌ Error sending Telegram notification:", error);
     }
@@ -1655,10 +1643,7 @@ class AdminPanel {
             const formatDate = (timestamp) => {
               if (!timestamp) return 'N/A';
               const date = new Date(timestamp);
-              const day = date.getDate().toString().padStart(2, '0');
-              const month = (date.getMonth() + 1).toString().padStart(2, '0');
-              const year = date.getFullYear();
-              return `${day}-${month}-${year}`;
+              return date.toLocaleDateString('en-GB');
             };
             
             const expiryDate = promo.expiryDate ? formatDate(promo.expiryDate) : 'No expiry';
@@ -1823,7 +1808,6 @@ class AdminPanel {
       expiryInput.value = '';
       
       await this.loadPromoCodesList();
-      await this.updateAppStats('totalPromoCodes', 1);
       
     } catch (error) {
       console.error("Error creating promo code:", error);
@@ -1852,7 +1836,6 @@ class AdminPanel {
       
       this.showNotification("Success", "Promo code deleted successfully", "success");
       await this.loadPromoCodesList();
-      await this.updateAppStats('totalPromoCodes', -1);
       
     } catch (error) {
       console.error("Error deleting promo code:", error);
@@ -1903,22 +1886,6 @@ class AdminPanel {
               <button class="html-tag-btn" onclick="admin.insertHTMLTag('\\n', '')">New Line</button>
             </div>
             
-            <div class="form-group">
-              <label><i class="fas fa-link"></i> Add Buttons (Optional)</label>
-              <div id="broadcastButtons">
-                <div class="button-row">
-                  <input type="text" class="button-text" placeholder="Button text">
-                  <input type="text" class="button-url" placeholder="URL">
-                  <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-              <button class="action-btn btn-sm btn-secondary" onclick="admin.addBroadcastButton()" style="margin-top: 10px;">
-                <i class="fas fa-plus"></i> Add Button
-              </button>
-            </div>
-            
             <div class="broadcast-preview">
               <h4><i class="fas fa-eye"></i> Preview</h4>
               <div id="broadcastPreview" class="preview-content">
@@ -1938,22 +1905,11 @@ class AdminPanel {
               </button>
             </div>
           </div>
-          
-          <div class="card">
-            <h3><i class="fas fa-history"></i> Broadcast History</h3>
-            <div id="broadcastHistoryContainer">
-              <div class="loading">
-                <div class="spinner"></div>
-                <p>Loading history...</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     `;
     
     this.updateBroadcastPreview();
-    await this.loadBroadcastHistory();
   }
 
   insertHTMLTag(startTag, endTag) {
@@ -1989,20 +1945,6 @@ class AdminPanel {
     specificUserField.style.display = type === 'specific' ? 'block' : 'none';
   }
 
-  addBroadcastButton() {
-    const buttonsContainer = document.getElementById('broadcastButtons');
-    const buttonRow = document.createElement('div');
-    buttonRow.className = 'button-row';
-    buttonRow.innerHTML = `
-      <input type="text" class="button-text" placeholder="Button text">
-      <input type="text" class="button-url" placeholder="URL">
-      <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
-        <i class="fas fa-times"></i>
-      </button>
-    `;
-    buttonsContainer.appendChild(buttonRow);
-  }
-
   updateBroadcastPreview() {
     const message = document.getElementById('broadcastMessage').value;
     const imageUrl = document.getElementById('broadcastImage').value;
@@ -2033,23 +1975,6 @@ class AdminPanel {
       `;
     }
     
-    const buttonRows = document.querySelectorAll('#broadcastButtons .button-row');
-    if (buttonRows.length > 0) {
-      previewHTML += '<div class="preview-buttons">';
-      buttonRows.forEach(row => {
-        const text = row.querySelector('.button-text').value;
-        const url = row.querySelector('.button-url').value;
-        if (text && url) {
-          previewHTML += `
-            <a href="${url}" class="preview-button" target="_blank">
-              ${text}
-            </a>
-          `;
-        }
-      });
-      previewHTML += '</div>';
-    }
-    
     preview.innerHTML = previewHTML;
   }
 
@@ -2068,15 +1993,6 @@ class AdminPanel {
       this.showNotification("Error", "Please enter a User ID for specific broadcast", "error");
       return;
     }
-    
-    const buttons = [];
-    document.querySelectorAll('#broadcastButtons .button-row').forEach(row => {
-      const text = row.querySelector('.button-text').value.trim();
-      const url = row.querySelector('.button-url').value.trim();
-      if (text && url) {
-        buttons.push({ text, url });
-      }
-    });
     
     if (!confirm(`Are you sure you want to send this broadcast${broadcastType === 'all' ? ' to ALL users' : ' to specific user'}?`)) {
       return;
@@ -2108,25 +2024,12 @@ class AdminPanel {
         }
       }
       
-      const broadcastData = {
-        message: message,
-        imageUrl: imageUrl || null,
-        buttons: buttons.length > 0 ? buttons : null,
-        sentBy: 'admin',
-        sentAt: Date.now(),
-        targetType: broadcastType,
-        targetCount: usersToSend.length
-      };
-      
-      const broadcastRef = await this.db.ref('broadcastHistory').push(broadcastData);
-      const broadcastId = broadcastRef.key;
-      
       let sentCount = 0;
       let failedCount = 0;
       
       for (const user of usersToSend) {
         try {
-          await this.sendTelegramMessage(user.id, message, imageUrl, buttons);
+          await this.sendTelegramMessage(user.id, message, imageUrl);
           sentCount++;
           
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -2137,20 +2040,11 @@ class AdminPanel {
         }
       }
       
-      await this.db.ref(`broadcastHistory/${broadcastId}`).update({
-        status: 'completed',
-        sentCount: sentCount,
-        failedCount: failedCount,
-        completedAt: Date.now()
-      });
-      
       this.showNotification(
         "Success", 
         `Broadcast sent! Success: ${sentCount}, Failed: ${failedCount}`, 
         "success"
       );
-      
-      await this.loadBroadcastHistory();
       
     } catch (error) {
       console.error("Error sending broadcast:", error);
@@ -2158,178 +2052,42 @@ class AdminPanel {
     }
   }
 
-  async sendTelegramMessage(userId, message, imageUrl, buttons) {
+  async sendTelegramMessage(chatId, message, photo = null) {
     try {
+      let url = `https://api.telegram.org/bot${this.botToken}/`;
+      let method = 'sendMessage';
       let payload = {
-        chat_id: userId,
+        chat_id: chatId,
         parse_mode: 'HTML'
       };
       
-      const inlineKeyboard = buttons && buttons.length > 0 ? {
-        inline_keyboard: buttons.map(btn => [{
-          text: btn.text,
-          url: btn.url
-        }])
-      } : null;
-      
-      if (imageUrl) {
-        payload.photo = imageUrl;
+      if (photo) {
+        method = 'sendPhoto';
+        payload.photo = photo;
         payload.caption = message;
-        
-        if (inlineKeyboard) {
-          payload.reply_markup = inlineKeyboard;
-        }
-        
-        const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendPhoto`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        const data = await response.json();
-        if (!data.ok) {
-          throw new Error(data.description || 'Failed to send photo');
-        }
       } else {
         payload.text = message;
-        
-        if (inlineKeyboard) {
-          payload.reply_markup = inlineKeyboard;
-        }
-        
-        const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        const data = await response.json();
-        if (!data.ok) {
-          throw new Error(data.description || 'Failed to send message');
-        }
+      }
+      
+      const response = await fetch(url + method, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.description || 'Failed to send message');
       }
       
       return true;
       
     } catch (error) {
-      console.error(`Error sending to ${userId}:`, error);
+      console.error(`Error sending to ${chatId}:`, error);
       throw error;
     }
-  }
-
-  async loadBroadcastHistory() {
-    try {
-      const historySnap = await this.db.ref('broadcastHistory').orderByChild('sentAt').limitToLast(20).once('value');
-      let historyHTML = '';
-      
-      if (historySnap.exists()) {
-        const historyArray = [];
-        historySnap.forEach(child => {
-          historyArray.push({
-            id: child.key,
-            ...child.val()
-          });
-        });
-        
-        historyArray.reverse();
-        
-        if (historyArray.length === 0) {
-          historyHTML = `
-            <div class="empty-state">
-              <i class="fas fa-history"></i>
-              <p>No broadcast history yet</p>
-            </div>
-          `;
-        } else {
-          historyHTML = '<div class="broadcast-history-list">';
-          
-          historyArray.forEach(broadcast => {
-            const formatDateTime = (timestamp) => {
-              if (!timestamp) return 'N/A';
-              const date = new Date(timestamp);
-              const day = date.getDate();
-              const month = date.getMonth() + 1;
-              const year = date.getFullYear();
-              const hours = date.getHours().toString().padStart(2, '0');
-              const minutes = date.getMinutes().toString().padStart(2, '0');
-              return `${day}-${month}-${year} ${hours}:${minutes}`;
-            };
-            
-            const messagePreview = broadcast.message.length > 100 
-              ? broadcast.message.substring(0, 100) + '...' 
-              : broadcast.message;
-            
-            historyHTML += `
-              <div class="broadcast-history-item">
-                <div class="broadcast-header">
-                  <div class="broadcast-info">
-                    <h4>${broadcast.targetType === 'all' ? 'All Users' : 'Specific User'}</h4>
-                    <div class="broadcast-meta">
-                      <span><i class="fas fa-calendar-alt"></i> ${formatDateTime(broadcast.sentAt)}</span>
-                      <span><i class="fas fa-users"></i> ${broadcast.targetCount || 0} users</span>
-                    </div>
-                  </div>
-                  <div class="broadcast-status">
-                    <span class="status-badge ${broadcast.status || 'pending'}">
-                      ${broadcast.status || 'pending'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div class="broadcast-message-preview">
-                  <p>${messagePreview}</p>
-                </div>
-                
-                ${broadcast.sentCount !== undefined ? `
-                  <div class="broadcast-stats">
-                    <div class="stat">
-                      <i class="fas fa-check-circle success"></i>
-                      <span>Sent: ${broadcast.sentCount || 0}</span>
-                    </div>
-                    <div class="stat">
-                      <i class="fas fa-times-circle error"></i>
-                      <span>Failed: ${broadcast.failedCount || 0}</span>
-                    </div>
-                  </div>
-                ` : ''}
-                
-                <button class="action-btn btn-sm btn-info" onclick="admin.viewBroadcastDetails('${broadcast.id}')">
-                  <i class="fas fa-eye"></i> View Details
-                </button>
-              </div>
-            `;
-          });
-          
-          historyHTML += '</div>';
-        }
-      } else {
-        historyHTML = `
-          <div class="empty-state">
-            <i class="fas fa-history"></i>
-            <p>No broadcast history yet</p>
-          </div>
-        `;
-      }
-      
-      document.getElementById('broadcastHistoryContainer').innerHTML = historyHTML;
-      
-    } catch (error) {
-      console.error("Error loading broadcast history:", error);
-      document.getElementById('broadcastHistoryContainer').innerHTML = `
-        <div class="error-message">
-          <h3>Error loading history</h3>
-          <p>${error.message}</p>
-        </div>
-      `;
-    }
-  }
-
-  viewBroadcastDetails(broadcastId) {
-    this.showNotification("Info", "View details feature coming soon", "info");
   }
 
   showNotification(title, message, type = 'info') {
@@ -2369,18 +2127,6 @@ class AdminPanel {
     container.className = 'notification-container';
     document.body.appendChild(container);
     return container;
-  }
-
-  async updateAppStats(stat, value = 1) {
-    try {
-      if (!this.db) return;
-      const ref = this.db.ref(`appStats/${stat}`);
-      const snapshot = await ref.once('value');
-      const currentValue = snapshot.exists() ? snapshot.val() : 0;
-      await ref.set(currentValue + value);
-    } catch (error) {
-      console.error("Update stats error:", error);
-    }
   }
 
   safeNumber(value) {
