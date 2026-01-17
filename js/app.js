@@ -373,7 +373,10 @@ class AdminPanel {
         });
       }
       
-      // Display statistics in the new format
+      // Get top 10 users
+      const topUsersHTML = await this.getTop10UsersHTML();
+      
+      // Display statistics
       this.elements.mainContent.innerHTML = `
         <div id="dashboard" class="page active">
           <div class="stats-grid">
@@ -423,9 +426,9 @@ class AdminPanel {
           </div>
           
           <div class="card">
-            <h3><i class="fas fa-trophy"></i> Top Users by Balance</h3>
-            <div class="user-list-container">
-              ${await this.getTopUsersHTML()}
+            <h3><i class="fas fa-trophy"></i> Top 10 Users</h3>
+            <div class="top-users-container">
+              ${topUsersHTML}
             </div>
           </div>
         </div>
@@ -444,7 +447,7 @@ class AdminPanel {
     }
   }
 
-  async getTopUsersHTML() {
+  async getTop10UsersHTML() {
     try {
       const usersSnap = await this.db.ref('users').once('value');
       const usersArray = [];
@@ -453,49 +456,55 @@ class AdminPanel {
         const user = child.val();
         usersArray.push({
           id: child.key,
+          firstName: user.firstName || '',
           username: user.username || `User ${child.key.substring(0, 6)}`,
           balance: this.safeNumber(user.balance),
+          referrals: user.referrals || 0,
           photoUrl: user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'
         });
       });
       
       const topUsers = usersArray
         .sort((a, b) => b.balance - a.balance)
-        .slice(0, 20);
+        .slice(0, 10);
       
       if (topUsers.length === 0) {
         return '<div class="empty-state">No users found</div>';
       }
       
-      let html = '';
+      let html = '<div class="top-users-list">';
       topUsers.forEach((user, index) => {
         html += `
-          <div class="user-display-item">
-            <div class="user-rank">${index + 1}</div>
-            <div class="user-display-avatar">
-              ${user.photoUrl ? 
-                `<img src="${user.photoUrl}" alt="${user.username}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
-                `<i class="fas fa-user-circle"></i>`
-              }
+          <div class="top-user-item">
+            <div class="top-user-rank">${index + 1}</div>
+            <div class="top-user-avatar">
+              <img src="${user.photoUrl}" alt="${user.username}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
             </div>
-            <div class="user-display-info">
-              <span class="user-display-username">${user.username}</span>
-              <span class="user-display-id">
-                <i class="fas fa-id-card"></i> ID: ${user.id.substring(0, 8)}
-              </span>
-            </div>
-            <div class="user-display-balance">
-              <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
-              ${user.balance.toFixed(3)} TON
+            <div class="top-user-info">
+              <div class="top-user-name">
+                <strong>${user.firstName || user.username}</strong>
+                <span class="top-user-username">@${user.username.replace('@', '')}</span>
+              </div>
+              <div class="top-user-stats">
+                <div class="top-user-stat">
+                  <i class="fas fa-coins"></i>
+                  <span>Balance: ${user.balance.toFixed(3)}</span>
+                </div>
+                <div class="top-user-stat">
+                  <i class="fas fa-users"></i>
+                  <span>Referrals: ${user.referrals}</span>
+                </div>
+              </div>
             </div>
           </div>
         `;
       });
+      html += '</div>';
       
       return html;
     } catch (error) {
       console.error("Error getting top users:", error);
-      return '<div class="empty-state error">Error loading users</div>';
+      return '<div class="empty-state error">Error loading top users</div>';
     }
   }
 
@@ -576,7 +585,7 @@ class AdminPanel {
             </div>
             <div class="compact-user-info">
               <div class="compact-user-name">
-                <h3>${user.username || `User ${userId.substring(0, 6)}`}</h3>
+                <h3>${user.firstName || user.username || `User ${userId.substring(0, 6)}`}</h3>
                 <span class="user-status-badge ${userStatus}">
                   <i class="fas fa-circle"></i> ${userStatus === 'ban' ? 'BANNED' : 'ACTIVE'}
                 </span>
@@ -649,10 +658,10 @@ class AdminPanel {
           </div>
           
           <div class="compact-user-actions">
-            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
+            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${userId}', '${(user.firstName || user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
               <i class="fas fa-plus"></i> Add TON
             </button>
-            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
+            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${userId}', '${(user.firstName || user.username || `User ${userId.substring(0, 6)}`).replace(/'/g, "\\'")}')">
               <i class="fas fa-minus"></i> Remove TON
             </button>
             ${userStatus === 'free' ? 
@@ -867,13 +876,13 @@ class AdminPanel {
             </div>
             
             <div class="form-group">
-              <label>Task Type *</label>
-              <div class="task-type-buttons">
-                <button type="button" class="task-type-btn active" data-type="channel">
-                  <i class="fas fa-bullhorn"></i> Channel / Group
+              <label>Task Category *</label>
+              <div class="task-category-buttons">
+                <button type="button" class="task-category-btn active" data-category="partner">
+                  <i class="fas fa-handshake"></i> Partner
                 </button>
-                <button type="button" class="task-type-btn" data-type="bot">
-                  <i class="fas fa-robot"></i> Website / Bot
+                <button type="button" class="task-category-btn" data-category="social">
+                  <i class="fas fa-share-alt"></i> Social
                 </button>
               </div>
             </div>
@@ -905,15 +914,15 @@ class AdminPanel {
       </div>
     `;
     
-    this.setupTaskTypeButtons();
+    this.setupTaskCategoryButtons();
     await this.loadTasksList();
   }
 
-  setupTaskTypeButtons() {
-    const typeButtons = document.querySelectorAll('.task-type-btn');
-    typeButtons.forEach(btn => {
+  setupTaskCategoryButtons() {
+    const categoryButtons = document.querySelectorAll('.task-category-btn');
+    categoryButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        typeButtons.forEach(b => b.classList.remove('active'));
+        categoryButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
@@ -966,14 +975,17 @@ class AdminPanel {
               return date.toLocaleDateString('en-GB');
             };
             
+            const categoryClass = task.category === 'partner' ? 'category-partner' : 'category-social';
+            const categoryText = task.category === 'partner' ? 'Partner' : 'Social';
+            
             tasksHTML += `
               <div class="task-item">
                 <div class="task-item-header">
                   <div class="task-title">
                     <h4>${task.name || 'Unnamed Task'}</h4>
                     <div class="task-meta">
-                      <span class="task-type-badge ${task.type || 'channel'}">
-                        ${task.type === 'channel' ? 'Channel / Group' : 'Website / Bot'}
+                      <span class="task-category-badge ${categoryClass}">
+                        <i class="${task.category === 'partner' ? 'fas fa-handshake' : 'fas fa-share-alt'}"></i> ${categoryText}
                       </span>
                       <span class="task-status-badge ${statusClass}">${status}</span>
                     </div>
@@ -1068,7 +1080,7 @@ class AdminPanel {
     const taskLink = document.getElementById('taskLink').value.trim();
     const taskReward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
-    const taskType = document.querySelector('.task-type-btn.active').dataset.type;
+    const taskCategory = document.querySelector('.task-category-btn.active').dataset.category;
     
     if (!taskName || !taskLink) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1113,7 +1125,7 @@ class AdminPanel {
       const taskData = {
         name: taskName,
         description: taskDescription,
-        type: taskType,
+        category: taskCategory,
         url: cleanLink,
         maxCompletions: maxCompletions,
         reward: taskReward,
@@ -1121,7 +1133,6 @@ class AdminPanel {
         status: 'active',
         taskStatus: 'active',
         currentCompletions: 0,
-        isBotAdmin: false,
         createdAt: Date.now()
       };
       
@@ -1256,6 +1267,23 @@ class AdminPanel {
                 </div>
               </div>
               
+              <div class="withdrawal-user-stats">
+                <div class="user-stat">
+                  <i class="fas fa-users"></i>
+                  <div>
+                    <div class="stat-value">${user.referrals || 0}</div>
+                    <div class="stat-label">Total Referrals</div>
+                  </div>
+                </div>
+                <div class="user-stat">
+                  <i class="fas fa-tasks"></i>
+                  <div>
+                    <div class="stat-value">${user.tasksCompleted || user.totalTasks || 0}</div>
+                    <div class="stat-label">Total Tasks</div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="withdrawal-details-grid">
                 <div class="detail-item">
                   <span class="detail-label">Amount:</span>
@@ -1343,15 +1371,23 @@ class AdminPanel {
                 }
               </div>
               <div class="last-withdrawal-details">
-                <span class="last-withdrawal-user">${withdrawal.userName || user.username || 'Unknown User'}</span>
-                <span class="last-withdrawal-amount">
-                  <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
-                  ${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON
-                </span>
-                <span class="last-withdrawal-wallet">${withdrawal.walletAddress ? withdrawal.walletAddress.substring(0, 12) + '...' : 'N/A'}</span>
-                <span class="last-withdrawal-status status-${withdrawal.status}">
-                  ${withdrawal.status === 'completed' ? 'Completed' : 'Rejected'}
-                </span>
+                <div class="last-withdrawal-user-info">
+                  <span class="last-withdrawal-user">${withdrawal.userName || user.username || 'Unknown User'}</span>
+                  <span class="last-withdrawal-username">@${user.username || withdrawal.userId.substring(0, 8)}</span>
+                </div>
+                <div class="last-withdrawal-user-id">
+                  <i class="fas fa-id-card"></i> ID: ${withdrawal.userId}
+                </div>
+                <div class="last-withdrawal-amount-row">
+                  <span class="last-withdrawal-amount">
+                    <img src="https://logo.svgcdn.com/token-branded/ton.png" alt="TON" class="coin-icon-sm">
+                    ${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON
+                  </span>
+                  <span class="last-withdrawal-status status-${withdrawal.status}">
+                    ${withdrawal.status === 'completed' ? 'Completed' : 'Rejected'}
+                  </span>
+                </div>
+                <div class="last-withdrawal-wallet">${withdrawal.walletAddress || 'N/A'}</div>
               </div>
             </div>
           `;
@@ -1886,6 +1922,22 @@ class AdminPanel {
               <button class="html-tag-btn" onclick="admin.insertHTMLTag('\\n', '')">New Line</button>
             </div>
             
+            <div class="form-group">
+              <label><i class="fas fa-link"></i> Add Inline Buttons (Optional)</label>
+              <div id="broadcastButtons">
+                <div class="button-row">
+                  <input type="text" class="button-text" placeholder="Button text">
+                  <input type="text" class="button-url" placeholder="URL">
+                  <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              <button class="action-btn btn-sm btn-secondary" onclick="admin.addBroadcastButton()" style="margin-top: 10px;">
+                <i class="fas fa-plus"></i> Add Button
+              </button>
+            </div>
+            
             <div class="broadcast-preview">
               <h4><i class="fas fa-eye"></i> Preview</h4>
               <div id="broadcastPreview" class="preview-content">
@@ -1945,6 +1997,20 @@ class AdminPanel {
     specificUserField.style.display = type === 'specific' ? 'block' : 'none';
   }
 
+  addBroadcastButton() {
+    const buttonsContainer = document.getElementById('broadcastButtons');
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'button-row';
+    buttonRow.innerHTML = `
+      <input type="text" class="button-text" placeholder="Button text">
+      <input type="text" class="button-url" placeholder="URL">
+      <button class="action-btn btn-sm btn-danger" onclick="this.parentElement.remove()">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    buttonsContainer.appendChild(buttonRow);
+  }
+
   updateBroadcastPreview() {
     const message = document.getElementById('broadcastMessage').value;
     const imageUrl = document.getElementById('broadcastImage').value;
@@ -1975,6 +2041,23 @@ class AdminPanel {
       `;
     }
     
+    const buttonRows = document.querySelectorAll('#broadcastButtons .button-row');
+    if (buttonRows.length > 0) {
+      previewHTML += '<div class="preview-buttons">';
+      buttonRows.forEach(row => {
+        const text = row.querySelector('.button-text').value;
+        const url = row.querySelector('.button-url').value;
+        if (text && url) {
+          previewHTML += `
+            <a href="${url}" class="preview-button" target="_blank">
+              ${text}
+            </a>
+          `;
+        }
+      });
+      previewHTML += '</div>';
+    }
+    
     preview.innerHTML = previewHTML;
   }
 
@@ -1993,6 +2076,15 @@ class AdminPanel {
       this.showNotification("Error", "Please enter a User ID for specific broadcast", "error");
       return;
     }
+    
+    const buttons = [];
+    document.querySelectorAll('#broadcastButtons .button-row').forEach(row => {
+      const text = row.querySelector('.button-text').value.trim();
+      const url = row.querySelector('.button-url').value.trim();
+      if (text && url) {
+        buttons.push({ text, url });
+      }
+    });
     
     if (!confirm(`Are you sure you want to send this broadcast${broadcastType === 'all' ? ' to ALL users' : ' to specific user'}?`)) {
       return;
@@ -2029,7 +2121,7 @@ class AdminPanel {
       
       for (const user of usersToSend) {
         try {
-          await this.sendTelegramMessage(user.id, message, imageUrl);
+          await this.sendTelegramMessage(user.id, message, imageUrl, buttons);
           sentCount++;
           
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -2052,7 +2144,7 @@ class AdminPanel {
     }
   }
 
-  async sendTelegramMessage(chatId, message, photo = null) {
+  async sendTelegramMessage(chatId, message, photo = null, buttons = []) {
     try {
       let url = `https://api.telegram.org/bot${this.botToken}/`;
       let method = 'sendMessage';
@@ -2067,6 +2159,15 @@ class AdminPanel {
         payload.caption = message;
       } else {
         payload.text = message;
+      }
+      
+      if (buttons.length > 0) {
+        payload.reply_markup = {
+          inline_keyboard: buttons.map(btn => [{
+            text: btn.text,
+            url: btn.url
+          }])
+        };
       }
       
       const response = await fetch(url + method, {
