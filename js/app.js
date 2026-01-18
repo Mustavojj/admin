@@ -88,6 +88,7 @@ class AdminPanel {
       
       const totalUsers = usersSnap.numChildren();
       const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       let newUsers = 0;
       let todayPayments = 0;
       
@@ -95,7 +96,7 @@ class AdminPanel {
         const user = child.val();
         if (user.createdAt) {
           const userDate = new Date(user.createdAt).toISOString().split('T')[0];
-          if (userDate === today) newUsers++;
+          if (userDate === yesterday) newUsers++;
         }
       });
       
@@ -103,7 +104,7 @@ class AdminPanel {
         const withdrawal = child.val();
         if (withdrawal.processedAt) {
           const withdrawalDate = new Date(withdrawal.processedAt).toISOString().split('T')[0];
-          if (withdrawalDate === today) {
+          if (withdrawalDate === yesterday) {
             todayPayments += withdrawal.amount || 0;
           }
         }
@@ -113,8 +114,8 @@ class AdminPanel {
 🔔 <b>Daily Report Notification</b>
 
 🥷 Total Users: ${totalUsers}
-📉 New Users: ${newUsers}
-💸 Today Payments: ${todayPayments.toFixed(3)} TON
+📉 Yesterday New Users: ${newUsers}
+💸 Yesterday Payments: ${todayPayments.toFixed(3)} TON
       `;
       
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
@@ -301,10 +302,10 @@ class AdminPanel {
         this.db.ref('config/promoCodes').once('value')
       ]);
       
-      // Calculate statistics
       const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       let totalUsers = 0;
-      let todayUsers = 0;
+      let yesterdayUsers = 0;
       let totalTasks = 0;
       let completedTasks = 0;
       let totalWithdrawals = 0;
@@ -314,17 +315,15 @@ class AdminPanel {
       let activePromoCodes = 0;
       let pausedPromoCodes = 0;
       
-      // Users
       usersSnap.forEach(child => {
         totalUsers++;
         const user = child.val();
         if (user.createdAt) {
           const userDate = new Date(user.createdAt).toISOString().split('T')[0];
-          if (userDate === today) todayUsers++;
+          if (userDate === yesterday) yesterdayUsers++;
         }
       });
       
-      // Tasks
       if (tasksSnap.exists()) {
         const tasks = tasksSnap.val();
         Object.values(tasks).forEach(task => {
@@ -337,7 +336,6 @@ class AdminPanel {
         });
       }
       
-      // Withdrawals
       if (withdrawalsSnap.exists()) {
         const withdrawals = withdrawalsSnap.val();
         
@@ -358,7 +356,6 @@ class AdminPanel {
         }
       }
       
-      // Promo Codes
       if (promoCodesSnap.exists()) {
         const promoCodes = promoCodesSnap.val();
         Object.values(promoCodes).forEach(promo => {
@@ -373,10 +370,8 @@ class AdminPanel {
         });
       }
       
-      // Get top 10 users
       const topUsersHTML = await this.getTop10UsersHTML();
       
-      // Display statistics
       this.elements.mainContent.innerHTML = `
         <div id="dashboard" class="page active">
           <div class="stats-grid">
@@ -387,7 +382,7 @@ class AdminPanel {
               <div class="stat-content">
                 <h3>Total Users</h3>
                 <p class="stat-number">${totalUsers}</p>
-                <div class="stat-sub">Today: ${todayUsers}</div>
+                <div class="stat-sub">Yesterday: ${yesterdayUsers}</div>
               </div>
             </div>
             
@@ -552,7 +547,6 @@ class AdminPanel {
 
       const user = userSnap.val();
       
-      // Get user status from users/{userId}/status
       const statusSnap = await this.db.ref(`users/${userId}/status`).once('value');
       const userStatus = statusSnap.exists() ? statusSnap.val() : 'free';
       
@@ -1333,7 +1327,6 @@ class AdminPanel {
         `;
       }
       
-      // Display recent withdrawals
       let lastWithdrawalsHTML = '';
       const lastWithdrawals = [];
       
@@ -1532,19 +1525,14 @@ class AdminPanel {
 
   async sendTelegramNotification(userId, amount, wallet, transactionLink) {
     try {
-      // استخراج صورة المعاملة من رابط المعاملة
-      const imageUrl = transactionLink;
-      
       const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b>`;
       
-      // إنشاء أزرار inline
       const buttons = [
         [{ text: "View on Explorer 💎", url: transactionLink }],
         [{ text: "Get News 📰", url: "https://t.me/NINJA_TONS" }]
       ];
       
-      // إرسال الرسالة مع الصورة والأزرار
-      await this.sendTelegramMessage(userId, message, imageUrl, buttons);
+      await this.sendTelegramMessage(userId, message, transactionLink, buttons);
       
     } catch (error) {
       console.error("❌ Error sending Telegram notification:", error);
@@ -2127,7 +2115,6 @@ class AdminPanel {
         }
       }
       
-      // عرض نافذة التقدم
       this.showBroadcastProgressModal(usersToSend.length);
       
       let sentCount = 0;
@@ -2139,7 +2126,6 @@ class AdminPanel {
           await this.sendTelegramMessage(user.id, message, imageUrl, buttons);
           sentCount++;
           
-          // تحديث التقدم
           this.updateBroadcastProgress(sentCount, failedCount, usersToSend.length, failedUsers);
           
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -2153,12 +2139,10 @@ class AdminPanel {
             error: error.message || 'Unknown error'
           });
           
-          // تحديث التقدم
           this.updateBroadcastProgress(sentCount, failedCount, usersToSend.length, failedUsers);
         }
       }
       
-      // إغلاق نافذة التقدم عند الانتهاء
       setTimeout(() => {
         document.querySelector('#broadcastProgressModal')?.remove();
         this.showNotification(
@@ -2232,11 +2216,9 @@ class AdminPanel {
     const totalProcessed = sent + failed;
     const percentage = total > 0 ? Math.round((totalProcessed / total) * 100) : 0;
     
-    // تحديث الأرقام
     document.getElementById('sentCount').textContent = sent;
     document.getElementById('failedCount').textContent = failed;
     
-    // تحديث شريط التقدم
     const progressFill = document.getElementById('broadcastProgressFill');
     const progressPercentage = document.getElementById('progressPercentage');
     
@@ -2248,7 +2230,6 @@ class AdminPanel {
       progressPercentage.textContent = `${percentage}%`;
     }
     
-    // تحديث الحالة
     const statusElement = document.getElementById('broadcastStatus');
     if (statusElement) {
       if (totalProcessed >= total) {
@@ -2260,7 +2241,6 @@ class AdminPanel {
       }
     }
     
-    // عرض المستخدمين الفاشلين إذا وجدوا
     if (failedUsers.length > 0) {
       const container = document.getElementById('failedUsersContainer');
       const list = document.getElementById('failedUsersList');
@@ -2303,10 +2283,7 @@ class AdminPanel {
       
       if (buttons.length > 0) {
         payload.reply_markup = {
-          inline_keyboard: buttons.map(btn => [{
-            text: btn.text,
-            url: btn.url
-          }])
+          inline_keyboard: buttons
         };
       }
       
