@@ -1532,8 +1532,19 @@ class AdminPanel {
 
   async sendTelegramNotification(userId, amount, wallet, transactionLink) {
     try {
-      const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b> `
-      await this.sendTelegramMessage(userId, message);
+      // استخراج صورة المعاملة من رابط المعاملة
+      const imageUrl = transactionLink;
+      
+      const message = `<b>✅ Your Withdrawal Confirmed!\n\n💰 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n📊 Status: Confirmed\n\n🥷 Work hard to earn more!</b>`;
+      
+      // إنشاء أزرار inline
+      const buttons = [
+        [{ text: "View on Explorer 💎", url: transactionLink }],
+        [{ text: "Get News 📰", url: "https://t.me/NINJA_TONS" }]
+      ];
+      
+      // إرسال الرسالة مع الصورة والأزرار
+      await this.sendTelegramMessage(userId, message, imageUrl, buttons);
       
     } catch (error) {
       console.error("❌ Error sending Telegram notification:", error);
@@ -2116,31 +2127,160 @@ class AdminPanel {
         }
       }
       
+      // عرض نافذة التقدم
+      this.showBroadcastProgressModal(usersToSend.length);
+      
       let sentCount = 0;
       let failedCount = 0;
+      let failedUsers = [];
       
       for (const user of usersToSend) {
         try {
           await this.sendTelegramMessage(user.id, message, imageUrl, buttons);
           sentCount++;
           
+          // تحديث التقدم
+          this.updateBroadcastProgress(sentCount, failedCount, usersToSend.length, failedUsers);
+          
           await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (error) {
           console.error(`Failed to send to user ${user.id}:`, error);
           failedCount++;
+          failedUsers.push({
+            userId: user.id,
+            username: user.username,
+            error: error.message || 'Unknown error'
+          });
+          
+          // تحديث التقدم
+          this.updateBroadcastProgress(sentCount, failedCount, usersToSend.length, failedUsers);
         }
       }
       
-      this.showNotification(
-        "Success", 
-        `Broadcast sent! Success: ${sentCount}, Failed: ${failedCount}`, 
-        "success"
-      );
+      // إغلاق نافذة التقدم عند الانتهاء
+      setTimeout(() => {
+        document.querySelector('#broadcastProgressModal')?.remove();
+        this.showNotification(
+          "Broadcast Completed", 
+          `Success: ${sentCount}, Failed: ${failedCount}`, 
+          failedCount === 0 ? "success" : "warning"
+        );
+      }, 2000);
       
     } catch (error) {
       console.error("Error sending broadcast:", error);
+      document.querySelector('#broadcastProgressModal')?.remove();
       this.showNotification("Error", "Failed to send broadcast", "error");
+    }
+  }
+
+  showBroadcastProgressModal(totalUsers) {
+    const modalHTML = `
+      <div class="modal-overlay active" id="broadcastProgressModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Sending Broadcast...</h3>
+          </div>
+          <div class="modal-body">
+            <div class="broadcast-progress-container">
+              <div class="progress-info-row">
+                <div class="progress-stat">
+                  <span class="stat-label">Total Users:</span>
+                  <span class="stat-value">${totalUsers}</span>
+                </div>
+                <div class="progress-stat">
+                  <span class="stat-label">Sent:</span>
+                  <span class="stat-value success" id="sentCount">0</span>
+                </div>
+                <div class="progress-stat">
+                  <span class="stat-label">Failed:</span>
+                  <span class="stat-value error" id="failedCount">0</span>
+                </div>
+              </div>
+              
+              <div class="progress-bar-container">
+                <div class="progress-bar">
+                  <div class="progress-fill" id="broadcastProgressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+              </div>
+              
+              <div class="status-message" id="broadcastStatus">
+                Starting broadcast...
+              </div>
+              
+              <div class="failed-users-container" id="failedUsersContainer" style="display: none;">
+                <h4>Failed Users:</h4>
+                <div class="failed-users-list" id="failedUsersList"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn btn-secondary" onclick="document.querySelector('#broadcastProgressModal').remove()">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  updateBroadcastProgress(sent, failed, total, failedUsers = []) {
+    const totalProcessed = sent + failed;
+    const percentage = total > 0 ? Math.round((totalProcessed / total) * 100) : 0;
+    
+    // تحديث الأرقام
+    document.getElementById('sentCount').textContent = sent;
+    document.getElementById('failedCount').textContent = failed;
+    
+    // تحديث شريط التقدم
+    const progressFill = document.getElementById('broadcastProgressFill');
+    const progressPercentage = document.getElementById('progressPercentage');
+    
+    if (progressFill) {
+      progressFill.style.width = `${percentage}%`;
+    }
+    
+    if (progressPercentage) {
+      progressPercentage.textContent = `${percentage}%`;
+    }
+    
+    // تحديث الحالة
+    const statusElement = document.getElementById('broadcastStatus');
+    if (statusElement) {
+      if (totalProcessed >= total) {
+        statusElement.textContent = `Completed! Sent: ${sent}, Failed: ${failed}`;
+        statusElement.className = 'status-message completed';
+      } else {
+        statusElement.textContent = `Processing... (${totalProcessed}/${total})`;
+        statusElement.className = 'status-message processing';
+      }
+    }
+    
+    // عرض المستخدمين الفاشلين إذا وجدوا
+    if (failedUsers.length > 0) {
+      const container = document.getElementById('failedUsersContainer');
+      const list = document.getElementById('failedUsersList');
+      
+      if (container) container.style.display = 'block';
+      if (list) {
+        list.innerHTML = '';
+        failedUsers.forEach(user => {
+          const userElement = document.createElement('div');
+          userElement.className = 'failed-user-item';
+          userElement.innerHTML = `
+            <div class="failed-user-info">
+              <span class="user-id">ID: ${user.userId}</span>
+              <span class="user-username">@${user.username || 'No username'}</span>
+            </div>
+            <div class="failed-user-error">${user.error}</div>
+          `;
+          list.appendChild(userElement);
+        });
+      }
     }
   }
 
