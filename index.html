@@ -3,87 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Ninja TON</title>
+    <title>Ninja TON - Admin Panel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="admin-styles.css">
 </head>
-<body>
+<body class="admin-body">
     <!-- Login Interface -->
     <div id="login-container">
         <div class="login-card">
             <div class="login-logo">
-                <i class="fas fa-shield-alt"></i>
+                <div class="logo-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
                 <h1>Ninja TON Admin</h1>
+                <p class="login-subtitle">Management Panel</p>
             </div>
             <div class="form-group">
-                <label for="login-password">Admin Password</label>
                 <div class="input-with-icon">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="login-password" placeholder="Enter admin password">
+                    <i class="fas fa-key"></i>
+                    <input type="password" id="login-password" placeholder="Admin Password" autocomplete="current-password">
                 </div>
             </div>
             <button class="login-btn" id="login-button">
                 <i class="fas fa-sign-in-alt"></i> Login
             </button>
             <div id="login-message" class="login-message"></div>
-            <p class="login-footer">
-                <i class="fas fa-info-circle"></i> Manage Ninja TON users, tasks, games, and settings
-            </p>
         </div>
     </div>
 
     <!-- Admin Panel -->
     <div id="app-container">
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
         <aside id="sidebar">
-            <div>
-                <div id="sidebar-header">
-                    <div class="sidebar-logo">
-                        <i class="fas fa-shield-alt"></i>
-                        <h2>Ninja TON Admin</h2>
+            <div id="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-user-shield"></i>
                     </div>
-                    <button class="close-btn">&times;</button>
+                    <div>
+                        <h2>Ninja TON</h2>
+                        <p class="logo-subtitle">Admin Panel</p>
+                    </div>
                 </div>
+                <button class="sidebar-close">&times;</button>
+            </div>
+            
+            <nav class="sidebar-nav">
                 <ul class="nav-menu">
-                    <li data-page="dashboard" class="active">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    <li class="nav-item active" data-page="dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
                     </li>
-                    <li data-page="users">
-                        <i class="fas fa-users"></i> Users
+                    <li class="nav-item" data-page="users">
+                        <i class="fas fa-users"></i>
+                        <span>Users</span>
                     </li>
-                    <li data-page="promoCodes">
-                        <i class="fas fa-ticket-alt"></i> Promo Codes
+                    <li class="nav-item" data-page="tasks">
+                        <i class="fas fa-tasks"></i>
+                        <span>Tasks</span>
                     </li>
-                    <li data-page="tasks">
-                        <i class="fas fa-tasks"></i> Tasks
+                    <li class="nav-item" data-page="promoCodes">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Promo Codes</span>
                     </li>
-                    <li data-page="withdrawals">
-                        <i class="fas fa-wallet"></i> Withdrawals
+                    <li class="nav-item" data-page="withdrawals">
+                        <i class="fas fa-wallet"></i>
+                        <span>Withdrawals</span>
                     </li>
-                    <li data-page="broadcast">
-                        <i class="fas fa-bullhorn"></i> Broadcast
+                    <li class="nav-item" data-page="broadcast">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Broadcast</span>
                     </li>
                 </ul>
-            </div>
-            <div id="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Administrator</span>
+                </div>
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
             </div>
         </aside>
-        
-        <div id="overlay"></div>
 
-        <div id="content-wrapper">
+        <main id="main-content">
             <header id="top-bar">
-                <button id="menu-toggle"><i class="fas fa-bars"></i></button>
+                <button id="menu-toggle" class="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="status-indicator">
+                        <i class="fas fa-circle"></i>
+                        <span>Connected</span>
+                    </div>
+                </div>
             </header>
-            <main id="main-content">
-                <!-- Content will appear here -->
-            </main>
-        </div>
+            
+            <div id="content-area">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </main>
     </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
