@@ -1723,7 +1723,7 @@ class AdminPanel {
       const totalTasks = userData?.totalTasks || 0;
       const totalReferrals = userData?.referrals || 0;
       
-      const message = `✅ <b>Withdrawal Approved!</b>\n\n💎 <b>Amount:</b> ${amount.toFixed(5)} TON\n\n💼 <b>Wallet:</b> ${wallet}\n\n🔗 <b>Transaction:</b> ${shortTx}\n\n📊 <b>Stats:</b>\n├ Total Tasks: ${totalTasks}\n└ Total Referrals: ${totalReferrals}\n\n🥷 <b>Work hard to earn more!</b>`;
+      const message = `✅ <b>Withdrawal Approved!</b>\n\n💎 <b>Amount:</b> ${amount.toFixed(5)} TON\n\n💼 <b>Wallet:</b> ${wallet}\n\n🔗 <b>Transaction:</b> ${shortTx}\n\n🥷 <b>Work hard to earn more!</b>`;
       
       const inlineButtons = [[
         {
