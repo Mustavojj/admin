@@ -49,7 +49,7 @@ class AdminPanel {
       
       console.log("✅ Firebase initialized successfully");
       
-      await this.setupEventListeners();
+      this.setupEventListeners();
       
     } catch (error) {
       console.error("❌ Firebase initialization error:", error);
@@ -57,7 +57,7 @@ class AdminPanel {
     }
   }
 
-  async setupEventListeners() {
+  setupEventListeners() {
     this.elements.loginButton.addEventListener('click', () => this.handleLogin());
     this.elements.loginPassword.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') this.handleLogin();
@@ -349,7 +349,6 @@ class AdminPanel {
   async loadDashboardData() {
     try {
       const today = new Date().setHours(0, 0, 0, 0);
-      const tomorrow = today + 86400000;
       
       const [usersSnap, tasksSnap, withdrawalsSnap] = await Promise.all([
         this.db.ref('users').once('value'),
@@ -1510,7 +1509,7 @@ class AdminPanel {
       document.getElementById('rejectedCount').textContent = rejectedCount;
       document.getElementById('todayCount').textContent = todayCount;
       
-      this.displayPendingWithdrawals(pendingSnap);
+      await this.displayPendingWithdrawals(pendingSnap);
       
     } catch (error) {
       console.error("Error loading withdrawals:", error);
@@ -1523,7 +1522,7 @@ class AdminPanel {
     }
   }
 
-  displayPendingWithdrawals(pendingSnap) {
+  async displayPendingWithdrawals(pendingSnap) {
     const container = document.getElementById('withdrawalsList');
     
     if (!pendingSnap.exists() || pendingSnap.numChildren() === 0) {
@@ -1537,7 +1536,6 @@ class AdminPanel {
     }
     
     let html = '';
-    
     const promises = [];
     
     pendingSnap.forEach(child => {
@@ -1806,7 +1804,7 @@ class AdminPanel {
         });
       }
       
-      const message = `📊 <b>Withdrawal Statistics</b>\n\n👥 Total Users: ${totalUsers}\n\n💰 Total Distributed: ${totalDistributed.toFixed(3)} TON\n📈 Total Withdrawals: ${totalWithdrawals}\n\n📅 Today Distributed: ${todayDistributed.toFixed(3)} TON\n📈 Today Withdrawals: ${todayWithdrawals}`;
+      const message = `📊 Withdrawal Statistics\n\n👥 Total Users: ${totalUsers}\n\n💰 Total Distributed: ${totalDistributed.toFixed(3)} TON\n📈 Total Withdrawals: ${totalWithdrawals}\n\n📅 Today Distributed: ${todayDistributed.toFixed(3)} TON\n📈 Today Withdrawals: ${todayWithdrawals}`;
       
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
       
@@ -2221,14 +2219,14 @@ class AdminPanel {
 
   async sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons) {
     try {
-      let report = `📊 <b>Broadcast Report</b>\n\n`;
+      let report = `📊 Broadcast Report\n\n`;
       report += `👥 Total Users: ${total}\n`;
       report += `✅ Successfully Sent: ${sent}\n`;
       report += `❌ Failed: ${failed}\n`;
       report += `🔘 Inline Buttons: ${inlineButtons.length} rows\n\n`;
       
       if (failed > 0) {
-        report += `<b>Failed Users:</b>\n`;
+        report += `Failed Users:\n`;
         failedUsers.slice(0, 10).forEach(user => {
           report += `- ${user.id} (${user.username || 'no username'})\n`;
         });
