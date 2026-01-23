@@ -2061,3 +2061,15 @@ body {
     text-align: center;
   }
   }
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--success);
+}
+
+.status-indicator::before {
+  content: 'LIVE'; /* تغيير من Connected إلى LIVE */
+} 
