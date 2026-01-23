@@ -200,7 +200,6 @@ class AdminPanel {
       <div class="dashboard-page">
         <div class="dashboard-header">
           <h2><i class="fas fa-tachometer-alt"></i> Dashboard Overview</h2>
-          <p>Ninja TON Admin Statistics</p>
         </div>
         
         <div class="loading" id="dashboardLoading">
@@ -324,7 +323,7 @@ class AdminPanel {
             <div class="actions-grid">
               <button class="action-btn quick-btn" onclick="admin.showPage('users')">
                 <i class="fas fa-user-plus"></i>
-                <span>Add User</span>
+                <span>Search User</span>
               </button>
               <button class="action-btn quick-btn" onclick="admin.showPage('tasks')">
                 <i class="fas fa-plus-circle"></i>
@@ -484,7 +483,7 @@ class AdminPanel {
       <div class="users-page">
         <div class="page-header">
           <h2><i class="fas fa-users"></i> Users Management</h2>
-          <p>Manage users, view statistics, and modify balances</p>
+          <p>Search for users and manage their accounts</p>
         </div>
         
         <div class="search-section">
@@ -495,73 +494,20 @@ class AdminPanel {
               <i class="fas fa-search"></i> Search
             </button>
           </div>
-          <button class="action-btn btn-secondary" onclick="admin.loadAllUsers()">
-            <i class="fas fa-sync-alt"></i> Refresh
+          <button class="action-btn btn-secondary" onclick="admin.clearSearch()">
+            <i class="fas fa-times"></i> Clear
           </button>
-        </div>
-        
-        <div class="users-stats">
-          <div class="mini-stat-card">
-            <i class="fas fa-users"></i>
-            <div>
-              <h4>Total Users</h4>
-              <p id="usersTotal">0</p>
-            </div>
-          </div>
-          <div class="mini-stat-card">
-            <i class="fas fa-user-check"></i>
-            <div>
-              <h4>Active Today</h4>
-              <p id="usersActiveToday">0</p>
-            </div>
-          </div>
-          <div class="mini-stat-card">
-            <i class="fas fa-user-slash"></i>
-            <div>
-              <h4>Banned</h4>
-              <p id="usersBanned">0</p>
-            </div>
-          </div>
-          <div class="mini-stat-card">
-            <i class="fas fa-coins"></i>
-            <div>
-              <h4>Total Balance</h4>
-              <p id="usersTotalBalance">0 TON</p>
-            </div>
-          </div>
         </div>
         
         <div id="userResults" class="user-results">
           <div class="empty-state">
             <i class="fas fa-user-search"></i>
-            <p>Search for a user or refresh to see all users</p>
+            <p>Search for a user by ID, username, or Telegram ID</p>
+            <p class="hint">Search examples: "123456789", "@username", "User Name"</p>
           </div>
         </div>
       </div>
     `;
-    
-    await this.loadAllUsers();
-  }
-
-  async loadAllUsers() {
-    try {
-      const usersSnap = await this.db.ref('users').limitToLast(50).once('value');
-      const users = [];
-      
-      usersSnap.forEach(child => {
-        users.push({
-          id: child.key,
-          ...child.val()
-        });
-      });
-      
-      this.displayUsers(users);
-      this.updateUserStats(users);
-      
-    } catch (error) {
-      console.error("Error loading users:", error);
-      this.showNotification("Error", "Failed to load users", "error");
-    }
   }
 
   async searchUser() {
@@ -578,11 +524,16 @@ class AdminPanel {
       
       usersSnap.forEach(child => {
         const user = child.val();
-        const searchStr = `${user.id} ${user.username} ${user.telegramId} ${user.firstName}`.toLowerCase();
+        const userId = child.key;
+        const username = user.username || '';
+        const firstName = user.firstName || '';
+        const telegramId = user.telegramId || '';
+        
+        const searchStr = `${userId} ${username} ${firstName} ${telegramId}`.toLowerCase();
         
         if (searchStr.includes(searchTerm.toLowerCase())) {
           results.push({
-            id: child.key,
+            id: userId,
             ...user
           });
         }
@@ -593,6 +544,7 @@ class AdminPanel {
           <div class="empty-state">
             <i class="fas fa-user-times"></i>
             <p>No users found for "${searchTerm}"</p>
+            <p class="hint">Try searching by different criteria</p>
           </div>
         `;
       } else {
@@ -603,6 +555,17 @@ class AdminPanel {
       console.error("Error searching users:", error);
       this.showNotification("Error", "Search failed", "error");
     }
+  }
+
+  clearSearch() {
+    document.getElementById('searchUserInput').value = '';
+    document.getElementById('userResults').innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-user-search"></i>
+        <p>Search for a user by ID, username, or Telegram ID</p>
+        <p class="hint">Search examples: "123456789", "@username", "User Name"</p>
+      </div>
+    `;
   }
 
   displayUsers(users) {
@@ -626,6 +589,7 @@ class AdminPanel {
       const tasks = user.totalTasks || 0;
       const status = user.status || 'free';
       const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A';
+      const lastActive = user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A';
       
       html += `
         <div class="user-card">
@@ -672,23 +636,20 @@ class AdminPanel {
               </div>
             </div>
             <div class="user-stat">
-              <i class="fas fa-money-bill-wave"></i>
+              <i class="fas fa-clock"></i>
               <div>
-                <div class="stat-value">${this.safeNumber(user.totalEarned).toFixed(3)} TON</div>
-                <div class="stat-label">Total Earned</div>
+                <div class="stat-value">${lastActive}</div>
+                <div class="stat-label">Last Active</div>
               </div>
             </div>
           </div>
           
           <div class="user-card-actions">
             <button class="action-btn btn-sm btn-primary" onclick="admin.showUserDetails('${user.id}')">
-              <i class="fas fa-eye"></i> View
+              <i class="fas fa-eye"></i> Details
             </button>
             <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${user.firstName || user.id}')">
               <i class="fas fa-plus"></i> Add TON
-            </button>
-            <button class="action-btn btn-sm btn-danger" onclick="admin.showRemoveBalanceModal('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-minus"></i> Remove TON
             </button>
             ${status === 'free' ? 
               `<button class="action-btn btn-sm btn-warning" onclick="admin.banUser('${user.id}')">
@@ -705,39 +666,6 @@ class AdminPanel {
     
     html += '</div>';
     container.innerHTML = html;
-  }
-
-  updateUserStats(users) {
-    const today = new Date().setHours(0, 0, 0, 0);
-    
-    let totalUsers = 0;
-    let activeToday = 0;
-    let banned = 0;
-    let totalBalance = 0;
-    
-    users.forEach(user => {
-      totalUsers++;
-      
-      if (user.lastActive && user.lastActive >= today) {
-        activeToday++;
-      }
-      
-      if (user.status === 'ban') {
-        banned++;
-      }
-      
-      totalBalance += this.safeNumber(user.balance);
-    });
-    
-    const updateElement = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    };
-    
-    updateElement('usersTotal', totalUsers);
-    updateElement('usersActiveToday', activeToday);
-    updateElement('usersBanned', banned);
-    updateElement('usersTotalBalance', totalBalance.toFixed(3) + ' TON');
   }
 
   showUserDetails(userId) {
@@ -841,7 +769,6 @@ class AdminPanel {
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadAllUsers();
       
     } catch (error) {
       console.error("Error adding balance:", error);
@@ -884,7 +811,6 @@ class AdminPanel {
       this.showNotification("Success", `Removed ${amount} TON from user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadAllUsers();
       
     } catch (error) {
       console.error("Error removing balance:", error);
@@ -898,7 +824,7 @@ class AdminPanel {
     try {
       await this.db.ref(`users/${userId}/status`).set('ban');
       this.showNotification("Success", "User has been banned", "success");
-      await this.loadAllUsers();
+      await this.searchUser();
     } catch (error) {
       console.error("Error banning user:", error);
       this.showNotification("Error", "Failed to ban user", "error");
@@ -911,7 +837,7 @@ class AdminPanel {
     try {
       await this.db.ref(`users/${userId}/status`).set('free');
       this.showNotification("Success", "User has been unbanned", "success");
-      await this.loadAllUsers();
+      await this.searchUser();
     } catch (error) {
       console.error("Error unbanning user:", error);
       this.showNotification("Error", "Failed to unban user", "error");
@@ -937,8 +863,9 @@ class AdminPanel {
               </div>
               
               <div class="form-group">
-                <label>Description</label>
-                <input type="text" id="taskDescription" placeholder="Short description">
+                <label>Task Image URL (Optional)</label>
+                <input type="text" id="taskImage" placeholder="https://example.com/image.jpg">
+                <small>Leave empty for default image</small>
               </div>
               
               <div class="form-group">
@@ -949,18 +876,19 @@ class AdminPanel {
               <div class="form-group">
                 <label>Task Type *</label>
                 <div class="type-selector">
-                  <button class="type-btn active" data-type="partner">
-                    <i class="fas fa-handshake"></i> Partner
+                  <button class="type-btn active" data-type="partner" data-reward="0.001">
+                    <i class="fas fa-handshake"></i> Partner (0.001 TON)
                   </button>
-                  <button class="type-btn" data-type="social">
-                    <i class="fas fa-users"></i> Social
+                  <button class="type-btn" data-type="social" data-reward="0.0005">
+                    <i class="fas fa-users"></i> Social (0.0005 TON)
                   </button>
                 </div>
               </div>
               
               <div class="form-group">
                 <label>Reward per User (TON) *</label>
-                <input type="number" id="taskReward" value="0.001" step="0.001" min="0.001">
+                <input type="number" id="taskReward" value="0.001" step="0.0001" min="0.0001">
+                <small>Default: 0.001 for Partner, 0.0005 for Social</small>
               </div>
               
               <div class="form-group">
@@ -1005,6 +933,9 @@ class AdminPanel {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        
+        const reward = btn.getAttribute('data-reward');
+        document.getElementById('taskReward').value = reward;
       });
     });
   }
@@ -1064,17 +995,24 @@ class AdminPanel {
       const typeClass = task.category === 'partner' ? 'type-partner' : 'type-social';
       const typeText = task.category === 'partner' ? 'Partner' : 'Social';
       const isCompleted = progress >= 100;
+      const imageUrl = task.picture || 'https://cdn-icons-png.flaticon.com/512/15208/15208522.png';
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
           <div class="task-header">
-            <div>
-              <h4>${task.name}</h4>
-              <div class="task-meta">
-                <span class="task-type ${typeClass}">${typeText}</span>
-                <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
-                  ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
-                </span>
+            <div class="task-preview">
+              <img src="${imageUrl}" 
+                   alt="${task.name}" 
+                   class="task-image"
+                   onerror="this.src='https://cdn-icons-png.flaticon.com/512/15208/15208522.png'">
+              <div>
+                <h4>${task.name}</h4>
+                <div class="task-meta">
+                  <span class="task-type ${typeClass}">${typeText}</span>
+                  <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
+                    ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
+                  </span>
+                </div>
               </div>
             </div>
             <div class="task-reward">
@@ -1082,8 +1020,6 @@ class AdminPanel {
               <span>${task.reward || 0.001} TON</span>
             </div>
           </div>
-          
-          ${task.description ? `<p class="task-desc">${task.description}</p>` : ''}
           
           <div class="task-url">
             <i class="fas fa-link"></i>
@@ -1101,21 +1037,6 @@ class AdminPanel {
           </div>
           
           <div class="task-actions">
-            <div class="completion-control">
-              <button class="btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', -10)">
-                <i class="fas fa-minus"></i> -10
-              </button>
-              <button class="btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', -1)">
-                <i class="fas fa-minus"></i> -1
-              </button>
-              <span class="completion-count">${task.currentCompletions || 0}</span>
-              <button class="btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', 1)">
-                <i class="fas fa-plus"></i> +1
-              </button>
-              <button class="btn-sm btn-secondary" onclick="admin.updateTaskCompletion('${task.id}', 10)">
-                <i class="fas fa-plus"></i> +10
-              </button>
-            </div>
             <button class="btn-sm btn-danger" onclick="admin.deleteTask('${task.id}')">
               <i class="fas fa-trash"></i> Delete
             </button>
@@ -1129,7 +1050,7 @@ class AdminPanel {
 
   async createTask() {
     const name = document.getElementById('taskName').value.trim();
-    const description = document.getElementById('taskDescription').value.trim();
+    const image = document.getElementById('taskImage').value.trim();
     const link = document.getElementById('taskLink').value.trim();
     const reward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
@@ -1162,9 +1083,8 @@ class AdminPanel {
       
       const taskData = {
         name: name,
-        description: description,
-        category: type,
         url: formattedLink,
+        category: type,
         reward: reward,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
@@ -1173,12 +1093,18 @@ class AdminPanel {
         createdAt: Date.now()
       };
       
+      // Add image only if provided
+      if (image) {
+        taskData.picture = image;
+      }
+      
       await this.db.ref('config/tasks').push(taskData);
       
       // Clear form
       document.getElementById('taskName').value = '';
-      document.getElementById('taskDescription').value = '';
+      document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
+      document.getElementById('taskReward').value = type === 'partner' ? '0.001' : '0.0005';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -1186,31 +1112,6 @@ class AdminPanel {
     } catch (error) {
       console.error("Error creating task:", error);
       this.showNotification("Error", "Failed to create task", "error");
-    }
-  }
-
-  async updateTaskCompletion(taskId, change) {
-    try {
-      const taskRef = this.db.ref(`config/tasks/${taskId}`);
-      const snapshot = await taskRef.once('value');
-      const task = snapshot.val();
-      
-      if (!task) {
-        this.showNotification("Error", "Task not found", "error");
-        return;
-      }
-      
-      const current = task.currentCompletions || 0;
-      const newValue = Math.max(0, current + change);
-      
-      await taskRef.update({ currentCompletions: newValue });
-      
-      this.showNotification("Success", `Updated to ${newValue} completions`, "success");
-      await this.loadTasks();
-      
-    } catch (error) {
-      console.error("Error updating task:", error);
-      this.showNotification("Error", "Failed to update task", "error");
     }
   }
 
@@ -1909,6 +1810,27 @@ class AdminPanel {
               <button class="html-btn" onclick="admin.insertLink()">🔗</button>
             </div>
             
+            <!-- Inline Buttons Section -->
+            <div class="inline-buttons-section">
+              <h4><i class="fas fa-th-large"></i> Inline Buttons</h4>
+              <p class="section-description">Add inline buttons below the message</p>
+              
+              <div id="inlineButtonsContainer">
+                <div class="button-row">
+                  <input type="text" class="button-text" placeholder="Button text" maxlength="20">
+                  <input type="text" class="button-url" placeholder="URL">
+                  <button class="btn-sm btn-danger" onclick="this.parentElement.remove(); admin.updatePreview()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <button class="action-btn btn-sm btn-secondary" onclick="admin.addInlineButton()">
+                <i class="fas fa-plus"></i> Add Button
+              </button>
+              <small>Max 3 buttons per row, 5 rows maximum</small>
+            </div>
+            
             <div class="broadcast-preview">
               <h4>Preview</h4>
               <div id="broadcastPreview" class="preview-content">
@@ -1939,6 +1861,34 @@ class AdminPanel {
     const type = document.getElementById('broadcastType').value;
     const field = document.getElementById('specificUserField');
     field.style.display = type === 'specific' ? 'block' : 'none';
+  }
+
+  addInlineButton() {
+    const container = document.getElementById('inlineButtonsContainer');
+    const rows = container.querySelectorAll('.button-row');
+    
+    if (rows.length >= 5) {
+      this.showNotification("Warning", "Maximum 5 rows of buttons allowed", "warning");
+      return;
+    }
+    
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'button-row';
+    buttonRow.innerHTML = `
+      <input type="text" class="button-text" placeholder="Button text" maxlength="20">
+      <input type="text" class="button-url" placeholder="URL">
+      <button class="btn-sm btn-danger" onclick="this.parentElement.remove(); admin.updatePreview()">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    
+    // Add event listeners for real-time preview update
+    buttonRow.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', () => this.updatePreview());
+    });
+    
+    container.appendChild(buttonRow);
+    this.updatePreview();
   }
 
   insertHtmlTag(tag) {
@@ -1984,22 +1934,71 @@ class AdminPanel {
     const message = document.getElementById('broadcastMessage').value;
     const preview = document.getElementById('broadcastPreview');
     
+    let previewHTML = '';
+    
     if (message.trim()) {
-      preview.innerHTML = `<div class="message-content">${message.replace(/\n/g, '<br>')}</div>`;
+      previewHTML = `<div class="message-content">${message.replace(/\n/g, '<br>')}</div>`;
+      
+      // Add inline buttons preview
+      const buttons = this.getInlineButtons();
+      if (buttons.length > 0) {
+        previewHTML += '<div class="buttons-preview">';
+        buttons.forEach(row => {
+          previewHTML += '<div class="buttons-row">';
+          row.forEach(button => {
+            if (button.text && button.url) {
+              previewHTML += `
+                <a href="${button.url}" class="preview-button" target="_blank">
+                  ${button.text}
+                </a>
+              `;
+            }
+          });
+          previewHTML += '</div>';
+        });
+        previewHTML += '</div>';
+      }
     } else {
-      preview.innerHTML = `
+      previewHTML = `
         <div class="preview-placeholder">
           <i class="fas fa-comment-alt"></i>
           <p>Message preview will appear here</p>
         </div>
       `;
     }
+    
+    preview.innerHTML = previewHTML;
+  }
+
+  getInlineButtons() {
+    const rows = document.querySelectorAll('#inlineButtonsContainer .button-row');
+    const buttons = [];
+    
+    rows.forEach(row => {
+      const rowButtons = [];
+      const textInput = row.querySelector('.button-text');
+      const urlInput = row.querySelector('.button-url');
+      
+      if (textInput && urlInput && textInput.value.trim() && urlInput.value.trim()) {
+        rowButtons.push({
+          text: textInput.value.trim(),
+          url: urlInput.value.trim()
+        });
+      }
+      
+      if (rowButtons.length > 0) {
+        buttons.push(rowButtons);
+      }
+    });
+    
+    return buttons;
   }
 
   async sendBroadcast() {
     const message = document.getElementById('broadcastMessage').value.trim();
     const type = document.getElementById('broadcastType').value;
     const userId = document.getElementById('broadcastUserId')?.value.trim();
+    const inlineButtons = this.getInlineButtons();
     
     if (!message) {
       this.showNotification("Error", "Please enter a message", "error");
@@ -2011,7 +2010,8 @@ class AdminPanel {
       return;
     }
     
-    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : 'specific user'}?`)) {
+    const totalUsers = type === 'all' ? 'ALL users' : '1 user';
+    if (!confirm(`Send broadcast to ${totalUsers}?`)) {
       return;
     }
     
@@ -2027,7 +2027,6 @@ class AdminPanel {
           });
         });
       } else {
-        // Validate user exists
         const userSnap = await this.db.ref(`users/${userId}`).once('value');
         if (!userSnap.exists()) {
           this.showNotification("Error", "User not found", "error");
@@ -2055,13 +2054,11 @@ class AdminPanel {
       
       for (const user of users) {
         try {
-          await this.sendTelegramMessage(user.id, message);
+          await this.sendTelegramMessage(user.id, message, inlineButtons);
           sent++;
           
-          // Update progress
           this.updateBroadcastProgress(sent, failed, total);
           
-          // Small delay to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (error) {
@@ -2077,15 +2074,13 @@ class AdminPanel {
         }
       }
       
-      // Final update and close
       setTimeout(() => {
         document.querySelector('.modal-overlay.show')?.remove();
         
         const resultMsg = `Broadcast completed! Sent: ${sent}, Failed: ${failed}`;
         this.showNotification("Broadcast Complete", resultMsg, failed === 0 ? "success" : "warning");
         
-        // Send report to admin
-        this.sendBroadcastReport(total, sent, failed, failedUsers);
+        this.sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons);
         
       }, 2000);
       
@@ -2184,12 +2179,13 @@ class AdminPanel {
     }
   }
 
-  async sendBroadcastReport(total, sent, failed, failedUsers) {
+  async sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons) {
     try {
       let report = `📢 *Broadcast Report*\n\n`;
       report += `👥 Total Users: ${total}\n`;
       report += `✅ Successfully Sent: ${sent}\n`;
-      report += `❌ Failed: ${failed}\n\n`;
+      report += `❌ Failed: ${failed}\n`;
+      report += `🔘 Inline Buttons: ${inlineButtons.length} rows\n\n`;
       
       if (failed > 0) {
         report += `*Failed Users:*\n`;
@@ -2209,21 +2205,39 @@ class AdminPanel {
     }
   }
 
-  async sendTelegramMessage(chatId, message) {
+  async sendTelegramMessage(chatId, message, inlineButtons = []) {
     try {
       const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
+      
+      const payload = {
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML',
+        disable_web_page_preview: false
+      };
+      
+      // Add inline keyboard if buttons exist
+      if (inlineButtons.length > 0) {
+        const keyboard = [];
+        inlineButtons.forEach(row => {
+          const rowButtons = row.map(button => ({
+            text: button.text,
+            url: button.url
+          }));
+          keyboard.push(rowButtons);
+        });
+        
+        payload.reply_markup = {
+          inline_keyboard: keyboard
+        };
+      }
       
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'HTML',
-          disable_web_page_preview: false
-        })
+        body: JSON.stringify(payload)
       });
       
       const data = await response.json();
