@@ -669,7 +669,6 @@ class AdminPanel {
   }
 
   showUserDetails(userId) {
-    // This will be implemented in modal
     this.showNotification("Info", "User details view coming soon", "info");
   }
 
@@ -1073,7 +1072,6 @@ class AdminPanel {
     }
     
     try {
-      // Format link
       let formattedLink = link.trim();
       if (!formattedLink.startsWith('http') && !formattedLink.startsWith('@')) {
         formattedLink = 'https://t.me/' + formattedLink;
@@ -1093,14 +1091,12 @@ class AdminPanel {
         createdAt: Date.now()
       };
       
-      // Add image only if provided
       if (image) {
         taskData.picture = image;
       }
       
       await this.db.ref('config/tasks').push(taskData);
       
-      // Clear form
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
@@ -1341,7 +1337,6 @@ class AdminPanel {
     }
     
     try {
-      // Check for duplicates
       const existingSnap = await this.db.ref('config/promoCodes').orderByChild('code').equalTo(code).once('value');
       if (existingSnap.exists()) {
         let duplicate = false;
@@ -1374,7 +1369,6 @@ class AdminPanel {
       
       await this.db.ref('config/promoCodes').push(promoData);
       
-      // Clear form
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '0.010';
       document.getElementById('promoMaxUses').value = '0';
@@ -1485,7 +1479,6 @@ class AdminPanel {
         this.db.ref('withdrawals/rejected').limitToLast(10).once('value')
       ]);
       
-      // Update statistics
       const today = new Date().setHours(0, 0, 0, 0);
       let pendingCount = 0;
       let completedCount = 0;
@@ -1512,13 +1505,11 @@ class AdminPanel {
         rejectedCount = rejectedSnap.numChildren();
       }
       
-      // Update stats display
       document.getElementById('pendingCount').textContent = pendingCount;
       document.getElementById('completedCount').textContent = completedCount;
       document.getElementById('rejectedCount').textContent = rejectedCount;
       document.getElementById('todayCount').textContent = todayCount;
       
-      // Display pending withdrawals
       this.displayPendingWithdrawals(pendingSnap);
       
     } catch (error) {
@@ -1654,7 +1645,6 @@ class AdminPanel {
     }
     
     try {
-      // Get request data
       const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
       const snapshot = await requestRef.once('value');
       const request = snapshot.val();
@@ -1664,21 +1654,24 @@ class AdminPanel {
         return;
       }
       
-      // Move to completed
-      await this.db.ref(`withdrawals/completed/${requestId}`).set({
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      const userData = userSnap.val();
+      
+      const completedData = {
         ...request,
         status: 'completed',
         processedAt: Date.now(),
-        transactionLink: transactionLink
-      });
+        transaction_link: transactionLink,
+        total_tasks: userData?.totalTasks || 0,
+        total_referrals: userData?.referrals || 0
+      };
       
-      // Remove from pending
+      await this.db.ref(`withdrawals/completed/${requestId}`).set(completedData);
+      
       await requestRef.remove();
       
-      // Send notification to user
-      await this.sendWithdrawalNotification(userId, amount, wallet, transactionLink);
+      await this.sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData);
       
-      // Send statistics to admin
       await this.sendWithdrawalStats();
       
       this.showNotification("Success", "Withdrawal approved!", "success");
@@ -1705,14 +1698,12 @@ class AdminPanel {
         return;
       }
       
-      // Move to rejected
       await this.db.ref(`withdrawals/rejected/${requestId}`).set({
         ...request,
         status: 'rejected',
         processedAt: Date.now()
       });
       
-      // Remove from pending
       await requestRef.remove();
       
       this.showNotification("Success", "Withdrawal rejected", "success");
@@ -1724,14 +1715,37 @@ class AdminPanel {
     }
   }
 
-  async sendWithdrawalNotification(userId, amount, wallet, transactionLink) {
+  async sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData) {
     try {
-      const message = `✅ *Withdrawal Approved!*\n\n💰 *Amount:* ${amount.toFixed(5)} TON\n\n📭 *Wallet:* ${wallet}\n\n🔗 *Transaction:* ${transactionLink}\n\n🥷 *Thank you for using Ninja TON!*`;
+      const txId = this.extractTransactionId(transactionLink);
+      const shortTx = txId ? `${txId.substring(0, 5)}...${txId.substring(txId.length - 5)}` : 'N/A';
       
-      await this.sendTelegramMessage(userId, message);
+      const totalTasks = userData?.totalTasks || 0;
+      const totalReferrals = userData?.referrals || 0;
+      
+      const message = `✅ <b>Withdrawal Approved!</b>\n\n💎 <b>Amount:</b> ${amount.toFixed(5)} TON\n\n💼 <b>Wallet:</b> ${wallet}\n\n🔗 <b>Transaction:</b> ${shortTx}\n\n📊 <b>Stats:</b>\n├ Total Tasks: ${totalTasks}\n└ Total Referrals: ${totalReferrals}\n\n🥷 <b>Work hard to earn more!</b>`;
+      
+      const inlineButtons = [[
+        {
+          text: "View on Explorer",
+          url: transactionLink
+        }
+      ]];
+      
+      await this.sendTelegramMessage(userId, message, inlineButtons);
       
     } catch (error) {
       console.error("Error sending notification:", error);
+    }
+  }
+
+  extractTransactionId(link) {
+    try {
+      const url = new URL(link);
+      const pathParts = url.pathname.split('/');
+      return pathParts[pathParts.length - 1] || link;
+    } catch {
+      return link;
     }
   }
 
@@ -1762,7 +1776,7 @@ class AdminPanel {
         });
       }
       
-      const message = `📊 *Withdrawal Statistics*\n\n👥 Total Users: ${totalUsers}\n\n💰 Total Distributed: ${totalDistributed.toFixed(3)} TON\n📈 Total Withdrawals: ${totalWithdrawals}\n\n📅 Today Distributed: ${todayDistributed.toFixed(3)} TON\n📈 Today Withdrawals: ${todayWithdrawals}`;
+      const message = `📊 <b>Withdrawal Statistics</b>\n\n👥 Total Users: ${totalUsers}\n\n💰 Total Distributed: ${totalDistributed.toFixed(3)} TON\n📈 Total Withdrawals: ${totalWithdrawals}\n\n📅 Today Distributed: ${todayDistributed.toFixed(3)} TON\n📈 Today Withdrawals: ${todayWithdrawals}`;
       
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
       
@@ -1799,7 +1813,7 @@ class AdminPanel {
             <div class="form-group">
               <label>Message *</label>
               <textarea id="broadcastMessage" rows="5" placeholder="Enter your message here..."></textarea>
-              <small>Supports basic HTML formatting</small>
+              <small>Supports HTML formatting</small>
             </div>
             
             <div class="html-tools">
@@ -1810,7 +1824,6 @@ class AdminPanel {
               <button class="html-btn" onclick="admin.insertLink()">🔗</button>
             </div>
             
-            <!-- Inline Buttons Section -->
             <div class="inline-buttons-section">
               <h4><i class="fas fa-th-large"></i> Inline Buttons</h4>
               <p class="section-description">Add inline buttons below the message</p>
@@ -1882,7 +1895,6 @@ class AdminPanel {
       </button>
     `;
     
-    // Add event listeners for real-time preview update
     buttonRow.querySelectorAll('input').forEach(input => {
       input.addEventListener('input', () => this.updatePreview());
     });
@@ -1939,7 +1951,6 @@ class AdminPanel {
     if (message.trim()) {
       previewHTML = `<div class="message-content">${message.replace(/\n/g, '<br>')}</div>`;
       
-      // Add inline buttons preview
       const buttons = this.getInlineButtons();
       if (buttons.length > 0) {
         previewHTML += '<div class="buttons-preview">';
@@ -2045,7 +2056,6 @@ class AdminPanel {
         return;
       }
       
-      // Show progress modal
       this.showBroadcastProgress(total);
       
       let sent = 0;
@@ -2181,14 +2191,14 @@ class AdminPanel {
 
   async sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons) {
     try {
-      let report = `📢 *Broadcast Report*\n\n`;
+      let report = `📢 <b>Broadcast Report</b>\n\n`;
       report += `👥 Total Users: ${total}\n`;
       report += `✅ Successfully Sent: ${sent}\n`;
       report += `❌ Failed: ${failed}\n`;
       report += `🔘 Inline Buttons: ${inlineButtons.length} rows\n\n`;
       
       if (failed > 0) {
-        report += `*Failed Users:*\n`;
+        report += `<b>Failed Users:</b>\n`;
         failedUsers.slice(0, 10).forEach(user => {
           report += `- ${user.id} (${user.username || 'no username'})\n`;
         });
@@ -2216,7 +2226,6 @@ class AdminPanel {
         disable_web_page_preview: false
       };
       
-      // Add inline keyboard if buttons exist
       if (inlineButtons.length > 0) {
         const keyboard = [];
         inlineButtons.forEach(row => {
