@@ -1537,26 +1537,44 @@ class AdminPanel {
     }
     
     let html = '';
-    const today = new Date();
+    
+    const promises = [];
     
     pendingSnap.forEach(child => {
       const request = child.val();
       const requestId = child.key;
-      const date = request.createdAt ? new Date(request.createdAt) : today;
-      const formattedDate = date.toLocaleDateString();
-      const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const userId = request.userId;
+      
+      promises.push(
+        this.db.ref(`users/${userId}`).once('value').then(userSnap => {
+          return { request, requestId, userData: userSnap.val() };
+        })
+      );
+    });
+    
+    const results = await Promise.all(promises);
+    
+    results.forEach(({ request, requestId, userData }) => {
+      const date = request.createdAt ? new Date(request.createdAt) : new Date();
+      const formattedDate = this.formatDate(date);
+      
+      const totalTasks = userData?.totalTasks || 0;
+      const totalReferrals = userData?.referrals || 0;
+      const photoUrl = userData?.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png';
       
       html += `
         <div class="withdrawal-item">
           <div class="withdrawal-header">
             <div class="user-info">
               <div class="user-avatar">
-                <i class="fas fa-user-circle"></i>
+                <img src="${photoUrl}" 
+                     alt="${request.userName || 'User'}" 
+                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
               </div>
               <div>
                 <h4>${request.userName || 'Unknown User'}</h4>
                 <p class="user-details">
-                  <span>${request.username || 'No username'}</span>
+                  <span>@${request.username || 'No username'}</span>
                   <span>•</span>
                   <span>ID: ${request.userId}</span>
                 </p>
@@ -1576,7 +1594,15 @@ class AdminPanel {
             </div>
             <div class="detail">
               <span><i class="fas fa-calendar"></i> Date:</span>
-              <span>${formattedDate} ${formattedTime}</span>
+              <span>${formattedDate}</span>
+            </div>
+            <div class="detail">
+              <span><i class="fas fa-tasks"></i> Total Tasks:</span>
+              <span>${totalTasks}</span>
+            </div>
+            <div class="detail">
+              <span><i class="fas fa-users"></i> Total Referrals:</span>
+              <span>${totalReferrals}</span>
             </div>
           </div>
           
@@ -1593,6 +1619,13 @@ class AdminPanel {
     });
     
     container.innerHTML = html;
+  }
+
+  formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   }
 
   showApproveModal(requestId, amount, wallet, userId, userName) {
@@ -1720,10 +1753,7 @@ class AdminPanel {
       const txId = this.extractTransactionId(transactionLink);
       const shortTx = txId ? `${txId.substring(0, 5)}...${txId.substring(txId.length - 5)}` : 'N/A';
       
-      const totalTasks = userData?.totalTasks || 0;
-      const totalReferrals = userData?.referrals || 0;
-      
-      const message = `✅ <b>Withdrawal Approved!</b>\n\n💎 <b>Amount:</b> ${amount.toFixed(5)} TON\n\n💼 <b>Wallet:</b> ${wallet}\n\n🔗 <b>Transaction:</b> ${shortTx}\n\n🥷 <b>Work hard to earn more!</b>`;
+      const message = `✅ Withdrawal Approved!\n\n💎 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n🔗 Transaction: ${shortTx}\n\n🥷 Work hard to earn more!`;
       
       const inlineButtons = [[
         {
@@ -2191,7 +2221,7 @@ class AdminPanel {
 
   async sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons) {
     try {
-      let report = `📢 <b>Broadcast Report</b>\n\n`;
+      let report = `📊 <b>Broadcast Report</b>\n\n`;
       report += `👥 Total Users: ${total}\n`;
       report += `✅ Successfully Sent: ${sent}\n`;
       report += `❌ Failed: ${failed}\n`;
