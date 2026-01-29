@@ -16,6 +16,7 @@
   --warning: #ffd166;
   --danger: #ef476f;
   --info: #118ab2;
+  --info-light: #4dc0ff;
   
   --border-color: rgba(255, 255, 255, 0.1);
   --border-radius: 12px;
@@ -841,6 +842,11 @@ body {
   color: #333;
 }
 
+.btn-info {
+  background: linear-gradient(135deg, var(--info), #0d6f8f);
+  color: white;
+}
+
 .btn-secondary {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -980,17 +986,29 @@ body {
   font-size: 1.1rem;
 }
 
-.task-desc {
-  color: var(--text-light);
+.task-info {
+  display: flex;
+  gap: 15px;
   margin-bottom: 15px;
-  line-height: 1.6;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-light);
 }
 
 .task-url {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--border-radius-sm);
@@ -1178,9 +1196,9 @@ body {
   gap: 15px;
 }
 
-.user-avatar-small {
-  width: 40px;
-  height: 40px;
+.user-avatar {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   display: flex;
@@ -1188,6 +1206,13 @@ body {
   justify-content: center;
   color: white;
   font-size: 16px;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-info h4 {
@@ -2287,6 +2312,11 @@ body {
   color: var(--text-muted);
 }
 
+.user-date-small {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
 .cell-tickets {
   display: flex;
   align-items: center;
@@ -2308,10 +2338,7 @@ body {
   margin-top: 30px;
 }
 
-.top-users-grid {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 25px;
+.top-users-list {
   margin-top: 20px;
 }
 
@@ -2319,75 +2346,6 @@ body {
   .top-users-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.giveaway-prizes {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--border-radius);
-  padding: 20px;
-  border: 1px solid var(--border-color);
-}
-
-.giveaway-prizes h4 {
-  font-size: 1.1rem;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.prizes-distribution {
-  display: grid;
-  gap: 10px;
-}
-
-.prize-tier {
-  display: grid;
-  grid-template-columns: 60px 1fr 60px;
-  align-items: center;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--border-color);
-}
-
-.tier-rank {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--primary);
-}
-
-.tier-reward {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.tier-percent {
-  text-align: right;
-  color: var(--text-light);
-  font-size: 0.85rem;
-}
-
-.prize-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  background: rgba(58, 134, 255, 0.1);
-  border-radius: var(--border-radius-sm);
-  border: 1px solid var(--primary);
-  margin-top: 10px;
-}
-
-.total-label {
-  font-weight: 600;
-  color: var(--text-light);
-}
-
-.total-amount {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--primary);
 }
 
 @media (max-width: 768px) {
