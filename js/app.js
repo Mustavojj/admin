@@ -434,6 +434,10 @@ class AdminPanel {
             }
           });
         }
+        
+        if (withdrawals.rejected) {
+          totalWithdrawals += Object.keys(withdrawals.rejected).length;
+        }
       }
       
       document.getElementById('dashboardLoading').style.display = 'none';
@@ -583,8 +587,8 @@ class AdminPanel {
       const referrals = user.referrals || 0;
       const tasks = user.totalTasks || 0;
       const status = user.status || 'free';
-      const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A';
-      const lastActive = user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A';
+      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
+      const lastActive = user.lastActive ? this.formatDateTime(user.lastActive) : 'N/A';
       
       html += `
         <div class="user-card">
@@ -640,6 +644,9 @@ class AdminPanel {
           </div>
           
           <div class="user-card-actions">
+            <button class="action-btn btn-sm btn-info" onclick="admin.getAllUserDetails('${user.id}', '${user.firstName || user.id}')">
+              <i class="fas fa-info-circle"></i> Get All Details
+            </button>
             <button class="action-btn btn-sm btn-primary" onclick="admin.showUserDetails('${user.id}')">
               <i class="fas fa-eye"></i> Details
             </button>
@@ -661,6 +668,52 @@ class AdminPanel {
     
     html += '</div>';
     container.innerHTML = html;
+  }
+
+  async getAllUserDetails(userId, userName) {
+    try {
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const userData = userSnap.val();
+      
+      const totalAds = this.safeNumber(userData.totalAds || 0);
+      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
+      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
+      const totalTasks = this.safeNumber(userData.totalTasks || 0);
+      const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
+      const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const referrals = this.safeNumber(userData.referrals || 0);
+      const referralEarnings = this.safeNumber(userData.referralEarnings || 0);
+
+      const message = `👤 *User Details Report*\n\n` +
+        `🆔 User ID: ${userId}\n` +
+        `👤 Name: ${userName}\n` +
+        `📅 Joined: ${userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A'}\n\n` +
+        `📊 *Statistics:*\n` +
+        `📱 Total Ads: ${totalAds}\n` +
+        `👥 Total Referrals: ${totalReferrals}\n` +
+        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
+        `✅ Total Tasks: ${totalTasks}\n` +
+        `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
+        `💰 Total Withdrawals: ${totalWithdrawals}\n` +
+        `💎 Total Earned: ${totalEarned.toFixed(3)} TON\n` +
+        `👥 Referrals: ${referrals}\n` +
+        `💸 Referral Earnings: ${referralEarnings.toFixed(3)} TON\n` +
+        `💼 Balance: ${this.safeNumber(userData.balance || 0).toFixed(3)} TON\n\n` +
+        `🔗 Bot: @ninja_200s_bot`;
+
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
+      this.showNotification("Success", "User details sent to admin", "success");
+
+    } catch (error) {
+      console.error("Error getting user details:", error);
+      this.showNotification("Error", "Failed to get user details", "error");
+    }
   }
 
   showUserDetails(userId) {
@@ -990,6 +1043,7 @@ class AdminPanel {
       const typeText = task.category === 'partner' ? 'Partner' : 'Social';
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || 'https://cdn-icons-png.flaticon.com/512/15208/15208522.png';
+      const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
@@ -1018,6 +1072,17 @@ class AdminPanel {
           <div class="task-url">
             <i class="fas fa-link"></i>
             <a href="${task.url}" target="_blank">${task.url.substring(0, 50)}${task.url.length > 50 ? '...' : ''}</a>
+          </div>
+          
+          <div class="task-info">
+            <div class="info-item">
+              <i class="fas fa-calendar"></i>
+              <span>Created: ${createdDate}</span>
+            </div>
+            <div class="info-item">
+              <i class="fas fa-hashtag"></i>
+              <span>ID: ${task.id}</span>
+            </div>
           </div>
           
           <div class="task-progress">
@@ -1241,6 +1306,8 @@ class AdminPanel {
       const remaining = max > 0 ? max - used : '∞';
       const isExpired = promo.expiryDate && Date.now() > promo.expiryDate;
       const isFullyUsed = max > 0 && used >= max;
+      const createdDate = promo.createdAt ? this.formatDateTime(promo.createdAt) : 'N/A';
+      const expiryDate = promo.expiryDate ? this.formatDateTime(promo.expiryDate) : 'Never';
       
       let status = 'active';
       let statusClass = 'status-active';
@@ -1288,12 +1355,14 @@ class AdminPanel {
               <span>Total Distributed:</span>
               <span>${(used * (promo.reward || 0)).toFixed(3)} TON</span>
             </div>
-            ${promo.expiryDate ? `
-              <div class="detail">
-                <span>Expires:</span>
-                <span>${new Date(promo.expiryDate).toLocaleDateString()}</span>
-              </div>
-            ` : ''}
+            <div class="detail">
+              <span>Created:</span>
+              <span>${createdDate}</span>
+            </div>
+            <div class="detail">
+              <span>Expires:</span>
+              <span>${expiryDate}</span>
+            </div>
           </div>
           
           ${max > 0 ? `
@@ -1470,8 +1539,8 @@ class AdminPanel {
     try {
       const [pendingSnap, completedSnap, rejectedSnap] = await Promise.all([
         this.db.ref('withdrawals/pending').once('value'),
-        this.db.ref('withdrawals/completed').limitToLast(10).once('value'),
-        this.db.ref('withdrawals/rejected').limitToLast(10).once('value')
+        this.db.ref('withdrawals/completed').once('value'),
+        this.db.ref('withdrawals/rejected').once('value')
       ]);
       
       const today = new Date().setHours(0, 0, 0, 0);
@@ -1479,7 +1548,6 @@ class AdminPanel {
       let completedCount = 0;
       let rejectedCount = 0;
       let todayCount = 0;
-      let totalDistributed = 0;
       
       if (pendingSnap.exists()) {
         pendingCount = pendingSnap.numChildren();
@@ -1489,7 +1557,6 @@ class AdminPanel {
         completedCount = completedSnap.numChildren();
         completedSnap.forEach(child => {
           const withdrawal = child.val();
-          totalDistributed += this.safeNumber(withdrawal.amount);
           if (withdrawal.createdAt && withdrawal.createdAt >= today) {
             todayCount++;
           }
@@ -1550,7 +1617,7 @@ class AdminPanel {
     
     results.forEach(({ request, requestId, userData }) => {
       const date = request.createdAt ? new Date(request.createdAt) : new Date();
-      const formattedDate = this.formatDate(date);
+      const formattedDate = this.formatDateTime(request.createdAt);
       
       const totalTasks = userData?.totalTasks || 0;
       const totalReferrals = userData?.referrals || 0;
@@ -1601,6 +1668,9 @@ class AdminPanel {
           </div>
           
           <div class="withdrawal-actions">
+            <button class="action-btn btn-sm btn-info" onclick="admin.getWithdrawalDetails('${requestId}', '${request.userId}', '${request.userName || ''}')">
+              <i class="fas fa-info-circle"></i> Get Details
+            </button>
             <button class="action-btn btn-sm btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${request.userName || ''}')">
               <i class="fas fa-check"></i> Approve
             </button>
@@ -1615,11 +1685,61 @@ class AdminPanel {
     container.innerHTML = html;
   }
 
-  formatDate(date) {
+  formatDateTime(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  async getWithdrawalDetails(requestId, userId, userName) {
+    try {
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const userData = userSnap.val();
+      
+      const totalAds = this.safeNumber(userData.totalAds || 0);
+      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
+      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
+      const totalTasks = this.safeNumber(userData.totalTasks || 0);
+      const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
+      const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const referrals = this.safeNumber(userData.referrals || 0);
+      const referralEarnings = this.safeNumber(userData.referralEarnings || 0);
+
+      const message = `💳 *Withdrawal User Details*\n\n` +
+        `🆔 User ID: ${userId}\n` +
+        `👤 Name: ${userName}\n` +
+        `📅 Joined: ${userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A'}\n\n` +
+        `📊 *Statistics:*\n` +
+        `📱 Total Ads: ${totalAds}\n` +
+        `👥 Total Referrals: ${totalReferrals}\n` +
+        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
+        `✅ Total Tasks: ${totalTasks}\n` +
+        `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
+        `💰 Total Withdrawals: ${totalWithdrawals}\n` +
+        `💎 Total Earned: ${totalEarned.toFixed(3)} TON\n` +
+        `👥 Referrals: ${referrals}\n` +
+        `💸 Referral Earnings: ${referralEarnings.toFixed(3)} TON\n` +
+        `💼 Balance: ${this.safeNumber(userData.balance || 0).toFixed(3)} TON\n\n` +
+        `🔗 Bot: @ninja_200s_bot`;
+
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
+      this.showNotification("Success", "Withdrawal user details sent to admin", "success");
+
+    } catch (error) {
+      console.error("Error getting withdrawal details:", error);
+      this.showNotification("Error", "Failed to get withdrawal details", "error");
+    }
   }
 
   showApproveModal(requestId, amount, wallet, userId, userName) {
@@ -2313,52 +2433,10 @@ class AdminPanel {
               </button>
             </div>
             
-            <div class="top-users-grid">
-              <div class="top-users-list" id="topGiveawayUsers">
-                <div class="loading">
-                  <div class="spinner"></div>
-                  <p>Loading top users...</p>
-                </div>
-              </div>
-              
-              <div class="giveaway-prizes">
-                <h4><i class="fas fa-award"></i> Prize Distribution</h4>
-                <div class="prizes-distribution">
-                  <div class="prize-tier">
-                    <span class="tier-rank">1st</span>
-                    <span class="tier-reward">0.50 TON</span>
-                    <span class="tier-percent">25%</span>
-                  </div>
-                  <div class="prize-tier">
-                    <span class="tier-rank">2nd</span>
-                    <span class="tier-reward">0.25 TON</span>
-                    <span class="tier-percent">12.5%</span>
-                  </div>
-                  <div class="prize-tier">
-                    <span class="tier-rank">3rd</span>
-                    <span class="tier-reward">0.21 TON</span>
-                    <span class="tier-percent">10.5%</span>
-                  </div>
-                  <div class="prize-tier">
-                    <span class="tier-rank">4th</span>
-                    <span class="tier-reward">0.18 TON</span>
-                    <span class="tier-percent">9%</span>
-                  </div>
-                  <div class="prize-tier">
-                    <span class="tier-rank">5th</span>
-                    <span class="tier-reward">0.16 TON</span>
-                    <span class="tier-percent">8%</span>
-                  </div>
-                  <div class="prize-tier">
-                    <span class="tier-rank">6th-10th</span>
-                    <span class="tier-reward">0.70 TON</span>
-                    <span class="tier-percent">35%</span>
-                  </div>
-                  <div class="prize-total">
-                    <span class="total-label">Total:</span>
-                    <span class="total-amount">2.00 TON</span>
-                  </div>
-                </div>
+            <div id="topGiveawayUsers" class="top-users-list">
+              <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading top users...</p>
               </div>
             </div>
           </div>
@@ -2433,6 +2511,7 @@ class AdminPanel {
       const rankClass = rank === 1 ? 'rank-first' : 
                        rank === 2 ? 'rank-second' : 
                        rank === 3 ? 'rank-third' : 'rank-other';
+      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
       
       html += `
         <div class="user-row ${rankClass}">
@@ -2447,6 +2526,7 @@ class AdminPanel {
               <div>
                 <div class="user-name-small">${user.firstName || 'User'}</div>
                 <div class="user-id-small">ID: ${user.id}</div>
+                <div class="user-date-small">${joinDate}</div>
               </div>
             </div>
           </div>
@@ -2535,6 +2615,7 @@ class AdminPanel {
     
     users.forEach(user => {
       const tickets = user.giveawayTickets || 0;
+      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
       
       html += `
         <div class="user-tickets-card">
@@ -2548,7 +2629,7 @@ class AdminPanel {
               <p class="user-tickets-username">${user.username || 'No username'}</p>
               <div class="user-tickets-meta">
                 <span><i class="fas fa-id-card"></i> ID: ${user.id}</span>
-                <span><i class="fas fa-trophy"></i> Rank: #${this.getUserGiveawayRank(user.id)}</span>
+                <span><i class="fas fa-calendar"></i> Joined: ${joinDate}</span>
               </div>
             </div>
             <div class="user-tickets-count">
