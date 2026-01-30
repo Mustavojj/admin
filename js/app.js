@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCnmgW3GByHOamgChUAmGhJ2ovYluXf6qc",
-  authDomain: "ninja-200s.firebaseapp.com",
-  databaseURL: "https://ninja-200s-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "ninja-200s",
-  storageBucket: "ninja-200s.firebasestorage.app",
-  messagingSenderId: "1076985111103",
-  appId: "1:1076985111103:web:4112ff8923f668aa9f8e8a",
-  measurementId: "G-5K8W9XM97T"
+  apiKey: "AIzaSyDde7CL3tUGhmi6nP8k57V1DbYm6-lMN_k",
+  authDomain: "ninja-dbdb.firebaseapp.com",
+  databaseURL: "https://ninja-dbdb-default-rtdb.firebaseio.com",
+  projectId: "ninja-dbdb",
+  storageBucket: "ninja-dbdb.firebasestorage.app",
+  messagingSenderId: "964108797706",
+  appId: "1:964108797706:web:95e6bccba0934f7bdbdcf3",
+  measurementId: "G-2EV8GCX8JK"
 };
 
 const BOT_TOKEN = "8591215569:AAHrJNyxOovCnQzxYJSDWzfDUwOuyRxODGs";
