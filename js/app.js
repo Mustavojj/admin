@@ -9,7 +9,7 @@ const FIREBASE_CONFIG = {
   measurementId: "G-2EV8GCX8JK"
 };
 
-const BOT_TOKEN = "8591215569:AAHrJNyxOovCnQzxYJSDWzfDUwOuyRxODGs";
+const BOT_TOKEN = "7881276129:AAFS9EjbD0V3LlgY3YNeTcjbXOHj6_-L-zU";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
@@ -19,6 +19,7 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
+    this.adminData = null;
     
     this.elements = {
       loginContainer: document.getElementById('login-container'),
@@ -125,6 +126,8 @@ class AdminPanel {
       const isValid = ADMIN_PASSWORDS.includes(password);
       
       if (isValid) {
+        await this.registerAdminInDatabase();
+        
         this.showLoginMessage("Login successful!", "success");
         
         setTimeout(() => {
@@ -143,6 +146,27 @@ class AdminPanel {
     } finally {
       this.elements.loginButton.disabled = false;
       this.elements.loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+    }
+  }
+
+  async registerAdminInDatabase() {
+    try {
+      const adminId = "admin_" + Date.now();
+      const adminData = {
+        id: adminId,
+        loginTime: Date.now(),
+        firebaseUid: this.currentUser.uid,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language
+      };
+
+      await this.db.ref(`adminsack/${adminId}`).set(adminData);
+      
+      this.adminData = adminData;
+      console.log("✅ Admin registered in database");
+    } catch (error) {
+      console.error("❌ Failed to register admin:", error);
     }
   }
 
@@ -178,8 +202,8 @@ class AdminPanel {
       case 'broadcast':
         await this.renderBroadcast();
         break;
-      case 'giveaway':
-        await this.renderGiveaway();
+      case 'more':
+        await this.renderMore();
         break;
       default:
         await this.renderDashboard();
@@ -194,7 +218,7 @@ class AdminPanel {
       'promoCodes': 'Promo Codes',
       'withdrawals': 'Withdrawals',
       'broadcast': 'Broadcast',
-      'giveaway': 'Giveaway Management'
+      'more': 'More'
     };
     return titles[pageName] || 'Dashboard';
   }
@@ -682,7 +706,6 @@ class AdminPanel {
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
       const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -697,7 +720,6 @@ class AdminPanel {
         `📊 *Statistics:*\n` +
         `📱 Total Ads: ${totalAds}\n` +
         `👥 Total Referrals: ${totalReferrals}\n` +
-        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
         `✅ Total Tasks: ${totalTasks}\n` +
         `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
         `💰 Total Withdrawals: ${totalWithdrawals}\n` +
@@ -1708,7 +1730,6 @@ class AdminPanel {
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
       const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -1723,7 +1744,6 @@ class AdminPanel {
         `📊 *Statistics:*\n` +
         `📱 Total Ads: ${totalAds}\n` +
         `👥 Total Referrals: ${totalReferrals}\n` +
-        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
         `✅ Total Tasks: ${totalTasks}\n` +
         `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
         `💰 Total Withdrawals: ${totalWithdrawals}\n` +
@@ -2359,594 +2379,212 @@ class AdminPanel {
     }
   }
 
-  async renderGiveaway() {
-    this.elements.contentArea.innerHTML = `
-      <div class="giveaway-page">
-        <div class="page-header">
-          <h2><i class="fas fa-gift"></i> Giveaway Management</h2>
-          <p>Manage daily giveaway and user tickets</p>
-        </div>
-        
-        <div class="giveaway-controls">
-          <div class="card">
-            <h3><i class="fas fa-cogs"></i> Giveaway Controls</h3>
-            
-            <div class="form-group">
-              <label>Total Daily Reward (TON)</label>
-              <input type="number" id="totalDailyReward" value="2.00" step="0.01" min="0.01">
-            </div>
-            
-            <div class="form-group">
-              <label>Tickets per Task</label>
-              <input type="number" id="ticketsPerTask" value="1" min="0" max="10">
-            </div>
-            
-            <div class="form-group">
-              <label>Tickets per Ad</label>
-              <input type="number" id="ticketsPerAd" value="1" min="0" max="10">
-            </div>
-            
-            <div class="danger-zone">
-              <h4><i class="fas fa-exclamation-triangle"></i> Dangerous Actions</h4>
-              <div class="danger-actions">
-                <button class="action-btn btn-warning" onclick="admin.resetAllTickets()">
-                  <i class="fas fa-redo"></i> Reset All Tickets to 0
-                </button>
-                <button class="action-btn btn-danger" onclick="admin.clearGiveawayHistory()">
-                  <i class="fas fa-trash"></i> Clear Giveaway History
-                </button>
-              </div>
-              <p class="warning-text">
-                <i class="fas fa-info-circle"></i> These actions cannot be undone!
-              </p>
-            </div>
+  async renderMore() {
+    try {
+      const adminData = await this.getCurrentAdminData();
+      const allAdmins = await this.getAllAdmins();
+      
+      this.elements.contentArea.innerHTML = `
+        <div class="more-page">
+          <div class="page-header">
+            <h2><i class="fas fa-ellipsis-h"></i> More</h2>
+            <p>Admin details and system information</p>
           </div>
           
-          <div class="card">
-            <h3><i class="fas fa-user-edit"></i> Manage User Tickets</h3>
-            
-            <div class="search-user-tickets">
-              <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchUserTickets" placeholder="Search by User ID or Username">
-                <button class="search-btn" onclick="admin.searchUserForTickets()">
-                  <i class="fas fa-search"></i> Search
-                </button>
+          <div class="more-content">
+            <div class="my-details-section">
+              <h3><i class="fas fa-user-cog"></i> My Details</h3>
+              <div class="admin-details-card">
+                <div class="admin-avatar">
+                  <img src="https://cdn-icons-png.flaticon.com/512/9195/9195920.png" alt="Admin">
+                </div>
+                <div class="admin-info">
+                  <div class="admin-info-row">
+                    <span class="admin-label">Username:</span>
+                    <span class="admin-value">Administrator</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">Firebase UID:</span>
+                    <span class="admin-value">
+                      ${adminData.firebaseUid || 'N/A'}
+                      <button class="copy-small-btn" onclick="admin.copyToClipboard('${adminData.firebaseUid || ''}')">
+                        <i class="fas fa-copy"></i>
+                      </button>
+                    </span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">User ID:</span>
+                    <span class="admin-value">${adminData.id || 'N/A'}</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">Total Balance:</span>
+                    <span class="admin-value">${adminData.totalBalance || '0'} TON</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">Total Tasks:</span>
+                    <span class="admin-value">${adminData.totalTasks || '0'}</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">Total Referrals:</span>
+                    <span class="admin-value">${adminData.totalReferrals || '0'}</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">Last Activity:</span>
+                    <span class="admin-value">${adminData.lastActivity ? this.formatDate(adminData.lastActivity) : 'N/A'}</span>
+                  </div>
+                  <div class="admin-info-row">
+                    <span class="admin-label">PHONE:</span>
+                    <span class="admin-value">${adminData.phone || 'Unknown'}</span>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div id="userTicketsResult" class="user-tickets-result">
-              <div class="empty-state">
-                <i class="fas fa-user-search"></i>
-                <p>Search for a user to manage their tickets</p>
+            <div class="more-admins-section">
+              <h3><i class="fas fa-users-cog"></i> More Admins</h3>
+              <div class="admins-list">
+                ${allAdmins.length > 0 ? allAdmins.map(admin => this.renderAdminCard(admin)).join('') : '<p class="no-admins">No other admins found</p>'}
               </div>
             </div>
           </div>
         </div>
-        
-        <div class="giveaway-stats">
-          <div class="card">
-            <div class="section-header">
-              <h3><i class="fas fa-trophy"></i> Top 50 Users in Giveaway</h3>
-              <button class="action-btn btn-sm btn-secondary" onclick="admin.loadTopGiveawayUsers()">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-            </div>
-            
-            <div id="topGiveawayUsers" class="top-users-list">
-              <div class="loading">
-                <div class="spinner"></div>
-                <p>Loading top users...</p>
-              </div>
-            </div>
+      `;
+    } catch (error) {
+      console.error("Error rendering more page:", error);
+      this.elements.contentArea.innerHTML = `
+        <div class="more-page">
+          <div class="page-header">
+            <h2><i class="fas fa-ellipsis-h"></i> More</h2>
+            <p>Admin details and system information</p>
+          </div>
+          <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Failed to load admin data</p>
           </div>
         </div>
-      </div>
-    `;
-    
-    await this.loadTopGiveawayUsers();
+      `;
+    }
   }
 
-  async loadTopGiveawayUsers() {
+  async getCurrentAdminData() {
     try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const users = [];
-      
-      if (usersSnap.exists()) {
-        usersSnap.forEach(child => {
-          const user = child.val();
-          if (user.giveawayTickets && user.giveawayTickets > 0) {
-            users.push({
-              id: child.key,
-              ...user
-            });
-          }
-        });
+      if (!this.db) {
+        return this.getDefaultAdminData();
       }
       
-      users.sort((a, b) => (b.giveawayTickets || 0) - (a.giveawayTickets || 0));
-      const topUsers = users.slice(0, 50);
+      const adminId = "admin_" + Date.now();
+      const adminRef = this.db.ref(`adminsack/${adminId}`);
+      const snapshot = await adminRef.once('value');
       
-      this.displayTopGiveawayUsers(topUsers);
-      
-    } catch (error) {
-      console.error("Error loading top users:", error);
-      document.getElementById('topGiveawayUsers').innerHTML = `
-        <div class="error-message">
-          <i class="fas fa-exclamation-triangle"></i>
-          <p>Failed to load top users</p>
-          <p class="error-detail">${error.message}</p>
-        </div>
-      `;
-    }
-  }
-
-  displayTopGiveawayUsers(users) {
-    const container = document.getElementById('topGiveawayUsers');
-    
-    if (users.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <p>No users with tickets yet</p>
-        </div>
-      `;
-      return;
-    }
-    
-    let html = '<div class="top-users-table">';
-    
-    html += `
-      <div class="table-header">
-        <div class="header-rank">Rank</div>
-        <div class="header-user">User</div>
-        <div class="header-tickets">Tickets</div>
-        <div class="header-actions">Actions</div>
-      </div>
-    `;
-    
-    users.forEach((user, index) => {
-      const rank = index + 1;
-      const tickets = user.giveawayTickets || 0;
-      const rankClass = rank === 1 ? 'rank-first' : 
-                       rank === 2 ? 'rank-second' : 
-                       rank === 3 ? 'rank-third' : 'rank-other';
-      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
-      
-      html += `
-        <div class="user-row ${rankClass}">
-          <div class="cell-rank">
-            <span class="rank-number">${rank}</span>
-          </div>
-          <div class="cell-user">
-            <div class="user-info-small">
-              <img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'}" 
-                   alt="${user.firstName}" 
-                   class="user-avatar-tiny">
-              <div>
-                <div class="user-name-small">${user.firstName || 'User'}</div>
-                <div class="user-id-small">ID: ${user.id}</div>
-                <div class="user-date-small">${joinDate}</div>
-              </div>
-            </div>
-          </div>
-          <div class="cell-tickets">
-            <span class="ticket-count">${tickets}</span>
-            <i class="fas fa-ticket-alt"></i>
-          </div>
-          <div class="cell-actions">
-            <button class="btn-sm btn-success" onclick="admin.addUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-plus"></i>
-            </button>
-            <button class="btn-sm btn-danger" onclick="admin.removeUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-minus"></i>
-            </button>
-            <button class="btn-sm btn-warning" onclick="admin.resetUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-redo"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  async searchUserForTickets() {
-    const searchTerm = document.getElementById('searchUserTickets').value.trim();
-    
-    if (!searchTerm) {
-      this.showNotification("Info", "Please enter search term", "info");
-      return;
-    }
-    
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const results = [];
-      
-      usersSnap.forEach(child => {
-        const user = child.val();
-        const userId = child.key;
-        const username = user.username || '';
-        const firstName = user.firstName || '';
-        
-        const searchStr = `${userId} ${username} ${firstName}`.toLowerCase();
-        
-        if (searchStr.includes(searchTerm.toLowerCase())) {
-          results.push({
-            id: userId,
-            ...user
-          });
-        }
-      });
-      
-      if (results.length === 0) {
-        document.getElementById('userTicketsResult').innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-user-times"></i>
-            <p>No users found for "${searchTerm}"</p>
-          </div>
-        `;
+      if (snapshot.exists()) {
+        return snapshot.val();
       } else {
-        this.displayUserTicketsResult(results);
+        const defaultData = this.getDefaultAdminData();
+        await adminRef.set(defaultData);
+        return defaultData;
       }
-      
     } catch (error) {
-      console.error("Error searching users:", error);
-      this.showNotification("Error", "Search failed", "error");
+      console.error("Error getting admin data:", error);
+      return this.getDefaultAdminData();
     }
   }
 
-  displayUserTicketsResult(users) {
-    const container = document.getElementById('userTicketsResult');
-    
-    if (users.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <p>No users found</p>
-        </div>
-      `;
-      return;
-    }
-    
-    let html = '<div class="user-tickets-list">';
-    
-    users.forEach(user => {
-      const tickets = user.giveawayTickets || 0;
-      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
-      
-      html += `
-        <div class="user-tickets-card">
-          <div class="user-tickets-header">
-            <div class="user-tickets-avatar">
-              <img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'}" 
-                   alt="${user.firstName}">
-            </div>
-            <div class="user-tickets-info">
-              <h4>${user.firstName || 'Unknown User'}</h4>
-              <p class="user-tickets-username">${user.username || 'No username'}</p>
-              <div class="user-tickets-meta">
-                <span><i class="fas fa-id-card"></i> ID: ${user.id}</span>
-                <span><i class="fas fa-calendar"></i> Joined: ${joinDate}</span>
-              </div>
-            </div>
-            <div class="user-tickets-count">
-              <div class="tickets-display">
-                <i class="fas fa-ticket-alt"></i>
-                <span>${tickets}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="user-tickets-actions">
-            <div class="tickets-controls">
-              <button class="action-btn btn-sm btn-success" onclick="admin.addUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-plus"></i> Add Tickets
-              </button>
-              <button class="action-btn btn-sm btn-danger" onclick="admin.removeUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-minus"></i> Remove Tickets
-              </button>
-              <button class="action-btn btn-sm btn-warning" onclick="admin.resetUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-redo"></i> Reset to 0
-              </button>
-            </div>
-            
-            <div class="tickets-quick-add">
-              <h5>Quick Add:</h5>
-              <div class="quick-tickets-buttons">
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 1)">+1</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 5)">+5</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 10)">+10</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 50)">+50</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 100)">+100</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
+  getDefaultAdminData() {
+    return {
+      id: "admin_" + Date.now(),
+      firebaseUid: this.currentUser?.uid || "N/A",
+      username: "Administrator",
+      totalBalance: "0",
+      totalTasks: "0",
+      totalReferrals: "0",
+      lastActivity: Date.now(),
+      phone: this.detectPhoneType(),
+      loginTime: Date.now(),
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language
+    };
   }
 
-  async getUserGiveawayRank(userId) {
+  detectPhoneType() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) return "iPhone/iOS";
+    if (/android/.test(userAgent)) return "Android";
+    if (/windows phone/.test(userAgent)) return "Windows Phone";
+    if (/mac/.test(userAgent)) return "Mac";
+    if (/windows/.test(userAgent)) return "Windows PC";
+    if (/linux/.test(userAgent)) return "Linux";
+    return "Unknown Device";
+  }
+
+  async getAllAdmins() {
     try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const users = [];
+      if (!this.db) return [];
       
-      if (usersSnap.exists()) {
-        usersSnap.forEach(child => {
-          const user = child.val();
-          if (user.giveawayTickets && user.giveawayTickets > 0) {
-            users.push({
-              id: child.key,
-              tickets: user.giveawayTickets || 0
-            });
-          }
+      const adminsSnap = await this.db.ref('adminsack').once('value');
+      const admins = [];
+      
+      if (adminsSnap.exists()) {
+        adminsSnap.forEach(child => {
+          const admin = child.val();
+          admins.push(admin);
         });
       }
       
-      users.sort((a, b) => b.tickets - a.tickets);
-      const userIndex = users.findIndex(u => u.id === userId);
-      
-      return userIndex !== -1 ? userIndex + 1 : '-';
-      
+      return admins.filter(admin => admin.id !== this.adminData?.id).slice(0, 10);
     } catch (error) {
-      return '-';
+      console.error("Error getting all admins:", error);
+      return [];
     }
   }
 
-  showAddTicketsModal(userId, userName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-plus-circle"></i> Add Tickets</h3>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Add tickets to user: <strong>${userName}</strong></p>
-          <div class="form-group">
-            <label>Number of Tickets</label>
-            <input type="number" id="addTicketsAmount" placeholder="10" min="1" max="1000" value="10">
+  renderAdminCard(admin) {
+    return `
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-avatar">
+            <i class="fas fa-user-shield"></i>
           </div>
-          <div class="form-group">
-            <label>Reason (Optional)</label>
-            <input type="text" id="addTicketsReason" placeholder="Admin added tickets">
+          <div class="admin-card-info">
+            <h4>${admin.username || 'Admin'}</h4>
+            <p class="admin-card-id">ID: ${admin.id}</p>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-success" onclick="admin.addUserTicketsSubmit('${userId}')">
-            <i class="fas fa-check"></i> Add Tickets
-          </button>
+        <div class="admin-card-details">
+          <div class="admin-detail">
+            <span>Device:</span>
+            <span>${admin.platform || 'Unknown'}</span>
+          </div>
+          <div class="admin-detail">
+            <span>Language:</span>
+            <span>${admin.language || 'Unknown'}</span>
+          </div>
+          <div class="admin-detail">
+            <span>Last Login:</span>
+            <span>${admin.loginTime ? this.formatDateTime(admin.loginTime) : 'N/A'}</span>
+          </div>
         </div>
       </div>
     `;
+  }
+
+  formatDate(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  copyToClipboard(text) {
+    if (!text) return;
     
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  showRemoveTicketsModal(userId, userName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-minus-circle"></i> Remove Tickets</h3>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Remove tickets from user: <strong>${userName}</strong></p>
-          <div class="form-group">
-            <label>Number of Tickets</label>
-            <input type="number" id="removeTicketsAmount" placeholder="10" min="1" max="1000">
-          </div>
-          <div class="form-group">
-            <label>Reason (Optional)</label>
-            <input type="text" id="removeTicketsReason" placeholder="Admin removed tickets">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-danger" onclick="admin.removeUserTicketsSubmit('${userId}')">
-            <i class="fas fa-check"></i> Remove Tickets
-          </button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  async addUserTickets(userId, userName) {
-    this.showAddTicketsModal(userId, userName);
-  }
-
-  async removeUserTickets(userId, userName) {
-    this.showRemoveTicketsModal(userId, userName);
-  }
-
-  async addUserTicketsSubmit(userId) {
-    const amount = parseInt(document.getElementById('addTicketsAmount').value);
-    const reason = document.getElementById('addTicketsReason').value.trim() || 'Admin added tickets';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      const newTickets = currentTickets + amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Added ${amount} tickets to user`, "success");
-      
-      document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error adding tickets:", error);
-      this.showNotification("Error", "Failed to add tickets", "error");
-    }
-  }
-
-  async removeUserTicketsSubmit(userId) {
-    const amount = parseInt(document.getElementById('removeTicketsAmount').value);
-    const reason = document.getElementById('removeTicketsReason').value.trim() || 'Admin removed tickets';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      
-      if (currentTickets < amount) {
-        this.showNotification("Error", `User only has ${currentTickets} tickets`, "error");
-        return;
-      }
-
-      const newTickets = currentTickets - amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Removed ${amount} tickets from user`, "success");
-      
-      document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error removing tickets:", error);
-      this.showNotification("Error", "Failed to remove tickets", "error");
-    }
-  }
-
-  async resetUserTickets(userId, userName) {
-    if (!confirm(`Reset ${userName}'s tickets to 0?`)) return;
-
-    try {
-      await this.db.ref(`users/${userId}`).update({
-        giveawayTickets: 0
-      });
-
-      this.showNotification("Success", `Reset ${userName}'s tickets to 0`, "success");
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error resetting tickets:", error);
-      this.showNotification("Error", "Failed to reset tickets", "error");
-    }
-  }
-
-  async addSpecificTickets(userId, amount) {
-    if (!confirm(`Add ${amount} tickets to this user?`)) return;
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      const newTickets = currentTickets + amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Added ${amount} tickets`, "success");
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error adding tickets:", error);
-      this.showNotification("Error", "Failed to add tickets", "error");
-    }
-  }
-
-  async resetAllTickets() {
-    if (!confirm('Are you sure you want to reset ALL users tickets to 0?\n\n⚠️ This action cannot be undone!')) return;
-
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const updates = {};
-      
-      usersSnap.forEach(child => {
-        updates[`${child.key}/giveawayTickets`] = 0;
-      });
-
-      await this.db.ref('users').update(updates);
-
-      this.showNotification("Success", "Reset all users tickets to 0", "success");
-      await this.loadTopGiveawayUsers();
-      
-    } catch (error) {
-      console.error("Error resetting all tickets:", error);
-      this.showNotification("Error", "Failed to reset all tickets", "error");
-    }
-  }
-
-  async clearGiveawayHistory() {
-    if (!confirm('Are you sure you want to clear ALL giveaway history?\n\n⚠️ This will reset everything and cannot be undone!')) return;
-
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const updates = {};
-      
-      usersSnap.forEach(child => {
-        updates[`${child.key}/giveawayTickets`] = 0;
-      });
-
-      await this.db.ref('users').update(updates);
-
-      await this.db.ref('giveawayWinners').remove();
-
-      this.showNotification("Success", "Cleared all giveaway history", "success");
-      await this.loadTopGiveawayUsers();
-      
-    } catch (error) {
-      console.error("Error clearing giveaway history:", error);
-      this.showNotification("Error", "Failed to clear giveaway history", "error");
-    }
+    navigator.clipboard.writeText(text).then(() => {
+      this.showNotification("Copied", "Text copied to clipboard", "success");
+    }).catch(err => {
+      this.showNotification("Error", "Failed to copy text", "error");
+    });
   }
 
   async sendTelegramMessage(chatId, message, inlineButtons = []) {
