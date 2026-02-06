@@ -21,6 +21,7 @@ class AdminPanel {
     this.db = null;
     this.auth = null;
     this.currentUser = null;
+    this.currentUserData = null;
     this.botToken = BOT_TOKEN;
     
     this.elements = {
@@ -143,6 +144,7 @@ class AdminPanel {
           this.elements.loginContainer.style.display = 'none';
           this.elements.appContainer.style.display = 'flex';
           this.showPage('dashboard');
+          this.loadCurrentUserData();
         }, 1000);
       } else {
         this.showLoginMessage("Invalid password!", "error");
@@ -164,7 +166,27 @@ class AdminPanel {
       this.elements.appContainer.style.display = 'none';
       this.elements.loginContainer.style.display = 'flex';
       this.elements.loginPassword.value = '';
+      this.currentUserData = null;
       this.elements.loginPassword.focus();
+    }
+  }
+
+  async loadCurrentUserData() {
+    try {
+      if (!this.currentUser || !this.db) return;
+      
+      const userId = this.currentUser.uid;
+      
+      // Search for user by firebaseUid
+      const usersSnap = await this.db.ref('users').orderByChild('firebaseUid').equalTo(userId).once('value');
+      
+      if (usersSnap.exists()) {
+        usersSnap.forEach(child => {
+          this.currentUserData = child.val();
+        });
+      }
+    } catch (error) {
+      console.error("Error loading current user data:", error);
     }
   }
 
@@ -190,6 +212,9 @@ class AdminPanel {
       case 'broadcast':
         await this.renderBroadcast();
         break;
+      case 'myDetails':
+        await this.renderMyDetails();
+        break;
       default:
         await this.renderDashboard();
     }
@@ -202,9 +227,144 @@ class AdminPanel {
       'tasks': 'Tasks Management',
       'promoCodes': 'Promo Codes',
       'withdrawals': 'Withdrawals',
-      'broadcast': 'Broadcast'
+      'broadcast': 'Broadcast',
+      'myDetails': 'My Details'
     };
     return titles[pageName] || 'Dashboard';
+  }
+
+  async renderMyDetails() {
+    if (!this.currentUserData) {
+      await this.loadCurrentUserData();
+    }
+
+    this.elements.contentArea.innerHTML = `
+      <div class="my-details-page">
+        <div class="page-header">
+          <h2><i class="fas fa-user-circle"></i> My Details</h2>
+          <p>Your account information</p>
+        </div>
+        
+        <div class="user-profile-card">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <img src="${this.currentUserData?.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'}" 
+                   alt="${this.currentUserData?.firstName || 'Admin'}"
+                   onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
+            </div>
+            <div class="profile-info">
+              <h3>${this.currentUserData?.firstName || 'Administrator'}</h3>
+              <p class="profile-username">${this.currentUserData?.username || 'Admin User'}</p>
+              <p class="profile-id">
+                <i class="fas fa-id-card"></i> 
+                Firebase UID: ${this.currentUser?.uid || 'N/A'}
+              </p>
+            </div>
+          </div>
+          
+          <div class="profile-stats">
+            <div class="stat-row">
+              <div class="stat-item">
+                <i class="fas fa-coins"></i>
+                <div>
+                  <div class="stat-label">Balance</div>
+                  <div class="stat-value">${this.safeNumber(this.currentUserData?.balance || 0).toFixed(5)} TON</div>
+                </div>
+              </div>
+              <div class="stat-item">
+                <i class="fas fa-users"></i>
+                <div>
+                  <div class="stat-label">Referrals</div>
+                  <div class="stat-value">${this.currentUserData?.referrals || 0}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-row">
+              <div class="stat-item">
+                <i class="fas fa-tasks"></i>
+                <div>
+                  <div class="stat-label">Total Tasks</div>
+                  <div class="stat-value">${this.currentUserData?.totalTasksCompleted || 0}</div>
+                </div>
+              </div>
+              <div class="stat-item">
+                <i class="fas fa-wallet"></i>
+                <div>
+                  <div class="stat-label">Withdrawals</div>
+                  <div class="stat-value">${this.currentUserData?.totalWithdrawals || 0}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-row">
+              <div class="stat-item">
+                <i class="fas fa-ad"></i>
+                <div>
+                  <div class="stat-label">Total Ads</div>
+                  <div class="stat-value">${this.currentUserData?.totalWatchAds || 0}</div>
+                </div>
+              </div>
+              <div class="stat-item">
+                <i class="fas fa-gift"></i>
+                <div>
+                  <div class="stat-label">Promo Codes</div>
+                  <div class="stat-value">${this.currentUserData?.totalPromoCodes || 0}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="profile-details">
+            <h4><i class="fas fa-info-circle"></i> Account Details</h4>
+            <div class="detail-item">
+              <span>Telegram ID:</span>
+              <span>${this.currentUserData?.telegramId || 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+              <span>User ID:</span>
+              <span>${this.currentUserData?.id || 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+              <span>Referral Code:</span>
+              <span>${this.currentUserData?.referralCode || 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+              <span>Joined Date:</span>
+              <span>${this.currentUserData?.createdAt ? this.formatDateTime(this.currentUserData.createdAt) : 'N/A'}</span>
+            </div>
+            <div class="detail-item">
+              <span>Last Active:</span>
+              <span>${this.currentUserData?.lastActive ? this.formatDateTime(this.currentUserData.lastActive) : 'Now'}</span>
+            </div>
+            <div class="detail-item">
+              <span>Account Status:</span>
+              <span class="status-badge ${this.currentUserData?.status || 'free'}">
+                ${(this.currentUserData?.status || 'free').toUpperCase()}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span>Total Earned:</span>
+              <span>${this.safeNumber(this.currentUserData?.totalEarned || 0).toFixed(5)} TON</span>
+            </div>
+          </div>
+          
+          <div class="profile-actions">
+            <button class="action-btn btn-primary" onclick="admin.copyToClipboard('${this.currentUser?.uid}')">
+              <i class="fas fa-copy"></i> Copy Firebase UID
+            </button>
+            ${this.currentUserData?.referralCode ? `
+              <button class="action-btn btn-secondary" onclick="admin.copyToClipboard('${this.currentUserData.referralCode}')">
+                <i class="fas fa-copy"></i> Copy Referral Code
+              </button>
+            ` : ''}
+            <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${this.currentUserData?.id}', '${this.currentUserData?.firstName || 'Me'}')">
+              <i class="fas fa-plus"></i> Add Balance to Myself
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   async renderDashboard() {
@@ -689,7 +849,7 @@ class AdminPanel {
       const userData = userSnap.val();
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
-      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
+      const totalReferrals = this.safeNumber(userData.referrals || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -1713,7 +1873,7 @@ class AdminPanel {
       const userData = userSnap.val();
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
-      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
+      const totalReferrals = this.safeNumber(userData.referrals || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -2443,6 +2603,14 @@ class AdminPanel {
   safeNumber(value) {
     const num = Number(value);
     return isNaN(num) ? 0 : num;
+  }
+
+  copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showNotification("Copied", "Text copied to clipboard", "success");
+    }).catch(err => {
+      this.showNotification("Error", "Failed to copy text", "error");
+    });
   }
 }
 
