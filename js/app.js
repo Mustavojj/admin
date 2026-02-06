@@ -202,8 +202,8 @@ class AdminPanel {
       case 'broadcast':
         await this.renderBroadcast();
         break;
-      case 'more':
-        await this.renderMore();
+      case 'myUid':
+        await this.renderMyUid();
         break;
       default:
         await this.renderDashboard();
@@ -218,7 +218,7 @@ class AdminPanel {
       'promoCodes': 'Promo Codes',
       'withdrawals': 'Withdrawals',
       'broadcast': 'Broadcast',
-      'more': 'More'
+      'myUid': 'My UID'
     };
     return titles[pageName] || 'Dashboard';
   }
@@ -301,8 +301,8 @@ class AdminPanel {
                     <span class="stat-value" id="totalTasks">0</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Partner Tasks</span>
-                    <span class="stat-value" id="partnerTasks">0</span>
+                    <span class="stat-label">Main Tasks</span>
+                    <span class="stat-value" id="mainTasks">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Social Tasks</span>
@@ -410,7 +410,7 @@ class AdminPanel {
       });
       
       let totalTasks = 0;
-      let partnerTasks = 0;
+      let mainTasks = 0;
       let socialTasks = 0;
       let completedTasks = 0;
       
@@ -420,8 +420,8 @@ class AdminPanel {
           if (task.status !== 'deleted') {
             totalTasks++;
             
-            if (task.category === 'partner') {
-              partnerTasks++;
+            if (task.category === 'main') {
+              mainTasks++;
             } else if (task.category === 'social') {
               socialTasks++;
             }
@@ -481,7 +481,7 @@ class AdminPanel {
       updateElement('pendingWithdrawals', pendingWithdrawals);
       updateElement('confirmedWithdrawals', confirmedWithdrawals);
       updateElement('totalTasks', totalTasks);
-      updateElement('partnerTasks', partnerTasks);
+      updateElement('mainTasks', mainTasks);
       updateElement('socialTasks', socialTasks);
       updateElement('completedTasks', completedTasks);
       updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
@@ -918,7 +918,7 @@ class AdminPanel {
       <div class="tasks-page">
         <div class="page-header">
           <h2><i class="fas fa-tasks"></i> Tasks Management</h2>
-          <p>Create and manage Partner & Social tasks</p>
+          <p>Create and manage Main & Social tasks</p>
         </div>
         
         <div class="tasks-management">
@@ -945,8 +945,8 @@ class AdminPanel {
               <div class="form-group">
                 <label>Task Type *</label>
                 <div class="type-selector">
-                  <button class="type-btn active" data-type="partner" data-reward="0.001">
-                    <i class="fas fa-handshake"></i> Partner (0.001 TON)
+                  <button class="type-btn active" data-type="main" data-reward="0.001">
+                    <i class="fas fa-star"></i> Main (0.001 TON)
                   </button>
                   <button class="type-btn" data-type="social" data-reward="0.0005">
                     <i class="fas fa-users"></i> Social (0.0005 TON)
@@ -957,7 +957,7 @@ class AdminPanel {
               <div class="form-group">
                 <label>Reward per User (TON) *</label>
                 <input type="number" id="taskReward" value="0.001" step="0.0001" min="0.0001">
-                <small>Default: 0.001 for Partner, 0.0005 for Social</small>
+                <small>Default: 0.001 for Main, 0.0005 for Social</small>
               </div>
               
               <div class="form-group">
@@ -1061,8 +1061,8 @@ class AdminPanel {
       const progress = task.maxCompletions > 0 ? 
         (task.currentCompletions || 0) / task.maxCompletions * 100 : 0;
       
-      const typeClass = task.category === 'partner' ? 'type-partner' : 'type-social';
-      const typeText = task.category === 'partner' ? 'Partner' : 'Social';
+      const typeClass = task.category === 'main' ? 'type-main' : 'type-social';
+      const typeText = task.category === 'main' ? 'Main' : 'Social';
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || 'https://cdn-icons-png.flaticon.com/512/15208/15208522.png';
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
@@ -1136,7 +1136,7 @@ class AdminPanel {
     const reward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const typeBtn = document.querySelector('.type-btn.active');
-    const type = typeBtn ? typeBtn.dataset.type : 'partner';
+    const type = typeBtn ? typeBtn.dataset.type : 'main';
     
     if (!name || !link) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1182,7 +1182,7 @@ class AdminPanel {
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
-      document.getElementById('taskReward').value = type === 'partner' ? '0.001' : '0.0005';
+      document.getElementById('taskReward').value = type === 'main' ? '0.001' : '0.0005';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -2379,212 +2379,74 @@ class AdminPanel {
     }
   }
 
-  async renderMore() {
-    try {
-      const adminData = await this.getCurrentAdminData();
-      const allAdmins = await this.getAllAdmins();
-      
-      this.elements.contentArea.innerHTML = `
-        <div class="more-page">
-          <div class="page-header">
-            <h2><i class="fas fa-ellipsis-h"></i> More</h2>
-            <p>Admin details and system information</p>
-          </div>
-          
-          <div class="more-content">
-            <div class="my-details-section">
-              <h3><i class="fas fa-user-cog"></i> My Details</h3>
-              <div class="admin-details-card">
-                <div class="admin-avatar">
-                  <img src="https://cdn-icons-png.flaticon.com/512/9195/9195920.png" alt="Admin">
+  async renderMyUid() {
+    this.elements.contentArea.innerHTML = `
+      <div class="uid-page">
+        <div class="page-header">
+          <h2><i class="fas fa-id-card"></i> My UID</h2>
+          <p>Your Firebase Authentication UID</p>
+        </div>
+        
+        <div class="uid-content">
+          <div class="card uid-card">
+            <div class="uid-info">
+              <h3><i class="fas fa-key"></i> Your Firebase UID</h3>
+              <div class="uid-display">
+                <div class="uid-value" id="uidValue">
+                  ${this.currentUser ? this.currentUser.uid : 'Not available'}
                 </div>
-                <div class="admin-info">
-                  <div class="admin-info-row">
-                    <span class="admin-label">Username:</span>
-                    <span class="admin-value">Administrator</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">Firebase UID:</span>
-                    <span class="admin-value">
-                      ${adminData.firebaseUid || 'N/A'}
-                      <button class="copy-small-btn" onclick="admin.copyToClipboard('${adminData.firebaseUid || ''}')">
-                        <i class="fas fa-copy"></i>
-                      </button>
-                    </span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">User ID:</span>
-                    <span class="admin-value">${adminData.id || 'N/A'}</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">Total Balance:</span>
-                    <span class="admin-value">${adminData.totalBalance || '0'} TON</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">Total Tasks:</span>
-                    <span class="admin-value">${adminData.totalTasks || '0'}</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">Total Referrals:</span>
-                    <span class="admin-value">${adminData.totalReferrals || '0'}</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">Last Activity:</span>
-                    <span class="admin-value">${adminData.lastActivity ? this.formatDate(adminData.lastActivity) : 'N/A'}</span>
-                  </div>
-                  <div class="admin-info-row">
-                    <span class="admin-label">PHONE:</span>
-                    <span class="admin-value">${adminData.phone || 'Unknown'}</span>
-                  </div>
-                </div>
+                <button class="action-btn btn-primary" onclick="admin.copyUid()">
+                  <i class="fas fa-copy"></i> Copy
+                </button>
+              </div>
+              <p class="uid-description">
+                This is your unique Firebase Authentication ID. You can use this ID for reference in admin activities.
+              </p>
+            </div>
+            
+            <div class="uid-details">
+              <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-info-circle"></i> Status:</span>
+                <span class="detail-value success">Authenticated</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-clock"></i> Login Time:</span>
+                <span class="detail-value">${this.formatDateTime(Date.now())}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-user-shield"></i> Role:</span>
+                <span class="detail-value">Administrator</span>
               </div>
             </div>
             
-            <div class="more-admins-section">
-              <h3><i class="fas fa-users-cog"></i> More Admins</h3>
-              <div class="admins-list">
-                ${allAdmins.length > 0 ? allAdmins.map(admin => this.renderAdminCard(admin)).join('') : '<p class="no-admins">No other admins found</p>'}
-              </div>
+            <div class="uid-actions">
+              <button class="action-btn btn-secondary" onclick="admin.refreshUidInfo()">
+                <i class="fas fa-sync-alt"></i> Refresh Info
+              </button>
             </div>
-          </div>
-        </div>
-      `;
-    } catch (error) {
-      console.error("Error rendering more page:", error);
-      this.elements.contentArea.innerHTML = `
-        <div class="more-page">
-          <div class="page-header">
-            <h2><i class="fas fa-ellipsis-h"></i> More</h2>
-            <p>Admin details and system information</p>
-          </div>
-          <div class="error-message">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>Failed to load admin data</p>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  async getCurrentAdminData() {
-    try {
-      if (!this.db) {
-        return this.getDefaultAdminData();
-      }
-      
-      const adminId = "admin_" + Date.now();
-      const adminRef = this.db.ref(`adminsack/${adminId}`);
-      const snapshot = await adminRef.once('value');
-      
-      if (snapshot.exists()) {
-        return snapshot.val();
-      } else {
-        const defaultData = this.getDefaultAdminData();
-        await adminRef.set(defaultData);
-        return defaultData;
-      }
-    } catch (error) {
-      console.error("Error getting admin data:", error);
-      return this.getDefaultAdminData();
-    }
-  }
-
-  getDefaultAdminData() {
-    return {
-      id: "admin_" + Date.now(),
-      firebaseUid: this.currentUser?.uid || "N/A",
-      username: "Administrator",
-      totalBalance: "0",
-      totalTasks: "0",
-      totalReferrals: "0",
-      lastActivity: Date.now(),
-      phone: this.detectPhoneType(),
-      loginTime: Date.now(),
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      language: navigator.language
-    };
-  }
-
-  detectPhoneType() {
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) return "iPhone/iOS";
-    if (/android/.test(userAgent)) return "Android";
-    if (/windows phone/.test(userAgent)) return "Windows Phone";
-    if (/mac/.test(userAgent)) return "Mac";
-    if (/windows/.test(userAgent)) return "Windows PC";
-    if (/linux/.test(userAgent)) return "Linux";
-    return "Unknown Device";
-  }
-
-  async getAllAdmins() {
-    try {
-      if (!this.db) return [];
-      
-      const adminsSnap = await this.db.ref('adminsack').once('value');
-      const admins = [];
-      
-      if (adminsSnap.exists()) {
-        adminsSnap.forEach(child => {
-          const admin = child.val();
-          admins.push(admin);
-        });
-      }
-      
-      return admins.filter(admin => admin.id !== this.adminData?.id).slice(0, 10);
-    } catch (error) {
-      console.error("Error getting all admins:", error);
-      return [];
-    }
-  }
-
-  renderAdminCard(admin) {
-    return `
-      <div class="admin-card">
-        <div class="admin-card-header">
-          <div class="admin-card-avatar">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div class="admin-card-info">
-            <h4>${admin.username || 'Admin'}</h4>
-            <p class="admin-card-id">ID: ${admin.id}</p>
-          </div>
-        </div>
-        <div class="admin-card-details">
-          <div class="admin-detail">
-            <span>Device:</span>
-            <span>${admin.platform || 'Unknown'}</span>
-          </div>
-          <div class="admin-detail">
-            <span>Language:</span>
-            <span>${admin.language || 'Unknown'}</span>
-          </div>
-          <div class="admin-detail">
-            <span>Last Login:</span>
-            <span>${admin.loginTime ? this.formatDateTime(admin.loginTime) : 'N/A'}</span>
           </div>
         </div>
       </div>
     `;
   }
 
-  formatDate(timestamp) {
-    if (!timestamp) return 'N/A';
-    const date = new Date(timestamp);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+  copyUid() {
+    const uid = this.currentUser ? this.currentUser.uid : '';
+    if (!uid) {
+      this.showNotification("Error", "No UID available", "error");
+      return;
+    }
+    
+    navigator.clipboard.writeText(uid).then(() => {
+      this.showNotification("Copied", "UID copied to clipboard", "success");
+    }).catch(err => {
+      this.showNotification("Error", "Failed to copy UID", "error");
+    });
   }
 
-  copyToClipboard(text) {
-    if (!text) return;
-    
-    navigator.clipboard.writeText(text).then(() => {
-      this.showNotification("Copied", "Text copied to clipboard", "success");
-    }).catch(err => {
-      this.showNotification("Error", "Failed to copy text", "error");
-    });
+  refreshUidInfo() {
+    this.showNotification("Refreshed", "UID information updated", "success");
+    this.renderMyUid();
   }
 
   async sendTelegramMessage(chatId, message, inlineButtons = []) {
