@@ -1,12 +1,15 @@
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDde7CL3tUGhmi6nP8k57V1DbYm6-lMN_k",
-  authDomain: "ninja-dbdb.firebaseapp.com",
-  databaseURL: "https://ninja-dbdb-default-rtdb.firebaseio.com",
-  projectId: "ninja-dbdb",
-  storageBucket: "ninja-dbdb.firebasestorage.app",
-  messagingSenderId: "964108797706",
-  appId: "1:964108797706:web:95e6bccba0934f7bdbdcf3",
-  measurementId: "G-2EV8GCX8JK"
+const FIREBASE_SERVICE_ACCOUNT = {
+  "type": "service_account",
+  "project_id": "ninja-dbdb",
+  "private_key_id": "0b07df050335678d9f6bfb098a33ec70e5d21c60",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDXItgXCRcN1Z1A\nr7HidYVWFqraYchSCeUm/kNQ+vBfliBco4Ye1RduIjs+K9CfLN9/X1PZ5SyEq0jv\noN06p96LoP/hekKVAF3LOGYdd9CpSTwEyQtzWTV9/ItwIkWCCHeSMRvaWxuImY2H\nGkGna0YwdUx7kg0sSunAAMoUwEPik1SRPDifwBeVWSzM/RwS8XkXlm/rMmySKYQh\nJMLBgkm4sQGmclK3wwQbpADXHmpXJ9TkW2ksODkgAtAkO/DZ4wBryR0vqXFVOcAl\n+9Ax7xznrZl74B60SWh9r6UAWvC/XQNoPV5jh/dAMlXNGvBCitFCPO2V13WprMdt\nayBY2rpfAgMBAAECggEAGzpjPAMgAlW7WdECxAUYs40Z4ZrHli5/bKB4l5qy6n4f\nKWpe0q8okH1Pny4/cK3muYGwpJ6/NClTiVSEO2S8o1JkoD5vh9kshchlECy2YX6N\n1JM3Wkl7ni7k3PPRdUQqEfwaKNgoE3FPur4lehF3KDHoVKlm9miizfSrntW4ocfF\nX/wQlYaGVkf5xxpeXFQJaSejJzbZAefm/ecBbo0KjijzPYxkxb+8sN1F8UZzJa0W\nEpNUC8LaX8vtTmM89/b4TWk7h1QPW8H+vAHMorUwyawyYfHP035FdEhIwI0j7e7T\nzatzXDTv1pz1ab6Dj7aHhBYAhZg7fDIYAUH3x5AM9QKBgQDsI4KJ03obnWkH6QKK\nFsFepr8RSHIZGwoB9DvA66/C43vkJah4OebGHywKvLqEe3Hhgoyl9Z1w9n7wCl+I\nEadjS5YBF+MVaiiJ8UMRczp6dlc+onxW7FZrNFgwsE2sGGu16Z4Kbk08+09QzVEW\nQon0a5eLu21lX5taTsmvUS9W8wKBgQDpOxxKZSdq+etL8j+w36xC1es4ldG96CYx\nlKDObgc1PPTAdtC56RS5i+DjjWxLlN797rgyhVtWTQe1AWJ0kN10lv5Rq6vrHde+\nWKF0NWXW3oDObgoU7mMWo7QbQp0r3b+yfx+wj1qrl4AF41GgpeTE/hrYvNbDeLNs\nnW98vekB5QKBgFinuFHAmP6XKaCzpaVsh6relauKdHPih+5V4L08f19/AruUO9zv\neCn3+BQL6UbmBcpxthZ00Whg0yWR723pmtuXvDiq3DHlClVHxDNf/JuPpI+6d043\nKvbSzy1wc6jh/kZs8E3gPZVgkNW4T/I4hwzB/EKU2qyNqYjNPcFZjJlrAoGAM+31\nXpsnK6p5uW82vysOL9NxjCfPi3klB+UP6OaWtEPeOvw5fStoceezKvdSJYIAJIoC\neT04GP8NuD+WrF2U8WCtP4H5xV/fqYIScM1y32SrSUs283IgnenVMDykwh+djyC+\n7ZD9nzccSjNS+XH2feYWFCv3pY46ZPSo3h1qxAECgYEArdCnSEd8YDAz9XgVfHze\nu78l+j0bT6CeTsqzs3exqgtC5cvOTpSi1X4P5SeQYWLYB3uMNH3ZQAvm3kHwSgyd\nAz2US2/pyw7BSIASY8v3AyZ/U5nsaVQ3xu8NNCfM3p5BRHGCDsdp8f/X9beX5itk\nmHE66rEcO6YXighMijFu7L4=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@ninja-dbdb.iam.gserviceaccount.com",
+  "client_id": "105846623204659635117",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40ninja-dbdb.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
 };
 
 const BOT_TOKEN = "8591215569:AAHrJNyxOovCnQzxYJSDWzfDUwOuyRxODGs";
@@ -41,7 +44,16 @@ class AdminPanel {
   async initializeFirebase() {
     try {
       if (!firebase.apps.length) {
-        firebase.initializeApp(FIREBASE_CONFIG);
+        firebase.initializeApp({
+          apiKey: "AIzaSyDde7CL3tUGhmi6nP8k57V1DbYm6-lMN_k",
+          authDomain: "ninja-dbdb.firebaseapp.com",
+          databaseURL: "https://ninja-dbdb-default-rtdb.firebaseio.com",
+          projectId: "ninja-dbdb",
+          storageBucket: "ninja-dbdb.firebasestorage.app",
+          messagingSenderId: "964108797706",
+          appId: "1:964108797706:web:95e6bccba0934f7bdbdcf3",
+          measurementId: "G-2EV8GCX8JK"
+        });
       }
       
       this.db = firebase.database();
@@ -178,9 +190,6 @@ class AdminPanel {
       case 'broadcast':
         await this.renderBroadcast();
         break;
-      case 'giveaway':
-        await this.renderGiveaway();
-        break;
       default:
         await this.renderDashboard();
     }
@@ -193,8 +202,7 @@ class AdminPanel {
       'tasks': 'Tasks Management',
       'promoCodes': 'Promo Codes',
       'withdrawals': 'Withdrawals',
-      'broadcast': 'Broadcast',
-      'giveaway': 'Giveaway Management'
+      'broadcast': 'Broadcast'
     };
     return titles[pageName] || 'Dashboard';
   }
@@ -277,8 +285,8 @@ class AdminPanel {
                     <span class="stat-value" id="totalTasks">0</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Partner Tasks</span>
-                    <span class="stat-value" id="partnerTasks">0</span>
+                    <span class="stat-label">Main Tasks</span>
+                    <span class="stat-value" id="mainTasks">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Social Tasks</span>
@@ -386,7 +394,7 @@ class AdminPanel {
       });
       
       let totalTasks = 0;
-      let partnerTasks = 0;
+      let mainTasks = 0;
       let socialTasks = 0;
       let completedTasks = 0;
       
@@ -396,8 +404,8 @@ class AdminPanel {
           if (task.status !== 'deleted') {
             totalTasks++;
             
-            if (task.category === 'partner') {
-              partnerTasks++;
+            if (task.category === 'main') {
+              mainTasks++;
             } else if (task.category === 'social') {
               socialTasks++;
             }
@@ -457,7 +465,7 @@ class AdminPanel {
       updateElement('pendingWithdrawals', pendingWithdrawals);
       updateElement('confirmedWithdrawals', confirmedWithdrawals);
       updateElement('totalTasks', totalTasks);
-      updateElement('partnerTasks', partnerTasks);
+      updateElement('mainTasks', mainTasks);
       updateElement('socialTasks', socialTasks);
       updateElement('completedTasks', completedTasks);
       updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
@@ -682,7 +690,6 @@ class AdminPanel {
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
       const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -697,7 +704,6 @@ class AdminPanel {
         `📊 *Statistics:*\n` +
         `📱 Total Ads: ${totalAds}\n` +
         `👥 Total Referrals: ${totalReferrals}\n` +
-        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
         `✅ Total Tasks: ${totalTasks}\n` +
         `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
         `💰 Total Withdrawals: ${totalWithdrawals}\n` +
@@ -896,7 +902,7 @@ class AdminPanel {
       <div class="tasks-page">
         <div class="page-header">
           <h2><i class="fas fa-tasks"></i> Tasks Management</h2>
-          <p>Create and manage Partner & Social tasks</p>
+          <p>Create and manage Main & Social tasks</p>
         </div>
         
         <div class="tasks-management">
@@ -923,8 +929,8 @@ class AdminPanel {
               <div class="form-group">
                 <label>Task Type *</label>
                 <div class="type-selector">
-                  <button class="type-btn active" data-type="partner" data-reward="0.001">
-                    <i class="fas fa-handshake"></i> Partner (0.001 TON)
+                  <button class="type-btn active" data-type="main" data-reward="0.001">
+                    <i class="fas fa-star"></i> Main (0.001 TON)
                   </button>
                   <button class="type-btn" data-type="social" data-reward="0.0005">
                     <i class="fas fa-users"></i> Social (0.0005 TON)
@@ -935,7 +941,7 @@ class AdminPanel {
               <div class="form-group">
                 <label>Reward per User (TON) *</label>
                 <input type="number" id="taskReward" value="0.001" step="0.0001" min="0.0001">
-                <small>Default: 0.001 for Partner, 0.0005 for Social</small>
+                <small>Default: 0.001 for Main, 0.0005 for Social</small>
               </div>
               
               <div class="form-group">
@@ -1039,8 +1045,8 @@ class AdminPanel {
       const progress = task.maxCompletions > 0 ? 
         (task.currentCompletions || 0) / task.maxCompletions * 100 : 0;
       
-      const typeClass = task.category === 'partner' ? 'type-partner' : 'type-social';
-      const typeText = task.category === 'partner' ? 'Partner' : 'Social';
+      const typeClass = task.category === 'main' ? 'type-main' : 'type-social';
+      const typeText = task.category === 'main' ? 'Main' : 'Social';
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || 'https://cdn-icons-png.flaticon.com/512/15208/15208522.png';
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
@@ -1114,7 +1120,7 @@ class AdminPanel {
     const reward = parseFloat(document.getElementById('taskReward').value) || 0.001;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const typeBtn = document.querySelector('.type-btn.active');
-    const type = typeBtn ? typeBtn.dataset.type : 'partner';
+    const type = typeBtn ? typeBtn.dataset.type : 'main';
     
     if (!name || !link) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1160,7 +1166,7 @@ class AdminPanel {
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
-      document.getElementById('taskReward').value = type === 'partner' ? '0.001' : '0.0005';
+      document.getElementById('taskReward').value = type === 'main' ? '0.001' : '0.0005';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -1708,7 +1714,6 @@ class AdminPanel {
       
       const totalAds = this.safeNumber(userData.totalAds || 0);
       const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const giveawayTickets = this.safeNumber(userData.giveawayTickets || 0);
       const totalTasks = this.safeNumber(userData.totalTasks || 0);
       const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
@@ -1723,7 +1728,6 @@ class AdminPanel {
         `📊 *Statistics:*\n` +
         `📱 Total Ads: ${totalAds}\n` +
         `👥 Total Referrals: ${totalReferrals}\n` +
-        `🎫 Giveaway Tickets: ${giveawayTickets}\n` +
         `✅ Total Tasks: ${totalTasks}\n` +
         `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
         `💰 Total Withdrawals: ${totalWithdrawals}\n` +
@@ -2356,596 +2360,6 @@ class AdminPanel {
       
     } catch (error) {
       console.error("Error sending report:", error);
-    }
-  }
-
-  async renderGiveaway() {
-    this.elements.contentArea.innerHTML = `
-      <div class="giveaway-page">
-        <div class="page-header">
-          <h2><i class="fas fa-gift"></i> Giveaway Management</h2>
-          <p>Manage daily giveaway and user tickets</p>
-        </div>
-        
-        <div class="giveaway-controls">
-          <div class="card">
-            <h3><i class="fas fa-cogs"></i> Giveaway Controls</h3>
-            
-            <div class="form-group">
-              <label>Total Daily Reward (TON)</label>
-              <input type="number" id="totalDailyReward" value="2.00" step="0.01" min="0.01">
-            </div>
-            
-            <div class="form-group">
-              <label>Tickets per Task</label>
-              <input type="number" id="ticketsPerTask" value="1" min="0" max="10">
-            </div>
-            
-            <div class="form-group">
-              <label>Tickets per Ad</label>
-              <input type="number" id="ticketsPerAd" value="1" min="0" max="10">
-            </div>
-            
-            <div class="danger-zone">
-              <h4><i class="fas fa-exclamation-triangle"></i> Dangerous Actions</h4>
-              <div class="danger-actions">
-                <button class="action-btn btn-warning" onclick="admin.resetAllTickets()">
-                  <i class="fas fa-redo"></i> Reset All Tickets to 0
-                </button>
-                <button class="action-btn btn-danger" onclick="admin.clearGiveawayHistory()">
-                  <i class="fas fa-trash"></i> Clear Giveaway History
-                </button>
-              </div>
-              <p class="warning-text">
-                <i class="fas fa-info-circle"></i> These actions cannot be undone!
-              </p>
-            </div>
-          </div>
-          
-          <div class="card">
-            <h3><i class="fas fa-user-edit"></i> Manage User Tickets</h3>
-            
-            <div class="search-user-tickets">
-              <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchUserTickets" placeholder="Search by User ID or Username">
-                <button class="search-btn" onclick="admin.searchUserForTickets()">
-                  <i class="fas fa-search"></i> Search
-                </button>
-              </div>
-            </div>
-            
-            <div id="userTicketsResult" class="user-tickets-result">
-              <div class="empty-state">
-                <i class="fas fa-user-search"></i>
-                <p>Search for a user to manage their tickets</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="giveaway-stats">
-          <div class="card">
-            <div class="section-header">
-              <h3><i class="fas fa-trophy"></i> Top 50 Users in Giveaway</h3>
-              <button class="action-btn btn-sm btn-secondary" onclick="admin.loadTopGiveawayUsers()">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-            </div>
-            
-            <div id="topGiveawayUsers" class="top-users-list">
-              <div class="loading">
-                <div class="spinner"></div>
-                <p>Loading top users...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    await this.loadTopGiveawayUsers();
-  }
-
-  async loadTopGiveawayUsers() {
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const users = [];
-      
-      if (usersSnap.exists()) {
-        usersSnap.forEach(child => {
-          const user = child.val();
-          if (user.giveawayTickets && user.giveawayTickets > 0) {
-            users.push({
-              id: child.key,
-              ...user
-            });
-          }
-        });
-      }
-      
-      users.sort((a, b) => (b.giveawayTickets || 0) - (a.giveawayTickets || 0));
-      const topUsers = users.slice(0, 50);
-      
-      this.displayTopGiveawayUsers(topUsers);
-      
-    } catch (error) {
-      console.error("Error loading top users:", error);
-      document.getElementById('topGiveawayUsers').innerHTML = `
-        <div class="error-message">
-          <i class="fas fa-exclamation-triangle"></i>
-          <p>Failed to load top users</p>
-          <p class="error-detail">${error.message}</p>
-        </div>
-      `;
-    }
-  }
-
-  displayTopGiveawayUsers(users) {
-    const container = document.getElementById('topGiveawayUsers');
-    
-    if (users.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <p>No users with tickets yet</p>
-        </div>
-      `;
-      return;
-    }
-    
-    let html = '<div class="top-users-table">';
-    
-    html += `
-      <div class="table-header">
-        <div class="header-rank">Rank</div>
-        <div class="header-user">User</div>
-        <div class="header-tickets">Tickets</div>
-        <div class="header-actions">Actions</div>
-      </div>
-    `;
-    
-    users.forEach((user, index) => {
-      const rank = index + 1;
-      const tickets = user.giveawayTickets || 0;
-      const rankClass = rank === 1 ? 'rank-first' : 
-                       rank === 2 ? 'rank-second' : 
-                       rank === 3 ? 'rank-third' : 'rank-other';
-      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
-      
-      html += `
-        <div class="user-row ${rankClass}">
-          <div class="cell-rank">
-            <span class="rank-number">${rank}</span>
-          </div>
-          <div class="cell-user">
-            <div class="user-info-small">
-              <img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'}" 
-                   alt="${user.firstName}" 
-                   class="user-avatar-tiny">
-              <div>
-                <div class="user-name-small">${user.firstName || 'User'}</div>
-                <div class="user-id-small">ID: ${user.id}</div>
-                <div class="user-date-small">${joinDate}</div>
-              </div>
-            </div>
-          </div>
-          <div class="cell-tickets">
-            <span class="ticket-count">${tickets}</span>
-            <i class="fas fa-ticket-alt"></i>
-          </div>
-          <div class="cell-actions">
-            <button class="btn-sm btn-success" onclick="admin.addUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-plus"></i>
-            </button>
-            <button class="btn-sm btn-danger" onclick="admin.removeUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-minus"></i>
-            </button>
-            <button class="btn-sm btn-warning" onclick="admin.resetUserTickets('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-redo"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  async searchUserForTickets() {
-    const searchTerm = document.getElementById('searchUserTickets').value.trim();
-    
-    if (!searchTerm) {
-      this.showNotification("Info", "Please enter search term", "info");
-      return;
-    }
-    
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const results = [];
-      
-      usersSnap.forEach(child => {
-        const user = child.val();
-        const userId = child.key;
-        const username = user.username || '';
-        const firstName = user.firstName || '';
-        
-        const searchStr = `${userId} ${username} ${firstName}`.toLowerCase();
-        
-        if (searchStr.includes(searchTerm.toLowerCase())) {
-          results.push({
-            id: userId,
-            ...user
-          });
-        }
-      });
-      
-      if (results.length === 0) {
-        document.getElementById('userTicketsResult').innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-user-times"></i>
-            <p>No users found for "${searchTerm}"</p>
-          </div>
-        `;
-      } else {
-        this.displayUserTicketsResult(results);
-      }
-      
-    } catch (error) {
-      console.error("Error searching users:", error);
-      this.showNotification("Error", "Search failed", "error");
-    }
-  }
-
-  displayUserTicketsResult(users) {
-    const container = document.getElementById('userTicketsResult');
-    
-    if (users.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <p>No users found</p>
-        </div>
-      `;
-      return;
-    }
-    
-    let html = '<div class="user-tickets-list">';
-    
-    users.forEach(user => {
-      const tickets = user.giveawayTickets || 0;
-      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
-      
-      html += `
-        <div class="user-tickets-card">
-          <div class="user-tickets-header">
-            <div class="user-tickets-avatar">
-              <img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png'}" 
-                   alt="${user.firstName}">
-            </div>
-            <div class="user-tickets-info">
-              <h4>${user.firstName || 'Unknown User'}</h4>
-              <p class="user-tickets-username">${user.username || 'No username'}</p>
-              <div class="user-tickets-meta">
-                <span><i class="fas fa-id-card"></i> ID: ${user.id}</span>
-                <span><i class="fas fa-calendar"></i> Joined: ${joinDate}</span>
-              </div>
-            </div>
-            <div class="user-tickets-count">
-              <div class="tickets-display">
-                <i class="fas fa-ticket-alt"></i>
-                <span>${tickets}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="user-tickets-actions">
-            <div class="tickets-controls">
-              <button class="action-btn btn-sm btn-success" onclick="admin.addUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-plus"></i> Add Tickets
-              </button>
-              <button class="action-btn btn-sm btn-danger" onclick="admin.removeUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-minus"></i> Remove Tickets
-              </button>
-              <button class="action-btn btn-sm btn-warning" onclick="admin.resetUserTickets('${user.id}', '${user.firstName || user.id}')">
-                <i class="fas fa-redo"></i> Reset to 0
-              </button>
-            </div>
-            
-            <div class="tickets-quick-add">
-              <h5>Quick Add:</h5>
-              <div class="quick-tickets-buttons">
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 1)">+1</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 5)">+5</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 10)">+10</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 50)">+50</button>
-                <button class="btn-xs btn-primary" onclick="admin.addSpecificTickets('${user.id}', 100)">+100</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  async getUserGiveawayRank(userId) {
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const users = [];
-      
-      if (usersSnap.exists()) {
-        usersSnap.forEach(child => {
-          const user = child.val();
-          if (user.giveawayTickets && user.giveawayTickets > 0) {
-            users.push({
-              id: child.key,
-              tickets: user.giveawayTickets || 0
-            });
-          }
-        });
-      }
-      
-      users.sort((a, b) => b.tickets - a.tickets);
-      const userIndex = users.findIndex(u => u.id === userId);
-      
-      return userIndex !== -1 ? userIndex + 1 : '-';
-      
-    } catch (error) {
-      return '-';
-    }
-  }
-
-  showAddTicketsModal(userId, userName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-plus-circle"></i> Add Tickets</h3>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Add tickets to user: <strong>${userName}</strong></p>
-          <div class="form-group">
-            <label>Number of Tickets</label>
-            <input type="number" id="addTicketsAmount" placeholder="10" min="1" max="1000" value="10">
-          </div>
-          <div class="form-group">
-            <label>Reason (Optional)</label>
-            <input type="text" id="addTicketsReason" placeholder="Admin added tickets">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-success" onclick="admin.addUserTicketsSubmit('${userId}')">
-            <i class="fas fa-check"></i> Add Tickets
-          </button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  showRemoveTicketsModal(userId, userName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-minus-circle"></i> Remove Tickets</h3>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Remove tickets from user: <strong>${userName}</strong></p>
-          <div class="form-group">
-            <label>Number of Tickets</label>
-            <input type="number" id="removeTicketsAmount" placeholder="10" min="1" max="1000">
-          </div>
-          <div class="form-group">
-            <label>Reason (Optional)</label>
-            <input type="text" id="removeTicketsReason" placeholder="Admin removed tickets">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-danger" onclick="admin.removeUserTicketsSubmit('${userId}')">
-            <i class="fas fa-check"></i> Remove Tickets
-          </button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  async addUserTickets(userId, userName) {
-    this.showAddTicketsModal(userId, userName);
-  }
-
-  async removeUserTickets(userId, userName) {
-    this.showRemoveTicketsModal(userId, userName);
-  }
-
-  async addUserTicketsSubmit(userId) {
-    const amount = parseInt(document.getElementById('addTicketsAmount').value);
-    const reason = document.getElementById('addTicketsReason').value.trim() || 'Admin added tickets';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      const newTickets = currentTickets + amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Added ${amount} tickets to user`, "success");
-      
-      document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error adding tickets:", error);
-      this.showNotification("Error", "Failed to add tickets", "error");
-    }
-  }
-
-  async removeUserTicketsSubmit(userId) {
-    const amount = parseInt(document.getElementById('removeTicketsAmount').value);
-    const reason = document.getElementById('removeTicketsReason').value.trim() || 'Admin removed tickets';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      
-      if (currentTickets < amount) {
-        this.showNotification("Error", `User only has ${currentTickets} tickets`, "error");
-        return;
-      }
-
-      const newTickets = currentTickets - amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Removed ${amount} tickets from user`, "success");
-      
-      document.querySelector('.modal-overlay.show')?.remove();
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error removing tickets:", error);
-      this.showNotification("Error", "Failed to remove tickets", "error");
-    }
-  }
-
-  async resetUserTickets(userId, userName) {
-    if (!confirm(`Reset ${userName}'s tickets to 0?`)) return;
-
-    try {
-      await this.db.ref(`users/${userId}`).update({
-        giveawayTickets: 0
-      });
-
-      this.showNotification("Success", `Reset ${userName}'s tickets to 0`, "success");
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error resetting tickets:", error);
-      this.showNotification("Error", "Failed to reset tickets", "error");
-    }
-  }
-
-  async addSpecificTickets(userId, amount) {
-    if (!confirm(`Add ${amount} tickets to this user?`)) return;
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentTickets = this.safeNumber(user.giveawayTickets);
-      const newTickets = currentTickets + amount;
-
-      await userRef.update({
-        giveawayTickets: newTickets
-      });
-
-      this.showNotification("Success", `Added ${amount} tickets`, "success");
-      await this.loadTopGiveawayUsers();
-      await this.searchUserForTickets();
-      
-    } catch (error) {
-      console.error("Error adding tickets:", error);
-      this.showNotification("Error", "Failed to add tickets", "error");
-    }
-  }
-
-  async resetAllTickets() {
-    if (!confirm('Are you sure you want to reset ALL users tickets to 0?\n\n⚠️ This action cannot be undone!')) return;
-
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const updates = {};
-      
-      usersSnap.forEach(child => {
-        updates[`${child.key}/giveawayTickets`] = 0;
-      });
-
-      await this.db.ref('users').update(updates);
-
-      this.showNotification("Success", "Reset all users tickets to 0", "success");
-      await this.loadTopGiveawayUsers();
-      
-    } catch (error) {
-      console.error("Error resetting all tickets:", error);
-      this.showNotification("Error", "Failed to reset all tickets", "error");
-    }
-  }
-
-  async clearGiveawayHistory() {
-    if (!confirm('Are you sure you want to clear ALL giveaway history?\n\n⚠️ This will reset everything and cannot be undone!')) return;
-
-    try {
-      const usersSnap = await this.db.ref('users').once('value');
-      const updates = {};
-      
-      usersSnap.forEach(child => {
-        updates[`${child.key}/giveawayTickets`] = 0;
-      });
-
-      await this.db.ref('users').update(updates);
-
-      await this.db.ref('giveawayWinners').remove();
-
-      this.showNotification("Success", "Cleared all giveaway history", "success");
-      await this.loadTopGiveawayUsers();
-      
-    } catch (error) {
-      console.error("Error clearing giveaway history:", error);
-      this.showNotification("Error", "Failed to clear giveaway history", "error");
     }
   }
 
