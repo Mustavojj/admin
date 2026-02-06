@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDde7CL3tUGhmi6nP8k57V1DbYm6-lMN_k",
-  authDomain: "ninja-dbdb.firebaseapp.com",
-  databaseURL: "https://ninja-dbdb-default-rtdb.firebaseio.com",
-  projectId: "ninja-dbdb",
-  storageBucket: "ninja-dbdb.firebasestorage.app",
-  messagingSenderId: "964108797706",
-  appId: "1:964108797706:web:95e6bccba0934f7bdbdcf3",
-  measurementId: "G-2EV8GCX8JK"
+  apiKey: "AIzaSyAFnGbqVM2ZdpLl5TP1pWrPsGd53fC8JiQ",
+  authDomain: "torneka.firebaseapp.com",
+  databaseURL: "https://torneka-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "torneka",
+  storageBucket: "torneka.firebasestorage.app",
+  messagingSenderId: "141604958494",
+  appId: "1:141604958494:web:ac888c242046348eeb190f",
+  measurementId: "G-Q5BT9CM425"
 };
 
 const BOT_TOKEN = "7881276129:AAFS9EjbD0V3LlgY3YNeTcjbXOHj6_-L-zU";
