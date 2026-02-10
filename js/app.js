@@ -1101,10 +1101,6 @@ class AdminPanel {
               <i class="fas fa-calendar"></i>
               <span>Created: ${createdDate}</span>
             </div>
-            <div class="info-item">
-              <i class="fas fa-hashtag"></i>
-              <span>ID: ${task.id}</span>
-            </div>
           </div>
           
           <div class="task-progress">
@@ -1118,6 +1114,9 @@ class AdminPanel {
           </div>
           
           <div class="task-actions">
+            <button class="btn-sm btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions})">
+              <i class="fas fa-edit"></i> Edit Total
+            </button>
             <button class="btn-sm btn-danger" onclick="admin.deleteTask('${task.id}')">
               <i class="fas fa-trash"></i> Delete
             </button>
@@ -1127,6 +1126,58 @@ class AdminPanel {
     });
     
     container.innerHTML = html;
+  }
+
+  showEditTaskModal(taskId, currentMaxCompletions) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-edit"></i> Edit Task Max Completions</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Edit the maximum completions for this task</p>
+          <div class="form-group">
+            <label>New Max Completions *</label>
+            <input type="number" id="editMaxCompletions" value="${currentMaxCompletions}" min="1" step="1">
+            <small>Current: ${currentMaxCompletions} completions</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-primary" onclick="admin.updateTaskMaxCompletions('${taskId}')">
+            <i class="fas fa-check"></i> Update
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  async updateTaskMaxCompletions(taskId) {
+    const newMaxCompletions = parseInt(document.getElementById('editMaxCompletions').value);
+    
+    if (!newMaxCompletions || newMaxCompletions < 1) {
+      this.showNotification("Error", "Please enter a valid number", "error");
+      return;
+    }
+
+    try {
+      await this.db.ref(`config/tasks/${taskId}/maxCompletions`).set(newMaxCompletions);
+      
+      this.showNotification("Success", "Task updated successfully", "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.loadTasks();
+      
+    } catch (error) {
+      console.error("Error updating task:", error);
+      this.showNotification("Error", "Failed to update task", "error");
+    }
   }
 
   async createTask() {
@@ -1226,7 +1277,12 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Promo Code *</label>
-                <input type="text" id="promoCode" placeholder="NINJA50" style="text-transform: uppercase;">
+                <div class="code-input-group">
+                  <input type="text" id="promoCode" placeholder="Enter code or click Random" style="text-transform: uppercase;">
+                  <button class="action-btn btn-sm btn-secondary" onclick="admin.generateRandomCode()">
+                    <i class="fas fa-random"></i> Random
+                  </button>
+                </div>
               </div>
               
               <div class="form-group">
@@ -1274,6 +1330,17 @@ class AdminPanel {
     await this.loadPromoCodes();
   }
 
+  generateRandomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    document.getElementById('promoCode').value = code;
+  }
+
   async loadPromoCodes() {
     try {
       const promoCodesSnap = await this.db.ref('config/promoCodes').once('value');
@@ -1282,12 +1349,10 @@ class AdminPanel {
       if (promoCodesSnap.exists()) {
         promoCodesSnap.forEach(child => {
           const promo = child.val();
-          if (promo.status !== 'deleted') {
-            promoCodes.push({
-              id: child.key,
-              ...promo
-            });
-          }
+          promoCodes.push({
+            id: child.key,
+            ...promo
+          });
         });
       }
       
@@ -1358,7 +1423,7 @@ class AdminPanel {
               <button class="btn-sm btn-primary" onclick="admin.copyPromoCode('${promo.code}')">
                 <i class="fas fa-copy"></i> Copy
               </button>
-              <button class="btn-sm btn-danger" onclick="admin.deletePromoCode('${promo.id}')">
+              <button class="btn-sm btn-danger" onclick="admin.deletePromoCodePermanently('${promo.id}')">
                 <i class="fas fa-trash"></i> Delete
               </button>
             </div>
@@ -1425,18 +1490,8 @@ class AdminPanel {
     try {
       const existingSnap = await this.db.ref('config/promoCodes').orderByChild('code').equalTo(code).once('value');
       if (existingSnap.exists()) {
-        let duplicate = false;
-        existingSnap.forEach(child => {
-          const promo = child.val();
-          if (promo.status !== 'deleted') {
-            duplicate = true;
-          }
-        });
-        
-        if (duplicate) {
-          this.showNotification("Error", "Promo code already exists", "error");
-          return;
-        }
+        this.showNotification("Error", "Promo code already exists", "error");
+        return;
       }
       
       const promoData = {
@@ -1477,16 +1532,13 @@ class AdminPanel {
     });
   }
 
-  async deletePromoCode(promoId) {
-    if (!confirm('Are you sure you want to delete this promo code?')) return;
+  async deletePromoCodePermanently(promoId) {
+    if (!confirm('Are you sure you want to permanently delete this promo code?')) return;
     
     try {
-      await this.db.ref(`config/promoCodes/${promoId}`).update({
-        status: 'deleted',
-        deletedAt: Date.now()
-      });
+      await this.db.ref(`config/promoCodes/${promoId}`).remove();
       
-      this.showNotification("Success", "Promo code deleted", "success");
+      this.showNotification("Success", "Promo code permanently deleted", "success");
       await this.loadPromoCodes();
       
     } catch (error) {
@@ -1501,6 +1553,19 @@ class AdminPanel {
         <div class="page-header">
           <h2><i class="fas fa-wallet"></i> Withdrawals Management</h2>
           <p>Process and manage withdrawal requests</p>
+        </div>
+        
+        <div class="search-section">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchWithdrawalUser" placeholder="Search by User ID">
+            <button class="search-btn" onclick="admin.searchUserWithdrawals()">
+              <i class="fas fa-search"></i> Search User
+            </button>
+          </div>
+          <button class="action-btn btn-secondary" onclick="admin.clearWithdrawalSearch()">
+            <i class="fas fa-times"></i> Clear
+          </button>
         </div>
         
         <div class="withdrawals-stats">
@@ -1551,10 +1616,195 @@ class AdminPanel {
             </div>
           </div>
         </div>
+        
+        <div id="userWithdrawalsResults" style="display: none;">
+          <!-- Results will be shown here -->
+        </div>
       </div>
     `;
     
     await this.loadWithdrawals();
+  }
+
+  async searchUserWithdrawals() {
+    const userId = document.getElementById('searchWithdrawalUser').value.trim();
+    
+    if (!userId) {
+      this.showNotification("Info", "Please enter User ID", "info");
+      return;
+    }
+    
+    try {
+      const [pendingSnap, completedSnap, rejectedSnap] = await Promise.all([
+        this.db.ref('withdrawals/pending').orderByChild('userId').equalTo(userId).once('value'),
+        this.db.ref('withdrawals/completed').orderByChild('userId').equalTo(userId).once('value'),
+        this.db.ref('withdrawals/rejected').orderByChild('userId').equalTo(userId).once('value')
+      ]);
+      
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      const userData = userSnap.val();
+      
+      if (!userData) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+      
+      const userName = userData.firstName || userData.username || userId;
+      
+      let allWithdrawals = [];
+      
+      if (pendingSnap.exists()) {
+        pendingSnap.forEach(child => {
+          allWithdrawals.push({
+            ...child.val(),
+            id: child.key,
+            status: 'pending'
+          });
+        });
+      }
+      
+      if (completedSnap.exists()) {
+        completedSnap.forEach(child => {
+          allWithdrawals.push({
+            ...child.val(),
+            id: child.key,
+            status: 'completed'
+          });
+        });
+      }
+      
+      if (rejectedSnap.exists()) {
+        rejectedSnap.forEach(child => {
+          allWithdrawals.push({
+            ...child.val(),
+            id: child.key,
+            status: 'rejected'
+          });
+        });
+      }
+      
+      if (allWithdrawals.length === 0) {
+        document.getElementById('userWithdrawalsResults').innerHTML = `
+          <div class="card">
+            <h3>Withdrawals for ${userName}</h3>
+            <div class="empty-state">
+              <i class="fas fa-wallet"></i>
+              <p>No withdrawals found for this user</p>
+            </div>
+          </div>
+        `;
+      } else {
+        this.displayUserWithdrawals(allWithdrawals, userName);
+      }
+      
+      document.getElementById('userWithdrawalsResults').style.display = 'block';
+      
+    } catch (error) {
+      console.error("Error searching user withdrawals:", error);
+      this.showNotification("Error", "Search failed", "error");
+    }
+  }
+
+  displayUserWithdrawals(withdrawals, userName) {
+    withdrawals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    
+    let html = `
+      <div class="card">
+        <div class="section-header">
+          <h3>Withdrawals for ${userName}</h3>
+          <button class="action-btn btn-sm btn-secondary" onclick="document.getElementById('userWithdrawalsResults').style.display = 'none'">
+            <i class="fas fa-times"></i> Close
+          </button>
+        </div>
+        
+        <div class="user-withdrawals-list">
+    `;
+    
+    withdrawals.forEach(w => {
+      const date = w.createdAt ? this.formatDateTime(w.createdAt) : 'N/A';
+      const processedDate = w.processedAt ? this.formatDateTime(w.processedAt) : 'N/A';
+      
+      let statusClass = '';
+      let statusText = '';
+      
+      switch(w.status) {
+        case 'pending':
+          statusClass = 'status-active';
+          statusText = 'PENDING';
+          break;
+        case 'completed':
+          statusClass = 'status-completed';
+          statusText = 'COMPLETED';
+          break;
+        case 'rejected':
+          statusClass = 'status-expired';
+          statusText = 'REJECTED';
+          break;
+      }
+      
+      html += `
+        <div class="withdrawal-item ${w.status}">
+          <div class="withdrawal-header">
+            <div class="withdrawal-status ${statusClass}">${statusText}</div>
+            <div class="withdrawal-amount">
+              ${w.amount ? w.amount.toFixed(5) : '0.00000'} TON
+            </div>
+          </div>
+          
+          <div class="withdrawal-details">
+            <div class="detail">
+              <span><i class="fas fa-wallet"></i> Wallet:</span>
+              <span class="wallet-address" title="${w.walletAddress}">
+                ${w.walletAddress ? w.walletAddress.substring(0, 15) + '...' : 'N/A'}
+              </span>
+            </div>
+            <div class="detail">
+              <span><i class="fas fa-calendar"></i> Request Date:</span>
+              <span>${date}</span>
+            </div>
+            ${w.processedAt ? `
+              <div class="detail">
+                <span><i class="fas fa-calendar-check"></i> Processed Date:</span>
+                <span>${processedDate}</span>
+              </div>
+            ` : ''}
+            ${w.transaction_link ? `
+              <div class="detail">
+                <span><i class="fas fa-link"></i> Transaction:</span>
+                <span>
+                  <a href="${w.transaction_link}" target="_blank" style="color: var(--primary);">
+                    View on Explorer
+                  </a>
+                </span>
+              </div>
+            ` : ''}
+          </div>
+          
+          ${w.status === 'pending' ? `
+            <div class="withdrawal-actions">
+              <button class="action-btn btn-sm btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${w.userId}', '${w.userName || ''}')">
+                <i class="fas fa-check"></i> Approve
+              </button>
+              <button class="action-btn btn-sm btn-danger" onclick="admin.rejectWithdrawal('${w.id}')">
+                <i class="fas fa-times"></i> Reject
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('userWithdrawalsResults').innerHTML = html;
+  }
+
+  clearWithdrawalSearch() {
+    document.getElementById('searchWithdrawalUser').value = '';
+    document.getElementById('userWithdrawalsResults').style.display = 'none';
   }
 
   async loadWithdrawals() {
@@ -1776,11 +2026,21 @@ class AdminPanel {
           <div class="withdrawal-summary">
             <div class="summary-item">
               <span>Amount:</span>
-              <span class="amount-value">${amount.toFixed(5)} TON</span>
+              <div class="summary-value-group">
+                <span class="amount-value">${amount.toFixed(5)} TON</span>
+                <button class="btn-sm btn-secondary" onclick="admin.copyToClipboard('${amount.toFixed(5)} TON')" title="Copy amount">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
             </div>
             <div class="summary-item">
               <span>Wallet:</span>
-              <span class="wallet-value">${wallet}</span>
+              <div class="summary-value-group">
+                <span class="wallet-value">${wallet}</span>
+                <button class="btn-sm btn-secondary" onclick="admin.copyToClipboard('${wallet}')" title="Copy wallet">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
             </div>
           </div>
           
@@ -1801,6 +2061,14 @@ class AdminPanel {
     
     document.body.appendChild(modal);
     setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showNotification("Copied", "Copied to clipboard", "success");
+    }).catch(err => {
+      this.showNotification("Error", "Failed to copy", "error");
+    });
   }
 
   async approveWithdrawal(requestId, userId, amount, wallet) {
