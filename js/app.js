@@ -747,7 +747,7 @@ class AdminPanel {
 
     } catch (error) {
       console.error("Error getting user details:", error);
-      this.showNotification("Error", "Failed to get user details", "error");
+      this.showNotification("Error", `Failed to get user details ${error}`, "error");
     }
   }
 
