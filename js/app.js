@@ -720,27 +720,27 @@ class AdminPanel {
       const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
       const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
 
-      let message = `<b>All User Details</b>\n\n`;
+      let message = `<b>⚔️ All User Details</b>\n\n`;
       
       if (photoUrl) {
         message += `<a href="${photoUrl}">👤</a> `;
       }
       
-      message += `<b>User ID:</b> ${userId}\n`;
-      message += `<b>Username:</b> ${cleanUsername}\n`;
-      message += `<b>Joined At:</b> ${joinedAt}\n\n`;
+      message += `<b>🆔 User ID:</b> ${userId}\n`;
+      message += `<b>👨‍✈️ Username:</b> @${cleanUsername}\n`;
+      message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
       
-      message += `<b>Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
-      message += `<b>Promo Codes:</b> ${promoCodes}\n`;
-      message += `<b>Referrals:</b> ${referrals}\n`;
-      message += `<b>Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>Tasks:</b> ${tasks}\n`;
-      message += `<b>ADS:</b> ${ads}\n\n`;
+      message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
+      message += `<b>🫂 Referrals:</b> ${referrals}\n`;
+      message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
+      message += `<b>☑️ Tasks:</b> ${tasks}\n`;
+      message += `<b>🖥 ADS:</b> ${ads}\n\n`;
       
-      message += `<b>Total Withdrawals:</b> ${withdrawals}\n`;
-      message += `<b>Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n`;
+      message += `<b>💰 Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
       
-      message += `<b>Last Active:</b> ${lastActive}`;
+      message += `<b>🗒 Last Active:</b> ${lastActive}`;
 
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
       this.showNotification("Success", "User details sent to admin", "success");
@@ -2090,27 +2090,27 @@ class AdminPanel {
       const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
       const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
 
-      let message = `<b>Withdrawal User Details</b>\n\n`;
+      let message = `<b>⚔️ All User Details</b>\n\n`;
       
       if (photoUrl) {
         message += `<a href="${photoUrl}">👤</a> `;
       }
       
-      message += `<b>User ID:</b> ${userId}\n`;
-      message += `<b>Username:</b> ${cleanUsername}\n`;
-      message += `<b>Joined At:</b> ${joinedAt}\n\n`;
+      message += `<b>🆔 User ID:</b> ${userId}\n`;
+      message += `<b>👨‍✈️ Username:</b> @${cleanUsername}\n`;
+      message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
       
-      message += `<b>Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
-      message += `<b>Promo Codes:</b> ${promoCodes}\n`;
-      message += `<b>Referrals:</b> ${referrals}\n`;
-      message += `<b>Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>Tasks:</b> ${tasks}\n`;
-      message += `<b>ADS:</b> ${ads}\n\n`;
+      message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
+      message += `<b>🫂 Referrals:</b> ${referrals}\n`;
+      message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
+      message += `<b>☑️ Tasks:</b> ${tasks}\n`;
+      message += `<b>🖥 ADS:</b> ${ads}\n\n`;
       
-      message += `<b>Total Withdrawals:</b> ${withdrawals}\n`;
-      message += `<b>Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n`;
+      message += `<b>💰 Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
       
-      message += `<b>Last Active:</b> ${lastActive}`;
+      message += `<b>🗒 Last Active:</b> ${lastActive}`;
 
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
       this.showNotification("Success", "User details sent to admin", "success");
