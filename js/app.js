@@ -9,7 +9,7 @@ const FIREBASE_CONFIG = {
   measurementId: "G-Q5BT9CM425"
 };
 
-const BOT_TOKEN = "7881276129:AAFS9EjbD0V3LlgY3YNeTcjbXOHj6_-L-zU";
+const BOT_TOKEN = "7881276129:AAFHNV32ghfj--x6Estc2wrlOSuRu34NG8s";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
@@ -526,7 +526,7 @@ class AdminPanel {
           <div class="empty-state">
             <i class="fas fa-user-search"></i>
             <p>Search for a user by ID, username, or Telegram ID</p>
-            <p class="hint">Search examples: "123456789", "@username", "User Name"</p>
+            <p class="hint">Search examples: "123456789", "username", "User Name"</p>
           </div>
         </div>
       </div>
@@ -586,7 +586,7 @@ class AdminPanel {
       <div class="empty-state">
         <i class="fas fa-user-search"></i>
         <p>Search for a user by ID, username, or Telegram ID</p>
-        <p class="hint">Search examples: "123456789", "@username", "User Name"</p>
+        <p class="hint">Search examples: "123456789", "username", "User Name"</p>
       </div>
     `;
   }
@@ -610,9 +610,10 @@ class AdminPanel {
       const balance = this.safeNumber(user.balance);
       const referrals = user.referrals || 0;
       const tasks = user.totalTasks || 0;
+      const ads = user.totalAds || 0;
       const status = user.status || 'free';
-      const joinDate = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
-      const lastActive = user.lastActive ? this.formatDateTime(user.lastActive) : 'N/A';
+      const username = user.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
       
       html += `
         <div class="user-card">
@@ -624,15 +625,10 @@ class AdminPanel {
               }
             </div>
             <div class="user-info">
-              <h4>${user.firstName || 'Unknown User'}</h4>
-              <p class="user-username">${user.username || 'No username'}</p>
-              <div class="user-meta">
-                <span><i class="fas fa-id-card"></i> ID: ${user.id}</span>
-                <span><i class="fas fa-calendar"></i> Joined: ${joinDate}</span>
+              <h4>${cleanUsername || user.firstName || 'Unknown User'}</h4>
+              <div class="user-status ${status}">
+                ${status === 'ban' ? 'BANNED' : 'ACTIVE'}
               </div>
-            </div>
-            <div class="user-status ${status}">
-              ${status === 'ban' ? 'BANNED' : 'ACTIVE'}
             </div>
           </div>
           
@@ -659,32 +655,36 @@ class AdminPanel {
               </div>
             </div>
             <div class="user-stat">
-              <i class="fas fa-clock"></i>
+              <i class="fas fa-ad"></i>
               <div>
-                <div class="stat-value">${lastActive}</div>
-                <div class="stat-label">Last Active</div>
+                <div class="stat-value">${ads}</div>
+                <div class="stat-label">ADS</div>
               </div>
             </div>
           </div>
           
           <div class="user-card-actions">
-            <button class="action-btn btn-sm btn-info" onclick="admin.getAllUserDetails('${user.id}', '${user.firstName || user.id}')">
+            <button class="action-btn btn-info" onclick="admin.getAllUserDetails('${user.id}')">
               <i class="fas fa-info-circle"></i> Get All Details
             </button>
-            <button class="action-btn btn-sm btn-primary" onclick="admin.showUserDetails('${user.id}')">
-              <i class="fas fa-eye"></i> Details
-            </button>
-            <button class="action-btn btn-sm btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${user.firstName || user.id}')">
-              <i class="fas fa-plus"></i> Add TON
-            </button>
-            ${status === 'free' ? 
-              `<button class="action-btn btn-sm btn-warning" onclick="admin.banUser('${user.id}')">
-                <i class="fas fa-ban"></i> Ban
-              </button>` : 
-              `<button class="action-btn btn-sm btn-success" onclick="admin.unbanUser('${user.id}')">
-                <i class="fas fa-check"></i> Unban
-              </button>`
-            }
+            <div class="balance-buttons">
+              <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
+                <i class="fas fa-plus"></i> Add Balance
+              </button>
+              <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
+                <i class="fas fa-minus"></i> Remove Balance
+              </button>
+            </div>
+            <div class="ban-buttons">
+              ${status === 'free' ? 
+                `<button class="action-btn btn-warning" onclick="admin.banUser('${user.id}', this)">
+                  <i class="fas fa-ban"></i> BAN
+                </button>` : 
+                `<button class="action-btn btn-success" onclick="admin.unbanUser('${user.id}', this)">
+                  <i class="fas fa-check"></i> UNBAN
+                </button>`
+              }
+            </div>
           </div>
         </div>
       `;
@@ -694,7 +694,7 @@ class AdminPanel {
     container.innerHTML = html;
   }
 
-  async getAllUserDetails(userId, userName) {
+  async getAllUserDetails(userId) {
     try {
       const userSnap = await this.db.ref(`users/${userId}`).once('value');
       if (!userSnap.exists()) {
@@ -704,30 +704,43 @@ class AdminPanel {
 
       const userData = userSnap.val();
       
-      const totalAds = this.safeNumber(userData.totalAds || 0);
-      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const totalTasks = this.safeNumber(userData.totalTasks || 0);
-      const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
-      const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const username = userData.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const photoUrl = userData.photoUrl || '';
+      
       const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const referrals = this.safeNumber(userData.referrals || 0);
-      const referralEarnings = this.safeNumber(userData.referralEarnings || 0);
+      const refEarnings = this.safeNumber(userData.referralEarnings || 0);
+      const tasks = this.safeNumber(userData.totalTasks || 0);
+      const ads = this.safeNumber(userData.totalAds || 0);
+      const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const balance = this.safeNumber(userData.balance || 0);
+      
+      const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
+      const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
 
-      const message = `👤 *User Details Report*\n\n` +
-        `🆔 User ID: ${userId}\n` +
-        `👤 Name: ${userName}\n` +
-        `📅 Joined: ${userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A'}\n\n` +
-        `📊 *Statistics:*\n` +
-        `📱 Total Ads: ${totalAds}\n` +
-        `👥 Total Referrals: ${totalReferrals}\n` +
-        `✅ Total Tasks: ${totalTasks}\n` +
-        `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
-        `💰 Total Withdrawals: ${totalWithdrawals}\n` +
-        `💎 Total Earned: ${totalEarned.toFixed(3)} TON\n` +
-        `👥 Referrals: ${referrals}\n` +
-        `💸 Referral Earnings: ${referralEarnings.toFixed(3)} TON\n` +
-        `💼 Balance: ${this.safeNumber(userData.balance || 0).toFixed(3)} TON\n\n` +
-        `🔗 Bot: @ninja_200s_bot`;
+      let message = `<b>All User Details</b>\n\n`;
+      
+      if (photoUrl) {
+        message += `<a href="${photoUrl}">👤</a> `;
+      }
+      
+      message += `<b>User ID:</b> ${userId}\n`;
+      message += `<b>Username:</b> ${cleanUsername}\n`;
+      message += `<b>Joined At:</b> ${joinedAt}\n\n`;
+      
+      message += `<b>Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>Promo Codes:</b> ${promoCodes}\n`;
+      message += `<b>Referrals:</b> ${referrals}\n`;
+      message += `<b>Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
+      message += `<b>Tasks:</b> ${tasks}\n`;
+      message += `<b>ADS:</b> ${ads}\n\n`;
+      
+      message += `<b>Total Withdrawals:</b> ${withdrawals}\n`;
+      message += `<b>Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      
+      message += `<b>Last Active:</b> ${lastActive}`;
 
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
       this.showNotification("Success", "User details sent to admin", "success");
@@ -736,10 +749,6 @@ class AdminPanel {
       console.error("Error getting user details:", error);
       this.showNotification("Error", "Failed to get user details", "error");
     }
-  }
-
-  showUserDetails(userId) {
-    this.showNotification("Info", "User details view coming soon", "info");
   }
 
   showAddBalanceModal(userId, userName) {
@@ -752,7 +761,10 @@ class AdminPanel {
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Add TON balance to user: <strong>${userName}</strong></p>
+          <p>Add TON balance to user:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
           <div class="form-group">
             <label>Amount (TON)</label>
             <input type="number" id="addBalanceAmount" placeholder="0.100" step="0.001" min="0.001" value="0.100">
@@ -785,7 +797,10 @@ class AdminPanel {
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Remove TON balance from user: <strong>${userName}</strong></p>
+          <p>Remove TON balance from user:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
           <div class="form-group">
             <label>Amount (TON)</label>
             <input type="number" id="removeBalanceAmount" placeholder="0.100" step="0.001" min="0.001">
@@ -838,6 +853,7 @@ class AdminPanel {
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
+      await this.searchUser();
       
     } catch (error) {
       console.error("Error adding balance:", error);
@@ -880,6 +896,7 @@ class AdminPanel {
       this.showNotification("Success", `Removed ${amount} TON from user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
+      await this.searchUser();
       
     } catch (error) {
       console.error("Error removing balance:", error);
@@ -887,26 +904,52 @@ class AdminPanel {
     }
   }
 
-  async banUser(userId) {
+  async banUser(userId, button) {
     if (!confirm('Are you sure you want to ban this user?')) return;
 
     try {
       await this.db.ref(`users/${userId}/status`).set('ban');
       this.showNotification("Success", "User has been banned", "success");
-      await this.searchUser();
+      
+      if (button) {
+        button.innerHTML = '<i class="fas fa-check"></i> UNBAN';
+        button.className = 'action-btn btn-success';
+        button.onclick = () => this.unbanUser(userId, button);
+      }
+      
+      document.querySelectorAll(`.user-card .user-status.free`).forEach(el => {
+        if (el.closest('.user-card')?.querySelector(`[onclick*="${userId}"]`)) {
+          el.className = 'user-status ban';
+          el.textContent = 'BANNED';
+        }
+      });
+      
     } catch (error) {
       console.error("Error banning user:", error);
       this.showNotification("Error", "Failed to ban user", "error");
     }
   }
 
-  async unbanUser(userId) {
+  async unbanUser(userId, button) {
     if (!confirm('Are you sure you want to unban this user?')) return;
 
     try {
       await this.db.ref(`users/${userId}/status`).set('free');
       this.showNotification("Success", "User has been unbanned", "success");
-      await this.searchUser();
+      
+      if (button) {
+        button.innerHTML = '<i class="fas fa-ban"></i> BAN';
+        button.className = 'action-btn btn-warning';
+        button.onclick = () => this.banUser(userId, button);
+      }
+      
+      document.querySelectorAll(`.user-card .user-status.ban`).forEach(el => {
+        if (el.closest('.user-card')?.querySelector(`[onclick*="${userId}"]`)) {
+          el.className = 'user-status free';
+          el.textContent = 'ACTIVE';
+        }
+      });
+      
     } catch (error) {
       console.error("Error unbanning user:", error);
       this.showNotification("Error", "Failed to unban user", "error");
@@ -919,6 +962,19 @@ class AdminPanel {
         <div class="page-header">
           <h2><i class="fas fa-tasks"></i> Tasks Management</h2>
           <p>Create and manage Main & Social tasks</p>
+        </div>
+        
+        <div class="search-section">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchTaskInput" placeholder="Search task by name">
+            <button class="search-btn" onclick="admin.searchTask()">
+              <i class="fas fa-search"></i> Search
+            </button>
+          </div>
+          <button class="action-btn btn-secondary" onclick="admin.clearTaskSearch()">
+            <i class="fas fa-times"></i> Clear
+          </button>
         </div>
         
         <div class="tasks-management">
@@ -946,10 +1002,10 @@ class AdminPanel {
                 <label>Task Type *</label>
                 <div class="type-selector">
                   <button class="type-btn active" data-type="main" data-reward="0.001">
-                    <i class="fas fa-star"></i> Main (0.001 TON)
+                    <i class="fas fa-star"></i> Main
                   </button>
                   <button class="type-btn" data-type="social" data-reward="0.0005">
-                    <i class="fas fa-users"></i> Social (0.0005 TON)
+                    <i class="fas fa-users"></i> Social
                   </button>
                 </div>
               </div>
@@ -975,7 +1031,7 @@ class AdminPanel {
             <div class="card">
               <div class="section-header">
                 <h3><i class="fas fa-list"></i> Active Tasks</h3>
-                <button class="action-btn btn-sm btn-secondary" onclick="admin.loadTasks()">
+                <button class="action-btn btn-secondary" onclick="admin.loadTasks()">
                   <i class="fas fa-sync-alt"></i> Refresh
                 </button>
               </div>
@@ -1007,6 +1063,43 @@ class AdminPanel {
         document.getElementById('taskReward').value = reward;
       });
     });
+  }
+
+  async searchTask() {
+    const searchTerm = document.getElementById('searchTaskInput').value.trim().toLowerCase();
+    
+    if (!searchTerm) {
+      await this.loadTasks();
+      return;
+    }
+    
+    try {
+      const tasksSnap = await this.db.ref('config/tasks').once('value');
+      const tasks = [];
+      
+      if (tasksSnap.exists()) {
+        tasksSnap.forEach(child => {
+          const task = child.val();
+          if (task.status !== 'deleted' && task.name.toLowerCase().includes(searchTerm)) {
+            tasks.push({
+              id: child.key,
+              ...task
+            });
+          }
+        });
+      }
+      
+      this.displayTasks(tasks);
+      
+    } catch (error) {
+      console.error("Error searching tasks:", error);
+      this.showNotification("Error", "Failed to search tasks", "error");
+    }
+  }
+
+  clearTaskSearch() {
+    document.getElementById('searchTaskInput').value = '';
+    this.loadTasks();
   }
 
   async loadTasks() {
@@ -1064,42 +1157,46 @@ class AdminPanel {
       const typeClass = task.category === 'main' ? 'type-main' : 'type-social';
       const typeText = task.category === 'main' ? 'Main' : 'Social';
       const isCompleted = progress >= 100;
-      const imageUrl = task.picture || 'https://cdn-icons-png.flaticon.com/512/15208/15208522.png';
+      const imageUrl = task.picture || 'https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png';
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
+      const totalDistributed = (task.currentCompletions || 0) * (task.reward || 0);
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
+          <div class="task-image-container">
+            <img src="${imageUrl}" 
+                 alt="${task.name}" 
+                 class="task-image"
+                 onerror="this.src='https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png'">
+          </div>
+          
           <div class="task-header">
-            <div class="task-preview">
-              <img src="${imageUrl}" 
-                   alt="${task.name}" 
-                   class="task-image"
-                   onerror="this.src='https://cdn-icons-png.flaticon.com/512/15208/15208522.png'">
-              <div>
-                <h4>${task.name}</h4>
-                <div class="task-meta">
-                  <span class="task-type ${typeClass}">${typeText}</span>
-                  <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
-                    ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div class="task-reward">
-              <i class="fas fa-gem"></i>
-              <span>${task.reward || 0.001} TON</span>
+            <h4>${task.name}</h4>
+            <div class="task-meta">
+              <span class="task-type ${typeClass}">${typeText}</span>
+              <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
+                ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
+              </span>
             </div>
           </div>
           
           <div class="task-url">
             <i class="fas fa-link"></i>
-            <a href="${task.url}" target="_blank">${task.url.substring(0, 50)}${task.url.length > 50 ? '...' : ''}</a>
+            <a href="${task.url}" target="_blank">${task.url.substring(0, 40)}${task.url.length > 40 ? '...' : ''}</a>
           </div>
           
-          <div class="task-info">
-            <div class="info-item">
-              <i class="fas fa-calendar"></i>
-              <span>Created: ${createdDate}</span>
+          <div class="task-stats">
+            <div class="task-stat">
+              <span class="stat-label">Task Reward:</span>
+              <span class="stat-value">${task.reward || 0.001} TON</span>
+            </div>
+            <div class="task-stat">
+              <span class="stat-label">Total Distributed:</span>
+              <span class="stat-value">${totalDistributed.toFixed(3)} TON</span>
+            </div>
+            <div class="task-stat">
+              <span class="stat-label">Created:</span>
+              <span class="stat-value">${createdDate}</span>
             </div>
           </div>
           
@@ -1114,10 +1211,10 @@ class AdminPanel {
           </div>
           
           <div class="task-actions">
-            <button class="btn-sm btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions})">
+            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions})">
               <i class="fas fa-edit"></i> Edit Total
             </button>
-            <button class="btn-sm btn-danger" onclick="admin.deleteTask('${task.id}')">
+            <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}')">
               <i class="fas fa-trash"></i> Delete
             </button>
           </div>
@@ -1226,6 +1323,8 @@ class AdminPanel {
       
       if (image) {
         taskData.picture = image;
+      } else {
+        taskData.picture = 'https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png';
       }
       
       await this.db.ref('config/tasks').push(taskData);
@@ -1279,7 +1378,7 @@ class AdminPanel {
                 <label>Promo Code *</label>
                 <div class="code-input-group">
                   <input type="text" id="promoCode" placeholder="Enter code or click Random" style="text-transform: uppercase;">
-                  <button class="action-btn btn-sm btn-secondary" onclick="admin.generateRandomCode()">
+                  <button class="action-btn btn-secondary" onclick="admin.generateRandomCode()">
                     <i class="fas fa-random"></i> Random
                   </button>
                 </div>
@@ -1295,11 +1394,6 @@ class AdminPanel {
                 <input type="number" id="promoMaxUses" value="0" min="0">
               </div>
               
-              <div class="form-group">
-                <label>Expiry Date (Optional)</label>
-                <input type="date" id="promoExpiry">
-              </div>
-              
               <button class="action-btn btn-success" onclick="admin.createPromoCode()">
                 <i class="fas fa-plus-circle"></i> Create Promo
               </button>
@@ -1310,7 +1404,7 @@ class AdminPanel {
             <div class="card">
               <div class="section-header">
                 <h3><i class="fas fa-list"></i> Active Promo Codes</h3>
-                <button class="action-btn btn-sm btn-secondary" onclick="admin.loadPromoCodes()">
+                <button class="action-btn btn-secondary" onclick="admin.loadPromoCodes()">
                   <i class="fas fa-sync-alt"></i> Refresh
                 </button>
               </div>
@@ -1391,24 +1485,20 @@ class AdminPanel {
       const used = promo.usedCount || 0;
       const max = promo.maxUses || 0;
       const remaining = max > 0 ? max - used : '∞';
-      const isExpired = promo.expiryDate && Date.now() > promo.expiryDate;
       const isFullyUsed = max > 0 && used >= max;
       const createdDate = promo.createdAt ? this.formatDateTime(promo.createdAt) : 'N/A';
-      const expiryDate = promo.expiryDate ? this.formatDateTime(promo.expiryDate) : 'Never';
+      const totalDistributed = used * (promo.reward || 0);
       
       let status = 'active';
       let statusClass = 'status-active';
       
-      if (isExpired) {
-        status = 'expired';
-        statusClass = 'status-expired';
-      } else if (isFullyUsed) {
+      if (isFullyUsed) {
         status = 'used up';
         statusClass = 'status-completed';
       }
       
       html += `
-        <div class="promo-code-item ${isExpired ? 'expired' : ''}">
+        <div class="promo-code-item">
           <div class="promo-header">
             <div>
               <h4><i class="fas fa-ticket-alt"></i> ${promo.code}</h4>
@@ -1420,10 +1510,10 @@ class AdminPanel {
               </div>
             </div>
             <div class="promo-actions">
-              <button class="btn-sm btn-primary" onclick="admin.copyPromoCode('${promo.code}')">
+              <button class="action-btn btn-primary" onclick="admin.copyPromoCode('${promo.code}')">
                 <i class="fas fa-copy"></i> Copy
               </button>
-              <button class="btn-sm btn-danger" onclick="admin.deletePromoCodePermanently('${promo.id}')">
+              <button class="action-btn btn-danger" onclick="admin.deletePromoCodePermanently('${promo.id}')">
                 <i class="fas fa-trash"></i> Delete
               </button>
             </div>
@@ -1440,15 +1530,11 @@ class AdminPanel {
             </div>
             <div class="detail">
               <span>Total Distributed:</span>
-              <span>${(used * (promo.reward || 0)).toFixed(3)} TON</span>
+              <span>${totalDistributed.toFixed(3)} TON</span>
             </div>
             <div class="detail">
               <span>Created:</span>
               <span>${createdDate}</span>
-            </div>
-            <div class="detail">
-              <span>Expires:</span>
-              <span>${expiryDate}</span>
             </div>
           </div>
           
@@ -1470,7 +1556,6 @@ class AdminPanel {
     const code = document.getElementById('promoCode').value.trim().toUpperCase();
     const reward = parseFloat(document.getElementById('promoReward').value) || 0.010;
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
-    const expiryDate = document.getElementById('promoExpiry').value;
     
     if (!code) {
       this.showNotification("Error", "Please enter promo code", "error");
@@ -1504,16 +1589,11 @@ class AdminPanel {
         createdAt: Date.now()
       };
       
-      if (expiryDate) {
-        promoData.expiryDate = new Date(expiryDate).getTime();
-      }
-      
       await this.db.ref('config/promoCodes').push(promoData);
       
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '0.010';
       document.getElementById('promoMaxUses').value = '0';
-      document.getElementById('promoExpiry').value = '';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -1558,7 +1638,7 @@ class AdminPanel {
         <div class="search-section">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchWithdrawalUser" placeholder="Search by User ID">
+            <input type="text" id="searchWithdrawalUser" placeholder="Search by Telegram ID">
             <button class="search-btn" onclick="admin.searchUserWithdrawals()">
               <i class="fas fa-search"></i> Search User
             </button>
@@ -1603,7 +1683,7 @@ class AdminPanel {
           <div class="card">
             <div class="section-header">
               <h3><i class="fas fa-clock"></i> Pending Withdrawals</h3>
-              <button class="action-btn btn-sm btn-secondary" onclick="admin.loadWithdrawals()">
+              <button class="action-btn btn-secondary" onclick="admin.loadWithdrawals()">
                 <i class="fas fa-sync-alt"></i> Refresh
               </button>
             </div>
@@ -1617,7 +1697,7 @@ class AdminPanel {
           </div>
         </div>
         
-        <div id="userWithdrawalsResults" style="display: none;">
+        <div id="userWithdrawalsResults" class="user-withdrawals-section" style="display: none;">
           <!-- Results will be shown here -->
         </div>
       </div>
@@ -1635,21 +1715,35 @@ class AdminPanel {
     }
     
     try {
-      const [pendingSnap, completedSnap, rejectedSnap] = await Promise.all([
-        this.db.ref('withdrawals/pending').orderByChild('userId').equalTo(userId).once('value'),
-        this.db.ref('withdrawals/completed').orderByChild('userId').equalTo(userId).once('value'),
-        this.db.ref('withdrawals/rejected').orderByChild('userId').equalTo(userId).once('value')
-      ]);
+      const userSnap = await this.db.ref(`users`).orderByChild('telegramId').equalTo(userId).once('value');
+      let actualUserId = null;
       
-      const userSnap = await this.db.ref(`users/${userId}`).once('value');
-      const userData = userSnap.val();
-      
-      if (!userData) {
+      if (!userSnap.exists()) {
         this.showNotification("Error", "User not found", "error");
         return;
       }
       
-      const userName = userData.firstName || userData.username || userId;
+      userSnap.forEach(child => {
+        actualUserId = child.key;
+      });
+      
+      if (!actualUserId) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+      
+      const [pendingSnap, completedSnap, rejectedSnap] = await Promise.all([
+        this.db.ref('withdrawals/pending').orderByChild('userId').equalTo(actualUserId).once('value'),
+        this.db.ref('withdrawals/completed').orderByChild('userId').equalTo(actualUserId).once('value'),
+        this.db.ref('withdrawals/rejected').orderByChild('userId').equalTo(actualUserId).once('value')
+      ]);
+      
+      const userDataSnap = await this.db.ref(`users/${actualUserId}`).once('value');
+      const userData = userDataSnap.val();
+      
+      const userName = userData.firstName || userData.username || actualUserId;
+      const username = userData.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
       
       let allWithdrawals = [];
       
@@ -1686,7 +1780,7 @@ class AdminPanel {
       if (allWithdrawals.length === 0) {
         document.getElementById('userWithdrawalsResults').innerHTML = `
           <div class="card">
-            <h3>Withdrawals for ${userName}</h3>
+            <h3>Withdrawals for ${cleanUsername || userName}</h3>
             <div class="empty-state">
               <i class="fas fa-wallet"></i>
               <p>No withdrawals found for this user</p>
@@ -1694,7 +1788,7 @@ class AdminPanel {
           </div>
         `;
       } else {
-        this.displayUserWithdrawals(allWithdrawals, userName);
+        this.displayUserWithdrawals(allWithdrawals, cleanUsername || userName, actualUserId);
       }
       
       document.getElementById('userWithdrawalsResults').style.display = 'block';
@@ -1705,14 +1799,14 @@ class AdminPanel {
     }
   }
 
-  displayUserWithdrawals(withdrawals, userName) {
+  displayUserWithdrawals(withdrawals, userName, userId) {
     withdrawals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     
     let html = `
       <div class="card">
         <div class="section-header">
           <h3>Withdrawals for ${userName}</h3>
-          <button class="action-btn btn-sm btn-secondary" onclick="document.getElementById('userWithdrawalsResults').style.display = 'none'">
+          <button class="action-btn btn-secondary" onclick="document.getElementById('userWithdrawalsResults').style.display = 'none'">
             <i class="fas fa-times"></i> Close
           </button>
         </div>
@@ -1723,6 +1817,10 @@ class AdminPanel {
     withdrawals.forEach(w => {
       const date = w.createdAt ? this.formatDateTime(w.createdAt) : 'N/A';
       const processedDate = w.processedAt ? this.formatDateTime(w.processedAt) : 'N/A';
+      const walletAddress = w.walletAddress || '';
+      const walletDisplay = walletAddress.length > 10 ? 
+        `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
+        walletAddress;
       
       let statusClass = '';
       let statusText = '';
@@ -1744,27 +1842,28 @@ class AdminPanel {
       
       html += `
         <div class="withdrawal-item ${w.status}">
-          <div class="withdrawal-header">
-            <div class="withdrawal-status ${statusClass}">${statusText}</div>
-            <div class="withdrawal-amount">
-              ${w.amount ? w.amount.toFixed(5) : '0.00000'} TON
-            </div>
-          </div>
+          <div class="withdrawal-status ${statusClass}">${statusText}</div>
           
           <div class="withdrawal-details">
             <div class="detail">
+              <span><i class="fas fa-calendar"></i> Date:</span>
+              <span>${date}</span>
+            </div>
+            <div class="detail">
               <span><i class="fas fa-wallet"></i> Wallet:</span>
-              <span class="wallet-address" title="${w.walletAddress}">
-                ${w.walletAddress ? w.walletAddress.substring(0, 15) + '...' : 'N/A'}
+              <span class="copyable-wallet" onclick="admin.copyToClipboard('${walletAddress}')" title="Click to copy full address">
+                ${walletDisplay}
               </span>
             </div>
             <div class="detail">
-              <span><i class="fas fa-calendar"></i> Request Date:</span>
-              <span>${date}</span>
+              <span><i class="fas fa-coins"></i> Amount:</span>
+              <span class="copyable-amount" onclick="admin.copyToClipboard('${w.amount ? w.amount.toFixed(5) : '0.00000'} TON')" title="Click to copy amount">
+                ${w.amount ? w.amount.toFixed(5) : '0.00000'} TON
+              </span>
             </div>
             ${w.processedAt ? `
               <div class="detail">
-                <span><i class="fas fa-calendar-check"></i> Processed Date:</span>
+                <span><i class="fas fa-calendar-check"></i> Processed:</span>
                 <span>${processedDate}</span>
               </div>
             ` : ''}
@@ -1772,7 +1871,7 @@ class AdminPanel {
               <div class="detail">
                 <span><i class="fas fa-link"></i> Transaction:</span>
                 <span>
-                  <a href="${w.transaction_link}" target="_blank" style="color: var(--primary);">
+                  <a href="${w.transaction_link}" target="_blank" style="color: #3b82f6;">
                     View on Explorer
                   </a>
                 </span>
@@ -1782,10 +1881,10 @@ class AdminPanel {
           
           ${w.status === 'pending' ? `
             <div class="withdrawal-actions">
-              <button class="action-btn btn-sm btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${w.userId}', '${w.userName || ''}')">
+              <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${w.userId}', '${userName}')">
                 <i class="fas fa-check"></i> Approve
               </button>
-              <button class="action-btn btn-sm btn-danger" onclick="admin.rejectWithdrawal('${w.id}')">
+              <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${w.id}')">
                 <i class="fas fa-times"></i> Reject
               </button>
             </div>
@@ -1890,9 +1989,13 @@ class AdminPanel {
     results.forEach(({ request, requestId, userData }) => {
       const date = request.createdAt ? new Date(request.createdAt) : new Date();
       const formattedDate = this.formatDateTime(request.createdAt);
+      const walletAddress = request.walletAddress || '';
+      const walletDisplay = walletAddress.length > 10 ? 
+        `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
+        walletAddress;
       
-      const totalTasks = userData?.totalTasks || 0;
-      const totalReferrals = userData?.referrals || 0;
+      const username = userData?.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
       const photoUrl = userData?.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png';
       
       html += `
@@ -1905,48 +2008,41 @@ class AdminPanel {
                      onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
               </div>
               <div>
-                <h4>${request.userName || 'Unknown User'}</h4>
+                <h4>${cleanUsername || request.userName || 'Unknown User'}</h4>
                 <p class="user-details">
-                  <span>@${request.username || 'No username'}</span>
-                  <span>•</span>
                   <span>ID: ${request.userId}</span>
                 </p>
               </div>
-            </div>
-            <div class="withdrawal-amount">
-              ${request.amount ? request.amount.toFixed(5) : '0.00000'} TON
             </div>
           </div>
           
           <div class="withdrawal-details">
             <div class="detail">
-              <span><i class="fas fa-wallet"></i> Wallet:</span>
-              <span class="wallet-address" title="${request.walletAddress}">
-                ${request.walletAddress ? request.walletAddress.substring(0, 15) + '...' : 'N/A'}
-              </span>
-            </div>
-            <div class="detail">
               <span><i class="fas fa-calendar"></i> Date:</span>
               <span>${formattedDate}</span>
             </div>
             <div class="detail">
-              <span><i class="fas fa-tasks"></i> Total Tasks:</span>
-              <span>${totalTasks}</span>
+              <span><i class="fas fa-wallet"></i> Wallet:</span>
+              <span class="copyable-wallet" onclick="admin.copyToClipboard('${walletAddress}')" title="Click to copy full address">
+                ${walletDisplay}
+              </span>
             </div>
             <div class="detail">
-              <span><i class="fas fa-users"></i> Total Referrals:</span>
-              <span>${totalReferrals}</span>
+              <span><i class="fas fa-coins"></i> Amount:</span>
+              <span class="copyable-amount" onclick="admin.copyToClipboard('${request.amount ? request.amount.toFixed(5) : '0.00000'} TON')" title="Click to copy amount">
+                ${request.amount ? request.amount.toFixed(5) : '0.00000'} TON
+              </span>
             </div>
           </div>
           
           <div class="withdrawal-actions">
-            <button class="action-btn btn-sm btn-info" onclick="admin.getWithdrawalDetails('${requestId}', '${request.userId}', '${request.userName || ''}')">
-              <i class="fas fa-info-circle"></i> Get Details
+            <button class="action-btn btn-info" onclick="admin.getWithdrawalUserDetails('${request.userId}', '${cleanUsername || request.userName || ''}')">
+              <i class="fas fa-info-circle"></i> Get User Details
             </button>
-            <button class="action-btn btn-sm btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${request.userName || ''}')">
+            <button class="action-btn btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${cleanUsername || request.userName || ''}')">
               <i class="fas fa-check"></i> Approve
             </button>
-            <button class="action-btn btn-sm btn-danger" onclick="admin.rejectWithdrawal('${requestId}')">
+            <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${requestId}')">
               <i class="fas fa-times"></i> Reject
             </button>
           </div>
@@ -1968,7 +2064,7 @@ class AdminPanel {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   }
 
-  async getWithdrawalDetails(requestId, userId, userName) {
+  async getWithdrawalUserDetails(userId, userName) {
     try {
       const userSnap = await this.db.ref(`users/${userId}`).once('value');
       if (!userSnap.exists()) {
@@ -1978,37 +2074,50 @@ class AdminPanel {
 
       const userData = userSnap.val();
       
-      const totalAds = this.safeNumber(userData.totalAds || 0);
-      const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-      const totalTasks = this.safeNumber(userData.totalTasks || 0);
-      const totalPromoCodes = this.safeNumber(userData.totalPromoCodes || 0);
-      const totalWithdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const username = userData.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const photoUrl = userData.photoUrl || '';
+      
       const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const referrals = this.safeNumber(userData.referrals || 0);
-      const referralEarnings = this.safeNumber(userData.referralEarnings || 0);
+      const refEarnings = this.safeNumber(userData.referralEarnings || 0);
+      const tasks = this.safeNumber(userData.totalTasks || 0);
+      const ads = this.safeNumber(userData.totalAds || 0);
+      const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
+      const balance = this.safeNumber(userData.balance || 0);
+      
+      const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
+      const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
 
-      const message = `💳 *Withdrawal User Details*\n\n` +
-        `🆔 User ID: ${userId}\n` +
-        `👤 Name: ${userName}\n` +
-        `📅 Joined: ${userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A'}\n\n` +
-        `📊 *Statistics:*\n` +
-        `📱 Total Ads: ${totalAds}\n` +
-        `👥 Total Referrals: ${totalReferrals}\n` +
-        `✅ Total Tasks: ${totalTasks}\n` +
-        `🎟️ Total Promo Codes: ${totalPromoCodes}\n` +
-        `💰 Total Withdrawals: ${totalWithdrawals}\n` +
-        `💎 Total Earned: ${totalEarned.toFixed(3)} TON\n` +
-        `👥 Referrals: ${referrals}\n` +
-        `💸 Referral Earnings: ${referralEarnings.toFixed(3)} TON\n` +
-        `💼 Balance: ${this.safeNumber(userData.balance || 0).toFixed(3)} TON\n\n` +
-        `🔗 Bot: @ninja_200s_bot`;
+      let message = `<b>Withdrawal User Details</b>\n\n`;
+      
+      if (photoUrl) {
+        message += `<a href="${photoUrl}">👤</a> `;
+      }
+      
+      message += `<b>User ID:</b> ${userId}\n`;
+      message += `<b>Username:</b> ${cleanUsername}\n`;
+      message += `<b>Joined At:</b> ${joinedAt}\n\n`;
+      
+      message += `<b>Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>Promo Codes:</b> ${promoCodes}\n`;
+      message += `<b>Referrals:</b> ${referrals}\n`;
+      message += `<b>Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
+      message += `<b>Tasks:</b> ${tasks}\n`;
+      message += `<b>ADS:</b> ${ads}\n\n`;
+      
+      message += `<b>Total Withdrawals:</b> ${withdrawals}\n`;
+      message += `<b>Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      
+      message += `<b>Last Active:</b> ${lastActive}`;
 
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
-      this.showNotification("Success", "Withdrawal user details sent to admin", "success");
+      this.showNotification("Success", "User details sent to admin", "success");
 
     } catch (error) {
-      console.error("Error getting withdrawal details:", error);
-      this.showNotification("Error", "Failed to get withdrawal details", "error");
+      console.error("Error getting user details:", error);
+      this.showNotification("Error", "Failed to get user details", "error");
     }
   }
 
@@ -2022,13 +2131,17 @@ class AdminPanel {
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>You are approving a withdrawal for <strong>${userName}</strong>:</p>
+          <p>Approve withdrawal for:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
+          
           <div class="withdrawal-summary">
             <div class="summary-item">
               <span>Amount:</span>
               <div class="summary-value-group">
                 <span class="amount-value">${amount.toFixed(5)} TON</span>
-                <button class="btn-sm btn-secondary" onclick="admin.copyToClipboard('${amount.toFixed(5)} TON')" title="Copy amount">
+                <button class="btn-copy" onclick="admin.copyToClipboard('${amount.toFixed(5)} TON')" title="Copy amount">
                   <i class="fas fa-copy"></i>
                 </button>
               </div>
@@ -2037,7 +2150,7 @@ class AdminPanel {
               <span>Wallet:</span>
               <div class="summary-value-group">
                 <span class="wallet-value">${wallet}</span>
-                <button class="btn-sm btn-secondary" onclick="admin.copyToClipboard('${wallet}')" title="Copy wallet">
+                <button class="btn-copy" onclick="admin.copyToClipboard('${wallet}')" title="Copy wallet">
                   <i class="fas fa-copy"></i>
                 </button>
               </div>
@@ -2045,9 +2158,12 @@ class AdminPanel {
           </div>
           
           <div class="form-group">
-            <label>Transaction Link *</label>
-            <input type="text" id="transactionLink" placeholder="https://tonscan.org/tx/...">
-            <small>Link to transaction on explorer</small>
+            <label>Transaction Hash *</label>
+            <div class="transaction-input-group">
+              <span class="transaction-prefix">https://tonviewer.com/transaction/</span>
+              <input type="text" id="transactionHash" placeholder="Enter transaction hash">
+            </div>
+            <small>Enter only the transaction hash (without URL)</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -2072,12 +2188,14 @@ class AdminPanel {
   }
 
   async approveWithdrawal(requestId, userId, amount, wallet) {
-    const transactionLink = document.getElementById('transactionLink')?.value.trim();
+    const transactionHash = document.getElementById('transactionHash')?.value.trim();
     
-    if (!transactionLink) {
-      this.showNotification("Error", "Please enter transaction link", "error");
+    if (!transactionHash) {
+      this.showNotification("Error", "Please enter transaction hash", "error");
       return;
     }
+    
+    const transactionLink = `https://tonviewer.com/transaction/${transactionHash}`;
     
     try {
       const requestRef = this.db.ref(`withdrawals/pending/${requestId}`);
@@ -2270,7 +2388,7 @@ class AdminPanel {
                 </div>
               </div>
               
-              <button class="action-btn btn-sm btn-secondary" onclick="admin.addInlineButton()">
+              <button class="action-btn btn-secondary" onclick="admin.addInlineButton()">
                 <i class="fas fa-plus"></i> Add Button
               </button>
               <small>Max 3 buttons per row, 5 rows maximum</small>
