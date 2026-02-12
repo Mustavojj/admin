@@ -1,15 +1,15 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCnmgW3GByHOamgChUAmGhJ2ovYluXf6qc",
-  authDomain: "ninja-200s.firebaseapp.com",
-  databaseURL: "https://ninja-200s-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "ninja-200s",
-  storageBucket: "ninja-200s.firebasestorage.app",
-  messagingSenderId: "1076985111103",
-  appId: "1:1076985111103:web:4112ff8923f668aa9f8e8a",
-  measurementId: "G-5K8W9XM97T"
+  apiKey: "AIzaSyAFnGbqVM2ZdpLl5TP1pWrPsGd53fC8JiQ",
+  authDomain: "torneka.firebaseapp.com",
+  databaseURL: "https://torneka-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "torneka",
+  storageBucket: "torneka.firebasestorage.app",
+  messagingSenderId: "141604958494",
+  appId: "1:141604958494:web:ac888c242046348eeb190f",
+  measurementId: "G-Q5BT9CM425"
 };
 
-const BOT_TOKEN = "8591215569:AAHrJNyxOovCnQzxYJSDWzfDUwOuyRxODGs";
+const BOT_TOKEN = "7881276129:AAFylehfpcovw1PUDKHOOKbHVjtuXDuW1nY";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
