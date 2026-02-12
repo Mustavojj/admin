@@ -1,15 +1,15 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyA0APJwsUQd1kTg3y8J-9yVukiZzUBdRos",
-  authDomain: "neja-go.firebaseapp.com",
-  databaseURL: "https://neja-go-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "neja-go",
-  storageBucket: "neja-go.firebasestorage.app",
-  messagingSenderId: "60526443918",
-  appId: "1:60526443918:web:fca257ab5c782e0f1178df",
-  measurementId: "G-SJGF6HVQRE"
+  apiKey: "AIzaSyCnmgW3GByHOamgChUAmGhJ2ovYluXf6qc",
+  authDomain: "ninja-200s.firebaseapp.com",
+  databaseURL: "https://ninja-200s-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ninja-200s",
+  storageBucket: "ninja-200s.firebasestorage.app",
+  messagingSenderId: "1076985111103",
+  appId: "1:1076985111103:web:4112ff8923f668aa9f8e8a",
+  measurementId: "G-5K8W9XM97T"
 };
 
-const BOT_TOKEN = "8315477063:AAFjF0qceSsrZ5fJ--xDfwiBCQ3ahmLgLNs";
+const BOT_TOKEN = "8591215569:AAHrJNyxOovCnQzxYJSDWzfDUwOuyRxODGs";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
