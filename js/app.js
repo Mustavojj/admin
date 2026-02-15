@@ -1386,7 +1386,7 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Reward (TON) *</label>
-                <input type="number" id="promoReward" value="0.010" step="0.001" min="0.001">
+                <input type="number" id="promoReward" value="0.001" step="0.001" min="0.001">
               </div>
               
               <div class="form-group">
