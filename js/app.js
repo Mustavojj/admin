@@ -305,8 +305,16 @@ class AdminPanel {
                     <span class="stat-value" id="mainTasks">0</span>
                   </div>
                   <div class="stat-item">
+                    <span class="stat-label">Partner Tasks</span>
+                    <span class="stat-value" id="partnerTasks">0</span>
+                  </div>
+                  <div class="stat-item">
                     <span class="stat-label">Social Tasks</span>
                     <span class="stat-value" id="socialTasks">0</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Daily Tasks</span>
+                    <span class="stat-value" id="dailyTasks">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Completed Tasks</span>
@@ -328,6 +336,10 @@ class AdminPanel {
                   <div class="stat-item">
                     <span class="stat-label">Total Balance</span>
                     <span class="stat-value" id="totalBalance">0 TON</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Total POP Balance</span>
+                    <span class="stat-value" id="totalPopBalance">0 POP</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Referral Earnings</span>
@@ -374,10 +386,11 @@ class AdminPanel {
     try {
       const today = new Date().setHours(0, 0, 0, 0);
       
-      const [usersSnap, tasksSnap, withdrawalsSnap] = await Promise.all([
+      const [usersSnap, tasksSnap, withdrawalsSnap, promoCodesSnap] = await Promise.all([
         this.db.ref('users').once('value'),
         this.db.ref('config/tasks').once('value'),
-        this.db.ref('withdrawals').once('value')
+        this.db.ref('withdrawals').once('value'),
+        this.db.ref('config/promoCodes').once('value')
       ]);
       
       let totalUsers = 0;
@@ -385,6 +398,7 @@ class AdminPanel {
       let bannedUsers = 0;
       let activeUsers = 0;
       let totalBalance = 0;
+      let totalPopBalance = 0;
       let totalEarned = 0;
       let referralEarnings = 0;
       let taskEarnings = 0;
@@ -404,14 +418,18 @@ class AdminPanel {
         }
         
         totalBalance += this.safeNumber(user.balance);
+        totalPopBalance += this.safeNumber(user.pop);
         totalEarned += this.safeNumber(user.totalEarned);
         referralEarnings += this.safeNumber(user.referralEarnings);
-        taskEarnings += this.safeNumber(user.totalEarned) - this.safeNumber(user.referralEarnings);
       });
+      
+      taskEarnings = totalEarned - referralEarnings;
       
       let totalTasks = 0;
       let mainTasks = 0;
+      let partnerTasks = 0;
       let socialTasks = 0;
+      let dailyTasks = 0;
       let completedTasks = 0;
       
       if (tasksSnap.exists()) {
@@ -420,10 +438,15 @@ class AdminPanel {
           if (task.status !== 'deleted') {
             totalTasks++;
             
-            if (task.category === 'main') {
+            const category = task.category;
+            if (category === 'main') {
               mainTasks++;
-            } else if (task.category === 'social') {
+            } else if (category === 'partner') {
+              partnerTasks++;
+            } else if (category === 'social') {
               socialTasks++;
+            } else if (category === 'daily') {
+              dailyTasks++;
             }
             
             if (task.currentCompletions >= task.maxCompletions) {
@@ -482,10 +505,13 @@ class AdminPanel {
       updateElement('confirmedWithdrawals', confirmedWithdrawals);
       updateElement('totalTasks', totalTasks);
       updateElement('mainTasks', mainTasks);
+      updateElement('partnerTasks', partnerTasks);
       updateElement('socialTasks', socialTasks);
+      updateElement('dailyTasks', dailyTasks);
       updateElement('completedTasks', completedTasks);
       updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
       updateElement('totalBalance', totalBalance.toFixed(3) + ' TON');
+      updateElement('totalPopBalance', Math.floor(totalPopBalance) + ' POP');
       updateElement('referralEarnings', referralEarnings.toFixed(3) + ' TON');
       updateElement('taskEarnings', taskEarnings.toFixed(3) + ' TON');
       
@@ -608,9 +634,9 @@ class AdminPanel {
     
     users.forEach(user => {
       const balance = this.safeNumber(user.balance);
+      const popBalance = this.safeNumber(user.pop);
       const referrals = user.referrals || 0;
-      const tasks = user.totalTasks || 0;
-      const ads = user.totalAds || 0;
+      const tasks = user.totalTasksCompleted || user.totalTasks || 0;
       const status = user.status || 'free';
       const username = user.username || '';
       const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
@@ -641,6 +667,13 @@ class AdminPanel {
               </div>
             </div>
             <div class="user-stat">
+              <i class="fas fa-star"></i>
+              <div>
+                <div class="stat-value">${Math.floor(popBalance)} POP</div>
+                <div class="stat-label">POP Balance</div>
+              </div>
+            </div>
+            <div class="user-stat">
               <i class="fas fa-users"></i>
               <div>
                 <div class="stat-value">${referrals}</div>
@@ -654,13 +687,6 @@ class AdminPanel {
                 <div class="stat-label">Tasks</div>
               </div>
             </div>
-            <div class="user-stat">
-              <i class="fas fa-ad"></i>
-              <div>
-                <div class="stat-value">${ads}</div>
-                <div class="stat-label">ADS</div>
-              </div>
-            </div>
           </div>
           
           <div class="user-card-actions">
@@ -669,15 +695,15 @@ class AdminPanel {
             </button>
             <div class="balance-buttons">
               <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
-                <i class="fas fa-plus"></i> Add Balance
+                <i class="fas fa-plus"></i> Add TON
               </button>
-              <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
-                <i class="fas fa-minus"></i> Remove Balance
+              <button class="action-btn btn-warning" onclick="admin.showAddPopModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
+                <i class="fas fa-plus"></i> Add POP
               </button>
             </div>
             <div class="ban-buttons">
               ${status === 'free' ? 
-                `<button class="action-btn btn-warning" onclick="admin.banUser('${user.id}', this)">
+                `<button class="action-btn btn-danger" onclick="admin.banUser('${user.id}', this)">
                   <i class="fas fa-ban"></i> BAN
                 </button>` : 
                 `<button class="action-btn btn-success" onclick="admin.unbanUser('${user.id}', this)">
@@ -692,6 +718,79 @@ class AdminPanel {
     
     html += '</div>';
     container.innerHTML = html;
+  }
+
+  showAddPopModal(userId, userName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-star"></i> Add POP Balance</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Add POP balance to user:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
+          <div class="form-group">
+            <label>Amount (POP)</label>
+            <input type="number" id="addPopAmount" placeholder="100" step="1" min="1" value="100">
+          </div>
+          <div class="form-group">
+            <label>Reason (Optional)</label>
+            <input type="text" id="addPopReason" placeholder="Admin added POP">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-warning" onclick="admin.addPopBalance('${userId}')">
+            <i class="fas fa-check"></i> Add POP
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  async addPopBalance(userId) {
+    const amount = parseInt(document.getElementById('addPopAmount').value);
+    const reason = document.getElementById('addPopReason').value.trim() || 'Admin added POP';
+
+    if (!amount || amount <= 0) {
+      this.showNotification("Error", "Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const userRef = this.db.ref(`users/${userId}`);
+      const snapshot = await userRef.once('value');
+      
+      if (!snapshot.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const user = snapshot.val();
+      const currentPop = this.safeNumber(user.pop);
+      const newPop = currentPop + amount;
+
+      await userRef.update({
+        pop: newPop
+      });
+
+      this.showNotification("Success", `Added ${amount} POP to user`, "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error adding POP:", error);
+      this.showNotification("Error", "Failed to add POP", "error");
+    }
   }
 
   async getAllUserDetails(userId) {
@@ -709,11 +808,11 @@ class AdminPanel {
       const photoUrl = userData.photoUrl || '';
       
       const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const popBalance = this.safeNumber(userData.pop || 0);
       const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const referrals = this.safeNumber(userData.referrals || 0);
       const refEarnings = this.safeNumber(userData.referralEarnings || 0);
-      const tasks = this.safeNumber(userData.totalTasks || 0);
-      const ads = this.safeNumber(userData.totalAds || 0);
+      const tasks = this.safeNumber(userData.totalTasksCompleted || userData.totalTasks || 0);
       const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
       const balance = this.safeNumber(userData.balance || 0);
       
@@ -731,14 +830,14 @@ class AdminPanel {
       message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
       
       message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>💰 TON Balance:</b> ${balance.toFixed(3)} TON\n`;
+      message += `<b>⭐ POP Balance:</b> ${Math.floor(popBalance)} POP\n`;
       message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
       message += `<b>🫂 Referrals:</b> ${referrals}\n`;
       message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>☑️ Tasks:</b> ${tasks}\n`;
-      message += `<b>🖥 ADS:</b> ${ads}\n\n`;
+      message += `<b>☑️ Tasks:</b> ${tasks}\n\n`;
       
-      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n`;
-      message += `<b>💰 Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n\n`;
       
       message += `<b>🗒 Last Active:</b> ${lastActive}`;
 
@@ -757,7 +856,7 @@ class AdminPanel {
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h3><i class="fas fa-plus-circle"></i> Add Balance</h3>
+          <h3><i class="fas fa-plus-circle"></i> Add TON Balance</h3>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
@@ -778,42 +877,6 @@ class AdminPanel {
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
           <button class="action-btn btn-success" onclick="admin.addBalance('${userId}')">
             <i class="fas fa-check"></i> Add Balance
-          </button>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  showRemoveBalanceModal(userId, userName) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-minus-circle"></i> Remove Balance</h3>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Remove TON balance from user:</p>
-          <div class="user-info-modal">
-            <strong>${userName}</strong>
-          </div>
-          <div class="form-group">
-            <label>Amount (TON)</label>
-            <input type="number" id="removeBalanceAmount" placeholder="0.100" step="0.001" min="0.001">
-          </div>
-          <div class="form-group">
-            <label>Reason (Optional)</label>
-            <input type="text" id="removeBalanceReason" placeholder="Admin removed balance">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-danger" onclick="admin.removeBalance('${userId}')">
-            <i class="fas fa-check"></i> Remove Balance
           </button>
         </div>
       </div>
@@ -861,49 +924,6 @@ class AdminPanel {
     }
   }
 
-  async removeBalance(userId) {
-    const amount = parseFloat(document.getElementById('removeBalanceAmount').value);
-    const reason = document.getElementById('removeBalanceReason').value.trim() || 'Admin removed balance';
-
-    if (!amount || amount <= 0) {
-      this.showNotification("Error", "Please enter a valid amount", "error");
-      return;
-    }
-
-    try {
-      const userRef = this.db.ref(`users/${userId}`);
-      const snapshot = await userRef.once('value');
-      
-      if (!snapshot.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const user = snapshot.val();
-      const currentBalance = this.safeNumber(user.balance);
-      
-      if (currentBalance < amount) {
-        this.showNotification("Error", `User only has ${currentBalance.toFixed(3)} TON`, "error");
-        return;
-      }
-
-      const newBalance = currentBalance - amount;
-
-      await userRef.update({
-        balance: newBalance
-      });
-
-      this.showNotification("Success", `Removed ${amount} TON from user`, "success");
-      
-      document.querySelector('.modal-overlay.show')?.remove();
-      await this.searchUser();
-      
-    } catch (error) {
-      console.error("Error removing balance:", error);
-      this.showNotification("Error", "Failed to remove balance", "error");
-    }
-  }
-
   async banUser(userId, button) {
     if (!confirm('Are you sure you want to ban this user?')) return;
 
@@ -916,13 +936,6 @@ class AdminPanel {
         button.className = 'action-btn btn-success';
         button.onclick = () => this.unbanUser(userId, button);
       }
-      
-      document.querySelectorAll(`.user-card .user-status.free`).forEach(el => {
-        if (el.closest('.user-card')?.querySelector(`[onclick*="${userId}"]`)) {
-          el.className = 'user-status ban';
-          el.textContent = 'BANNED';
-        }
-      });
       
     } catch (error) {
       console.error("Error banning user:", error);
@@ -939,16 +952,9 @@ class AdminPanel {
       
       if (button) {
         button.innerHTML = '<i class="fas fa-ban"></i> BAN';
-        button.className = 'action-btn btn-warning';
+        button.className = 'action-btn btn-danger';
         button.onclick = () => this.banUser(userId, button);
       }
-      
-      document.querySelectorAll(`.user-card .user-status.ban`).forEach(el => {
-        if (el.closest('.user-card')?.querySelector(`[onclick*="${userId}"]`)) {
-          el.className = 'user-status free';
-          el.textContent = 'ACTIVE';
-        }
-      });
       
     } catch (error) {
       console.error("Error unbanning user:", error);
@@ -961,7 +967,7 @@ class AdminPanel {
       <div class="tasks-page">
         <div class="page-header">
           <h2><i class="fas fa-tasks"></i> Tasks Management</h2>
-          <p>Create and manage Main & Social tasks</p>
+          <p>Create and manage Main, Partner, Social & Daily tasks</p>
         </div>
         
         <div class="search-section">
@@ -999,13 +1005,19 @@ class AdminPanel {
               </div>
               
               <div class="form-group">
-                <label>Task Type *</label>
+                <label>Task Category *</label>
                 <div class="type-selector">
-                  <button class="type-btn active" data-type="main" data-reward="0.001">
+                  <button class="type-btn active" data-type="main" data-reward="0.001" data-pop="1">
                     <i class="fas fa-star"></i> Main
                   </button>
-                  <button class="type-btn" data-type="social" data-reward="0.0005">
+                  <button class="type-btn" data-type="partner" data-reward="0.0005" data-pop="1">
+                    <i class="fas fa-handshake"></i> Partner
+                  </button>
+                  <button class="type-btn" data-type="social" data-reward="0.0003" data-pop="1">
                     <i class="fas fa-users"></i> Social
+                  </button>
+                  <button class="type-btn" data-type="daily" data-reward="0.0002" data-pop="2">
+                    <i class="fas fa-calendar-day"></i> Daily
                   </button>
                 </div>
               </div>
@@ -1013,12 +1025,26 @@ class AdminPanel {
               <div class="form-group">
                 <label>Reward per User (TON) *</label>
                 <input type="number" id="taskReward" value="0.001" step="0.0001" min="0.0001">
-                <small>Default: 0.001 for Main, 0.0005 for Social</small>
+                <small>Default: Main=0.001, Partner=0.0005, Social=0.0003, Daily=0.0002</small>
+              </div>
+              
+              <div class="form-group">
+                <label>POP Reward per User *</label>
+                <input type="number" id="taskPopReward" value="1" step="1" min="0">
+                <small>Default: 1 POP per task</small>
               </div>
               
               <div class="form-group">
                 <label>Max Completions *</label>
                 <input type="number" id="taskMaxCompletions" value="100" min="1">
+              </div>
+              
+              <div class="form-group">
+                <label>Verification Required</label>
+                <select id="taskVerification">
+                  <option value="NO">No verification</option>
+                  <option value="YES">Yes (bot must be admin)</option>
+                </select>
               </div>
               
               <button class="action-btn btn-success" onclick="admin.createTask()">
@@ -1060,7 +1086,9 @@ class AdminPanel {
         btn.classList.add('active');
         
         const reward = btn.getAttribute('data-reward');
+        const popReward = btn.getAttribute('data-pop');
         document.getElementById('taskReward').value = reward;
+        document.getElementById('taskPopReward').value = popReward;
       });
     });
   }
@@ -1154,12 +1182,34 @@ class AdminPanel {
       const progress = task.maxCompletions > 0 ? 
         (task.currentCompletions || 0) / task.maxCompletions * 100 : 0;
       
-      const typeClass = task.category === 'main' ? 'type-main' : 'type-social';
-      const typeText = task.category === 'main' ? 'Main' : 'Social';
+      let typeClass = 'type-main';
+      let typeText = 'Main';
+      
+      switch(task.category) {
+        case 'main':
+          typeClass = 'type-main';
+          typeText = 'Main';
+          break;
+        case 'partner':
+          typeClass = 'type-partner';
+          typeText = 'Partner';
+          break;
+        case 'social':
+          typeClass = 'type-social';
+          typeText = 'Social';
+          break;
+        case 'daily':
+          typeClass = 'type-daily';
+          typeText = 'Daily';
+          break;
+      }
+      
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || 'https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png';
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
-      const totalDistributed = (task.currentCompletions || 0) * (task.reward || 0);
+      const totalDistributedTon = (task.currentCompletions || 0) * (task.reward || 0);
+      const totalDistributedPop = (task.currentCompletions || 0) * (task.popReward || 0);
+      const verificationIcon = task.verification === 'YES' ? '🔒' : '🔓';
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
@@ -1171,7 +1221,7 @@ class AdminPanel {
           </div>
           
           <div class="task-header">
-            <h4>${task.name}</h4>
+            <h4>${task.name} ${verificationIcon}</h4>
             <div class="task-meta">
               <span class="task-type ${typeClass}">${typeText}</span>
               <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
@@ -1187,12 +1237,16 @@ class AdminPanel {
           
           <div class="task-stats">
             <div class="task-stat">
-              <span class="stat-label">Task Reward:</span>
+              <span class="stat-label">TON Reward:</span>
               <span class="stat-value">${task.reward || 0.001} TON</span>
             </div>
             <div class="task-stat">
+              <span class="stat-label">POP Reward:</span>
+              <span class="stat-value">${task.popReward || 1} POP</span>
+            </div>
+            <div class="task-stat">
               <span class="stat-label">Total Distributed:</span>
-              <span class="stat-value">${totalDistributed.toFixed(3)} TON</span>
+              <span class="stat-value">${totalDistributedTon.toFixed(3)} TON / ${totalDistributedPop} POP</span>
             </div>
             <div class="task-stat">
               <span class="stat-label">Created:</span>
@@ -1282,9 +1336,11 @@ class AdminPanel {
     const image = document.getElementById('taskImage').value.trim();
     const link = document.getElementById('taskLink').value.trim();
     const reward = parseFloat(document.getElementById('taskReward').value) || 0.001;
+    const popReward = parseInt(document.getElementById('taskPopReward').value) || 1;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const typeBtn = document.querySelector('.type-btn.active');
     const type = typeBtn ? typeBtn.dataset.type : 'main';
+    const verification = document.getElementById('taskVerification').value;
     
     if (!name || !link) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1293,6 +1349,11 @@ class AdminPanel {
     
     if (reward <= 0) {
       this.showNotification("Error", "Reward must be positive", "error");
+      return;
+    }
+    
+    if (popReward < 0) {
+      this.showNotification("Error", "POP reward cannot be negative", "error");
       return;
     }
     
@@ -1314,9 +1375,11 @@ class AdminPanel {
         url: formattedLink,
         category: type,
         reward: reward,
+        popReward: popReward,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
         status: 'active',
+        verification: verification,
         createdBy: 'admin',
         createdAt: Date.now()
       };
@@ -1332,7 +1395,6 @@ class AdminPanel {
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
-      document.getElementById('taskReward').value = type === 'main' ? '0.001' : '0.0005';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -1385,8 +1447,16 @@ class AdminPanel {
               </div>
               
               <div class="form-group">
-                <label>Reward (TON) *</label>
-                <input type="number" id="promoReward" value="0.001" step="0.001" min="0.001">
+                <label>Reward Type</label>
+                <select id="promoRewardType">
+                  <option value="ton">TON</option>
+                  <option value="pop">POP</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Reward Amount *</label>
+                <input type="number" id="promoReward" value="0.010" step="0.001" min="0.001">
               </div>
               
               <div class="form-group">
@@ -1488,6 +1558,8 @@ class AdminPanel {
       const isFullyUsed = max > 0 && used >= max;
       const createdDate = promo.createdAt ? this.formatDateTime(promo.createdAt) : 'N/A';
       const totalDistributed = used * (promo.reward || 0);
+      const rewardType = promo.rewardType || 'ton';
+      const rewardSymbol = rewardType === 'ton' ? 'TON' : 'POP';
       
       let status = 'active';
       let statusClass = 'status-active';
@@ -1505,7 +1577,7 @@ class AdminPanel {
               <div class="promo-meta">
                 <span class="promo-status ${statusClass}">${status.toUpperCase()}</span>
                 <span class="promo-reward">
-                  <i class="fas fa-gem"></i> ${promo.reward || 0.010} TON
+                  <i class="fas fa-gem"></i> ${promo.reward || 0.010} ${rewardSymbol}
                 </span>
               </div>
             </div>
@@ -1530,7 +1602,7 @@ class AdminPanel {
             </div>
             <div class="detail">
               <span>Total Distributed:</span>
-              <span>${totalDistributed.toFixed(3)} TON</span>
+              <span>${totalDistributed.toFixed(3)} ${rewardSymbol}</span>
             </div>
             <div class="detail">
               <span>Created:</span>
@@ -1554,7 +1626,8 @@ class AdminPanel {
 
   async createPromoCode() {
     const code = document.getElementById('promoCode').value.trim().toUpperCase();
-    const reward = parseFloat(document.getElementById('promoReward').value) || 0.010;
+    const rewardType = document.getElementById('promoRewardType').value;
+    const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
     
     if (!code) {
@@ -1581,6 +1654,7 @@ class AdminPanel {
       
       const promoData = {
         code: code,
+        rewardType: rewardType,
         reward: reward,
         maxUses: maxUses,
         usedCount: 0,
@@ -1594,6 +1668,7 @@ class AdminPanel {
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '0.010';
       document.getElementById('promoMaxUses').value = '0';
+      document.getElementById('promoRewardType').value = 'ton';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -2079,11 +2154,11 @@ class AdminPanel {
       const photoUrl = userData.photoUrl || '';
       
       const totalEarned = this.safeNumber(userData.totalEarned || 0);
+      const popBalance = this.safeNumber(userData.pop || 0);
       const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
       const referrals = this.safeNumber(userData.referrals || 0);
       const refEarnings = this.safeNumber(userData.referralEarnings || 0);
-      const tasks = this.safeNumber(userData.totalTasks || 0);
-      const ads = this.safeNumber(userData.totalAds || 0);
+      const tasks = this.safeNumber(userData.totalTasksCompleted || userData.totalTasks || 0);
       const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
       const balance = this.safeNumber(userData.balance || 0);
       
@@ -2101,14 +2176,14 @@ class AdminPanel {
       message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
       
       message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
+      message += `<b>💰 TON Balance:</b> ${balance.toFixed(3)} TON\n`;
+      message += `<b>⭐ POP Balance:</b> ${Math.floor(popBalance)} POP\n`;
       message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
       message += `<b>🫂 Referrals:</b> ${referrals}\n`;
       message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>☑️ Tasks:</b> ${tasks}\n`;
-      message += `<b>🖥 ADS:</b> ${ads}\n\n`;
+      message += `<b>☑️ Tasks:</b> ${tasks}\n\n`;
       
-      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n`;
-      message += `<b>💰 Total Balance:</b> ${balance.toFixed(3)} TON\n\n`;
+      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n\n`;
       
       message += `<b>🗒 Last Active:</b> ${lastActive}`;
 
@@ -2215,7 +2290,7 @@ class AdminPanel {
         status: 'completed',
         processedAt: Date.now(),
         transaction_link: transactionLink,
-        total_tasks: userData?.totalTasks || 0,
+        total_tasks: userData?.totalTasksCompleted || 0,
         total_referrals: userData?.referrals || 0
       };
       
