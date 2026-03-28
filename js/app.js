@@ -13,6 +13,8 @@ const BOT_TOKEN = "8007486383:AAHdBVBjGPBVht1MYo6TNqTKU0wtyjhRqmg";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
+const DEFAULT_IMAGE_URL = "https://i.ibb.co/xqL5tXyF/file-00000000473871f4b2902b2708daa633.png";
+
 class AdminPanel {
   constructor() {
     this.db = null;
@@ -20,6 +22,11 @@ class AdminPanel {
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
     this.adminData = null;
+    this.settings = {
+      withdrawalMessage: "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using Pop Buzz!",
+      withdrawalImage: "",
+      withdrawalButtons: []
+    };
     
     this.elements = {
       loginContainer: document.getElementById('login-container'),
@@ -37,6 +44,7 @@ class AdminPanel {
     };
     
     this.initializeFirebase();
+    this.loadSettings();
   }
 
   async initializeFirebase() {
@@ -56,6 +64,19 @@ class AdminPanel {
       console.error("❌ Firebase initialization error:", error);
       this.showLoginMessage("Failed to initialize Firebase", "error");
     }
+  }
+
+  loadSettings() {
+    const saved = localStorage.getItem('popbuzz_settings');
+    if (saved) {
+      try {
+        this.settings = JSON.parse(saved);
+      } catch(e) {}
+    }
+  }
+
+  saveSettings() {
+    localStorage.setItem('popbuzz_settings', JSON.stringify(this.settings));
   }
 
   setupEventListeners() {
@@ -117,7 +138,7 @@ class AdminPanel {
     }
 
     this.elements.loginButton.disabled = true;
-    this.elements.loginButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+    this.elements.loginButton.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Authenticating...';
     
     try {
       const userCredential = await this.auth.signInAnonymously();
@@ -126,8 +147,6 @@ class AdminPanel {
       const isValid = ADMIN_PASSWORDS.includes(password);
       
       if (isValid) {
-        await this.registerAdminInDatabase();
-        
         this.showLoginMessage("Login successful!", "success");
         
         setTimeout(() => {
@@ -145,28 +164,7 @@ class AdminPanel {
       this.showLoginMessage("Authentication failed", "error");
     } finally {
       this.elements.loginButton.disabled = false;
-      this.elements.loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
-    }
-  }
-
-  async registerAdminInDatabase() {
-    try {
-      const adminId = "admin_" + Date.now();
-      const adminData = {
-        id: adminId,
-        loginTime: Date.now(),
-        firebaseUid: this.currentUser.uid,
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language
-      };
-
-      await this.db.ref(`adminsack/${adminId}`).set(adminData);
-      
-      this.adminData = adminData;
-      console.log("✅ Admin registered in database");
-    } catch (error) {
-      console.error("❌ Failed to register admin:", error);
+      this.elements.loginButton.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Login';
     }
   }
 
@@ -202,6 +200,9 @@ class AdminPanel {
       case 'broadcast':
         await this.renderBroadcast();
         break;
+      case 'settings':
+        await this.renderSettings();
+        break;
       case 'myUid':
         await this.renderMyUid();
         break;
@@ -218,6 +219,7 @@ class AdminPanel {
       'promoCodes': 'Promo Codes',
       'withdrawals': 'Withdrawals',
       'broadcast': 'Broadcast',
+      'settings': 'Settings',
       'myUid': 'My UID'
     };
     return titles[pageName] || 'Dashboard';
@@ -226,8 +228,9 @@ class AdminPanel {
   async renderDashboard() {
     this.elements.contentArea.innerHTML = `
       <div class="dashboard-page">
-        <div class="dashboard-header">
-          <h2><i class="fas fa-tachometer-alt"></i> Dashboard Overview</h2>
+        <div class="page-header">
+          <h2><i class="fas fa-chart-pie"></i> Dashboard Overview</h2>
+          <p>Welcome back, Administrator</p>
         </div>
         
         <div class="loading" id="dashboardLoading">
@@ -265,7 +268,7 @@ class AdminPanel {
               
               <div class="stat-card">
                 <div class="stat-card-header">
-                  <i class="fas fa-wallet"></i>
+                  <i class="fas fa-money-bill-wave"></i>
                   <h3>Withdrawals Statistics</h3>
                 </div>
                 <div class="stat-card-body">
@@ -292,7 +295,7 @@ class AdminPanel {
             <div class="stats-row">
               <div class="stat-card">
                 <div class="stat-card-header">
-                  <i class="fas fa-tasks"></i>
+                  <i class="fas fa-list-check"></i>
                   <h3>Tasks Statistics</h3>
                 </div>
                 <div class="stat-card-body">
@@ -357,19 +360,19 @@ class AdminPanel {
           <div class="quick-actions">
             <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
             <div class="actions-grid">
-              <button class="action-btn quick-btn" onclick="admin.showPage('users')">
-                <i class="fas fa-user-plus"></i>
+              <button class="quick-btn" onclick="admin.showPage('users')">
+                <i class="fas fa-user-search"></i>
                 <span>Search User</span>
               </button>
-              <button class="action-btn quick-btn" onclick="admin.showPage('tasks')">
+              <button class="quick-btn" onclick="admin.showPage('tasks')">
                 <i class="fas fa-plus-circle"></i>
                 <span>Create Task</span>
               </button>
-              <button class="action-btn quick-btn" onclick="admin.showPage('promoCodes')">
-                <i class="fas fa-ticket-alt"></i>
+              <button class="quick-btn" onclick="admin.showPage('promoCodes')">
+                <i class="fas fa-ticket"></i>
                 <span>Add Promo Code</span>
               </button>
-              <button class="action-btn quick-btn" onclick="admin.showPage('withdrawals')">
+              <button class="quick-btn" onclick="admin.showPage('withdrawals')">
                 <i class="fas fa-wallet"></i>
                 <span>Process Withdrawal</span>
               </button>
@@ -386,11 +389,10 @@ class AdminPanel {
     try {
       const today = new Date().setHours(0, 0, 0, 0);
       
-      const [usersSnap, tasksSnap, withdrawalsSnap, promoCodesSnap] = await Promise.all([
+      const [usersSnap, tasksSnap, withdrawalsSnap] = await Promise.all([
         this.db.ref('users').once('value'),
         this.db.ref('config/tasks').once('value'),
-        this.db.ref('withdrawals').once('value'),
-        this.db.ref('config/promoCodes').once('value')
+        this.db.ref('withdrawals').once('value')
       ]);
       
       let totalUsers = 0;
@@ -635,69 +637,101 @@ class AdminPanel {
     users.forEach(user => {
       const balance = this.safeNumber(user.balance);
       const popBalance = this.safeNumber(user.pop);
-      const referrals = user.referrals || 0;
-      const tasks = user.totalTasksCompleted || user.totalTasks || 0;
+      const referrals = this.safeNumber(user.referrals || 0);
+      const tasks = this.safeNumber(user.totalTasksCompleted || 0);
+      const totalCheckins = this.safeNumber(user.totalCheckins || 0);
+      const totalPromoCodes = this.safeNumber(user.totalPromoCodes || 0);
+      const referralEarnings = this.safeNumber(user.referralEarnings || 0);
+      const totalEarned = this.safeNumber(user.totalEarned || 0);
       const status = user.status || 'free';
       const username = user.username || '';
       const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const firstName = user.firstName || 'User';
+      const joinedAt = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
+      const lastActive = user.lastActive ? this.formatDateTime(user.lastActive) : 'N/A';
       
       html += `
         <div class="user-card">
           <div class="user-card-header">
             <div class="user-avatar">
               ${user.photoUrl ? 
-                `<img src="${user.photoUrl}" alt="${user.firstName}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">` : 
+                `<img src="${user.photoUrl}" alt="${firstName}" onerror="this.src='${DEFAULT_IMAGE_URL}'">` : 
                 `<i class="fas fa-user-circle"></i>`
               }
             </div>
             <div class="user-info">
-              <h4>${cleanUsername || user.firstName || 'Unknown User'}</h4>
+              <h4>${cleanUsername || firstName}</h4>
               <div class="user-status ${status}">
                 ${status === 'ban' ? 'BANNED' : 'ACTIVE'}
               </div>
             </div>
           </div>
           
-          <div class="user-card-stats">
-            <div class="user-stat">
+          <div class="user-stats-grid">
+            <div class="user-stat-item">
               <i class="fas fa-coins"></i>
-              <div>
-                <div class="stat-value">${balance.toFixed(3)} TON</div>
-                <div class="stat-label">Balance</div>
+              <div class="user-stat-info">
+                <div class="user-stat-label">TON Balance</div>
+                <div class="user-stat-value">${balance.toFixed(3)} TON</div>
               </div>
             </div>
-            <div class="user-stat">
+            <div class="user-stat-item">
               <i class="fas fa-star"></i>
-              <div>
-                <div class="stat-value">${Math.floor(popBalance)} POP</div>
-                <div class="stat-label">POP Balance</div>
+              <div class="user-stat-info">
+                <div class="user-stat-label">POP Balance</div>
+                <div class="user-stat-value">${Math.floor(popBalance)} POP</div>
               </div>
             </div>
-            <div class="user-stat">
+            <div class="user-stat-item">
               <i class="fas fa-users"></i>
-              <div>
-                <div class="stat-value">${referrals}</div>
-                <div class="stat-label">Referrals</div>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Total Referrals</div>
+                <div class="user-stat-value">${referrals}</div>
               </div>
             </div>
-            <div class="user-stat">
+            <div class="user-stat-item">
               <i class="fas fa-tasks"></i>
-              <div>
-                <div class="stat-value">${tasks}</div>
-                <div class="stat-label">Tasks</div>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Tasks Completed</div>
+                <div class="user-stat-value">${tasks}</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-calendar-check"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Total Check-ins</div>
+                <div class="user-stat-value">${totalCheckins}</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-ticket"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Promo Codes Used</div>
+                <div class="user-stat-value">${totalPromoCodes}</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-chart-line"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Referral Earnings</div>
+                <div class="user-stat-value">${referralEarnings.toFixed(3)} TON</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-wallet"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Total Earnings</div>
+                <div class="user-stat-value">${totalEarned.toFixed(3)} TON</div>
               </div>
             </div>
           </div>
           
           <div class="user-card-actions">
-            <button class="action-btn btn-info" onclick="admin.getAllUserDetails('${user.id}')">
-              <i class="fas fa-info-circle"></i> Get All Details
-            </button>
             <div class="balance-buttons">
-              <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
+              <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${cleanUsername || firstName}')">
                 <i class="fas fa-plus"></i> Add TON
               </button>
-              <button class="action-btn btn-warning" onclick="admin.showAddPopModal('${user.id}', '${cleanUsername || user.firstName || user.id}')">
+              <button class="action-btn btn-warning" onclick="admin.showAddPopModal('${user.id}', '${cleanUsername || firstName}')">
                 <i class="fas fa-plus"></i> Add POP
               </button>
             </div>
@@ -710,6 +744,9 @@ class AdminPanel {
                   <i class="fas fa-check"></i> UNBAN
                 </button>`
               }
+              <button class="action-btn btn-info" onclick="admin.getUserReferrals('${user.id}', '${cleanUsername || firstName}')">
+                <i class="fas fa-users"></i> Get Referrals
+              </button>
             </div>
           </div>
         </div>
@@ -718,6 +755,50 @@ class AdminPanel {
     
     html += '</div>';
     container.innerHTML = html;
+  }
+
+  async getUserReferrals(userId, userName) {
+    try {
+      const referralsRef = await this.db.ref(`referrals/${userId}`).once('value');
+      const referrals = [];
+      
+      if (referralsRef.exists()) {
+        referralsRef.forEach(child => {
+          const referral = child.val();
+          referrals.push({
+            id: child.key,
+            ...referral
+          });
+        });
+      }
+      
+      referrals.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0));
+      const recentReferrals = referrals.slice(0, 10);
+      
+      let message = `<b>👥 Referrals of ${userName}</b>\n\n`;
+      
+      if (recentReferrals.length === 0) {
+        message += "No referrals found for this user.";
+      } else {
+        message += `📊 Total Referrals: ${referrals.length}\n📋 Last 10 Referrals:\n\n`;
+        
+        recentReferrals.forEach((ref, index) => {
+          const joinedDate = ref.joinedAt ? this.formatDateTime(ref.joinedAt) : 'N/A';
+          message += `${index + 1}. <b>${ref.firstName || 'User'}</b>\n`;
+          message += `   🆔 ID: ${ref.userId || ref.id}\n`;
+          if (ref.username) message += `   👤 Username: ${ref.username}\n`;
+          message += `   📅 Joined: ${joinedDate}\n`;
+          message += `   📌 Status: ${ref.state === 'verified' ? '✅ Verified' : '⏳ Pending'}\n\n`;
+        });
+      }
+      
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
+      this.showNotification("Success", "Referrals list sent to admin", "success");
+      
+    } catch (error) {
+      console.error("Error getting referrals:", error);
+      this.showNotification("Error", "Failed to get referrals", "error");
+    }
   }
 
   showAddPopModal(userId, userName) {
@@ -790,63 +871,6 @@ class AdminPanel {
     } catch (error) {
       console.error("Error adding POP:", error);
       this.showNotification("Error", "Failed to add POP", "error");
-    }
-  }
-
-  async getAllUserDetails(userId) {
-    try {
-      const userSnap = await this.db.ref(`users/${userId}`).once('value');
-      if (!userSnap.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const userData = userSnap.val();
-      
-      const username = userData.username || '';
-      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-      const photoUrl = userData.photoUrl || '';
-      
-      const totalEarned = this.safeNumber(userData.totalEarned || 0);
-      const popBalance = this.safeNumber(userData.pop || 0);
-      const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
-      const referrals = this.safeNumber(userData.referrals || 0);
-      const refEarnings = this.safeNumber(userData.referralEarnings || 0);
-      const tasks = this.safeNumber(userData.totalTasksCompleted || userData.totalTasks || 0);
-      const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
-      const balance = this.safeNumber(userData.balance || 0);
-      
-      const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
-      const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
-
-      let message = `<b>⚔️ All User Details</b>\n\n`;
-      
-      if (photoUrl) {
-        message += `<a href="${photoUrl}">👤</a> `;
-      }
-      
-      message += `<b>🆔 User ID:</b> ${userId}\n`;
-      message += `<b>👨‍✈️ Username:</b> @${cleanUsername}\n`;
-      message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
-      
-      message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
-      message += `<b>💰 TON Balance:</b> ${balance.toFixed(3)} TON\n`;
-      message += `<b>⭐ POP Balance:</b> ${Math.floor(popBalance)} POP\n`;
-      message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
-      message += `<b>🫂 Referrals:</b> ${referrals}\n`;
-      message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>☑️ Tasks:</b> ${tasks}\n\n`;
-      
-      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n\n`;
-      
-      message += `<b>🗒 Last Active:</b> ${lastActive}`;
-
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
-      this.showNotification("Success", "User details sent to admin", "success");
-
-    } catch (error) {
-      console.error("Error getting user details:", error);
-      this.showNotification("Error", `Failed to get user details ${error}`, "error");
     }
   }
 
@@ -966,8 +990,8 @@ class AdminPanel {
     this.elements.contentArea.innerHTML = `
       <div class="tasks-page">
         <div class="page-header">
-          <h2><i class="fas fa-tasks"></i> Tasks Management</h2>
-          <p>Create and manage Main, Partner, Social & Daily tasks</p>
+          <h2><i class="fas fa-list-check"></i> Tasks Management</h2>
+          <p>Create and manage Main, Partner & Social tasks</p>
         </div>
         
         <div class="search-section">
@@ -990,7 +1014,13 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Task Name *</label>
-                <input type="text" id="taskName" placeholder="Join our channel">
+                <input type="text" id="taskName" placeholder="Join our channel" maxlength="15">
+                <small>Maximum 15 characters</small>
+              </div>
+              
+              <div class="form-group">
+                <label>Task Link (URL) *</label>
+                <input type="text" id="taskLink" placeholder="https://t.me/... or @username">
               </div>
               
               <div class="form-group">
@@ -1000,38 +1030,18 @@ class AdminPanel {
               </div>
               
               <div class="form-group">
-                <label>Task Link (URL) *</label>
-                <input type="text" id="taskLink" placeholder="https://t.me/... or @username">
-              </div>
-              
-              <div class="form-group">
                 <label>Task Category *</label>
                 <div class="type-selector">
-                  <button class="type-btn active" data-type="main" data-reward="0.001" data-pop="1">
+                  <button class="type-btn active" data-type="main">
                     <i class="fas fa-star"></i> Main
                   </button>
-                  <button class="type-btn" data-type="partner" data-reward="0.0005" data-pop="1">
+                  <button class="type-btn" data-type="partner">
                     <i class="fas fa-handshake"></i> Partner
                   </button>
-                  <button class="type-btn" data-type="social" data-reward="0.0003" data-pop="1">
+                  <button class="type-btn" data-type="social">
                     <i class="fas fa-users"></i> Social
                   </button>
-                  <button class="type-btn" data-type="daily" data-reward="0.0002" data-pop="2">
-                    <i class="fas fa-calendar-day"></i> Daily
-                  </button>
                 </div>
-              </div>
-              
-              <div class="form-group">
-                <label>Reward per User (TON) *</label>
-                <input type="number" id="taskReward" value="0.001" step="0.0001" min="0.0001">
-                <small>Default: Main=0.001, Partner=0.0005, Social=0.0003, Daily=0.0002</small>
-              </div>
-              
-              <div class="form-group">
-                <label>POP Reward per User *</label>
-                <input type="number" id="taskPopReward" value="1" step="1" min="0">
-                <small>Default: 1 POP per task</small>
               </div>
               
               <div class="form-group">
@@ -1084,11 +1094,6 @@ class AdminPanel {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        
-        const reward = btn.getAttribute('data-reward');
-        const popReward = btn.getAttribute('data-pop');
-        document.getElementById('taskReward').value = reward;
-        document.getElementById('taskPopReward').value = popReward;
       });
     });
   }
@@ -1166,7 +1171,7 @@ class AdminPanel {
     if (tasks.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <i class="fas fa-tasks"></i>
+          <i class="fas fa-list-check"></i>
           <p>No active tasks</p>
           <p>Create your first task above</p>
         </div>
@@ -1198,17 +1203,11 @@ class AdminPanel {
           typeClass = 'type-social';
           typeText = 'Social';
           break;
-        case 'daily':
-          typeClass = 'type-daily';
-          typeText = 'Daily';
-          break;
       }
       
       const isCompleted = progress >= 100;
-      const imageUrl = task.picture || 'https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png';
+      const imageUrl = task.picture || DEFAULT_IMAGE_URL;
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
-      const totalDistributedTon = (task.currentCompletions || 0) * (task.reward || 0);
-      const totalDistributedPop = (task.currentCompletions || 0) * (task.popReward || 0);
       const verificationIcon = task.verification === 'YES' ? '🔒' : '🔓';
       
       html += `
@@ -1217,7 +1216,7 @@ class AdminPanel {
             <img src="${imageUrl}" 
                  alt="${task.name}" 
                  class="task-image"
-                 onerror="this.src='https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png'">
+                 onerror="this.src='${DEFAULT_IMAGE_URL}'">
           </div>
           
           <div class="task-header">
@@ -1233,25 +1232,6 @@ class AdminPanel {
           <div class="task-url">
             <i class="fas fa-link"></i>
             <a href="${task.url}" target="_blank">${task.url.substring(0, 40)}${task.url.length > 40 ? '...' : ''}</a>
-          </div>
-          
-          <div class="task-stats">
-            <div class="task-stat">
-              <span class="stat-label">TON Reward:</span>
-              <span class="stat-value">${task.reward || 0.001} TON</span>
-            </div>
-            <div class="task-stat">
-              <span class="stat-label">POP Reward:</span>
-              <span class="stat-value">${task.popReward || 1} POP</span>
-            </div>
-            <div class="task-stat">
-              <span class="stat-label">Total Distributed:</span>
-              <span class="stat-value">${totalDistributedTon.toFixed(3)} TON / ${totalDistributedPop} POP</span>
-            </div>
-            <div class="task-stat">
-              <span class="stat-label">Created:</span>
-              <span class="stat-value">${createdDate}</span>
-            </div>
           </div>
           
           <div class="task-progress">
@@ -1335,8 +1315,6 @@ class AdminPanel {
     const name = document.getElementById('taskName').value.trim();
     const image = document.getElementById('taskImage').value.trim();
     const link = document.getElementById('taskLink').value.trim();
-    const reward = parseFloat(document.getElementById('taskReward').value) || 0.001;
-    const popReward = parseInt(document.getElementById('taskPopReward').value) || 1;
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const typeBtn = document.querySelector('.type-btn.active');
     const type = typeBtn ? typeBtn.dataset.type : 'main';
@@ -1347,13 +1325,8 @@ class AdminPanel {
       return;
     }
     
-    if (reward <= 0) {
-      this.showNotification("Error", "Reward must be positive", "error");
-      return;
-    }
-    
-    if (popReward < 0) {
-      this.showNotification("Error", "POP reward cannot be negative", "error");
+    if (name.length > 15) {
+      this.showNotification("Error", "Task name must be 15 characters or less", "error");
       return;
     }
     
@@ -1374,8 +1347,8 @@ class AdminPanel {
         name: name,
         url: formattedLink,
         category: type,
-        reward: reward,
-        popReward: popReward,
+        reward: type === 'main' ? 0.001 : (type === 'partner' ? 0.0005 : 0.0003),
+        popReward: 1,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
         status: 'active',
@@ -1387,7 +1360,7 @@ class AdminPanel {
       if (image) {
         taskData.picture = image;
       } else {
-        taskData.picture = 'https://i.ibb.co/gM8hnfwm/TORNADO-PIC.png';
+        taskData.picture = DEFAULT_IMAGE_URL;
       }
       
       await this.db.ref('config/tasks').push(taskData);
@@ -1427,7 +1400,7 @@ class AdminPanel {
     this.elements.contentArea.innerHTML = `
       <div class="promo-page">
         <div class="page-header">
-          <h2><i class="fas fa-ticket-alt"></i> Promo Codes</h2>
+          <h2><i class="fas fa-ticket"></i> Promo Codes</h2>
           <p>Create and manage promo codes</p>
         </div>
         
@@ -1448,15 +1421,19 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Reward Type</label>
-                <select id="promoRewardType">
-                  <option value="ton">TON</option>
-                  <option value="pop">POP</option>
-                </select>
+                <div class="reward-type-selector">
+                  <button class="reward-type-btn active" data-type="ton">
+                    <i class="fas fa-coins"></i> TON
+                  </button>
+                  <button class="reward-type-btn" data-type="pop">
+                    <i class="fas fa-star"></i> POP
+                  </button>
+                </div>
               </div>
               
               <div class="form-group">
                 <label>Reward Amount *</label>
-                <input type="number" id="promoReward" value="0.010" step="0.001" min="0.001">
+                <input type="number" id="promoReward" step="0.001" min="0.001" placeholder="Enter amount...">
               </div>
               
               <div class="form-group">
@@ -1491,7 +1468,18 @@ class AdminPanel {
       </div>
     `;
     
+    this.setupRewardTypeButtons();
     await this.loadPromoCodes();
+  }
+
+  setupRewardTypeButtons() {
+    const buttons = document.querySelectorAll('.reward-type-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
   }
 
   generateRandomCode() {
@@ -1539,7 +1527,7 @@ class AdminPanel {
     if (promoCodes.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <i class="fas fa-ticket-alt"></i>
+          <i class="fas fa-ticket"></i>
           <p>No promo codes created</p>
           <p>Create your first promo code above</p>
         </div>
@@ -1566,18 +1554,18 @@ class AdminPanel {
       
       if (isFullyUsed) {
         status = 'used up';
-        statusClass = 'status-completed';
+        statusClass = 'status-expired';
       }
       
       html += `
         <div class="promo-code-item">
           <div class="promo-header">
             <div>
-              <h4><i class="fas fa-ticket-alt"></i> ${promo.code}</h4>
+              <h4><i class="fas fa-ticket"></i> ${promo.code}</h4>
               <div class="promo-meta">
                 <span class="promo-status ${statusClass}">${status.toUpperCase()}</span>
                 <span class="promo-reward">
-                  <i class="fas fa-gem"></i> ${promo.reward || 0.010} ${rewardSymbol}
+                  <i class="fas fa-gem"></i> ${promo.reward || 0} ${rewardSymbol}
                 </span>
               </div>
             </div>
@@ -1626,7 +1614,8 @@ class AdminPanel {
 
   async createPromoCode() {
     const code = document.getElementById('promoCode').value.trim().toUpperCase();
-    const rewardType = document.getElementById('promoRewardType').value;
+    const rewardTypeBtn = document.querySelector('.reward-type-btn.active');
+    const rewardType = rewardTypeBtn ? rewardTypeBtn.dataset.type : 'ton';
     const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
     
@@ -1635,8 +1624,8 @@ class AdminPanel {
       return;
     }
     
-    if (reward <= 0) {
-      this.showNotification("Error", "Reward must be positive", "error");
+    if (!reward || reward <= 0) {
+      this.showNotification("Error", "Please enter a valid reward amount", "error");
       return;
     }
     
@@ -1666,9 +1655,8 @@ class AdminPanel {
       await this.db.ref('config/promoCodes').push(promoData);
       
       document.getElementById('promoCode').value = '';
-      document.getElementById('promoReward').value = '0.010';
+      document.getElementById('promoReward').value = '';
       document.getElementById('promoMaxUses').value = '0';
-      document.getElementById('promoRewardType').value = 'ton';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -1706,7 +1694,7 @@ class AdminPanel {
     this.elements.contentArea.innerHTML = `
       <div class="withdrawals-page">
         <div class="page-header">
-          <h2><i class="fas fa-wallet"></i> Withdrawals Management</h2>
+          <h2><i class="fas fa-money-bill-wave"></i> Withdrawals Management</h2>
           <p>Process and manage withdrawal requests</p>
         </div>
         
@@ -1725,7 +1713,7 @@ class AdminPanel {
         
         <div class="withdrawals-stats">
           <div class="mini-stat-card">
-            <i class="fas fa-wallet"></i>
+            <i class="fas fa-clock"></i>
             <div>
               <h4>Pending</h4>
               <p id="pendingCount">0</p>
@@ -1746,7 +1734,7 @@ class AdminPanel {
             </div>
           </div>
           <div class="mini-stat-card">
-            <i class="fas fa-money-bill-wave"></i>
+            <i class="fas fa-calendar-day"></i>
             <div>
               <h4>Today</h4>
               <p id="todayCount">0</p>
@@ -1773,7 +1761,6 @@ class AdminPanel {
         </div>
         
         <div id="userWithdrawalsResults" class="user-withdrawals-section" style="display: none;">
-          <!-- Results will be shown here -->
         </div>
       </div>
     `;
@@ -2071,7 +2058,7 @@ class AdminPanel {
       
       const username = userData?.username || '';
       const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-      const photoUrl = userData?.photoUrl || 'https://cdn-icons-png.flaticon.com/512/9195/9195920.png';
+      const photoUrl = userData?.photoUrl || DEFAULT_IMAGE_URL;
       
       html += `
         <div class="withdrawal-item">
@@ -2080,7 +2067,7 @@ class AdminPanel {
               <div class="user-avatar">
                 <img src="${photoUrl}" 
                      alt="${request.userName || 'User'}" 
-                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/9195/9195920.png'">
+                     onerror="this.src='${DEFAULT_IMAGE_URL}'">
               </div>
               <div>
                 <h4>${cleanUsername || request.userName || 'Unknown User'}</h4>
@@ -2111,9 +2098,6 @@ class AdminPanel {
           </div>
           
           <div class="withdrawal-actions">
-            <button class="action-btn btn-info" onclick="admin.getWithdrawalUserDetails('${request.userId}', '${cleanUsername || request.userName || ''}')">
-              <i class="fas fa-info-circle"></i> Get User Details
-            </button>
             <button class="action-btn btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${cleanUsername || request.userName || ''}')">
               <i class="fas fa-check"></i> Approve
             </button>
@@ -2137,63 +2121,6 @@ class AdminPanel {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${day}/${month}/${year} ${hours}:${minutes}`;
-  }
-
-  async getWithdrawalUserDetails(userId, userName) {
-    try {
-      const userSnap = await this.db.ref(`users/${userId}`).once('value');
-      if (!userSnap.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
-      }
-
-      const userData = userSnap.val();
-      
-      const username = userData.username || '';
-      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-      const photoUrl = userData.photoUrl || '';
-      
-      const totalEarned = this.safeNumber(userData.totalEarned || 0);
-      const popBalance = this.safeNumber(userData.pop || 0);
-      const promoCodes = this.safeNumber(userData.totalPromoCodes || 0);
-      const referrals = this.safeNumber(userData.referrals || 0);
-      const refEarnings = this.safeNumber(userData.referralEarnings || 0);
-      const tasks = this.safeNumber(userData.totalTasksCompleted || userData.totalTasks || 0);
-      const withdrawals = this.safeNumber(userData.totalWithdrawals || 0);
-      const balance = this.safeNumber(userData.balance || 0);
-      
-      const joinedAt = userData.createdAt ? this.formatDateTime(userData.createdAt) : 'N/A';
-      const lastActive = userData.lastActive ? this.formatDateTime(userData.lastActive) : 'N/A';
-
-      let message = `<b>⚔️ All User Details</b>\n\n`;
-      
-      if (photoUrl) {
-        message += `<a href="${photoUrl}">👤</a> `;
-      }
-      
-      message += `<b>🆔 User ID:</b> ${userId}\n`;
-      message += `<b>👨‍✈️ Username:</b> @${cleanUsername}\n`;
-      message += `<b>📆 Joined At:</b> ${joinedAt}\n\n`;
-      
-      message += `<b>📊 Total Earnings:</b> ${totalEarned.toFixed(3)} TON\n`;
-      message += `<b>💰 TON Balance:</b> ${balance.toFixed(3)} TON\n`;
-      message += `<b>⭐ POP Balance:</b> ${Math.floor(popBalance)} POP\n`;
-      message += `<b>🎟 Promo Codes:</b> ${promoCodes}\n`;
-      message += `<b>🫂 Referrals:</b> ${referrals}\n`;
-      message += `<b>⛏️ Ref Earnings:</b> ${refEarnings.toFixed(3)} TON\n`;
-      message += `<b>☑️ Tasks:</b> ${tasks}\n\n`;
-      
-      message += `<b>💸 Total Withdrawals:</b> ${withdrawals}\n\n`;
-      
-      message += `<b>🗒 Last Active:</b> ${lastActive}`;
-
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
-      this.showNotification("Success", "User details sent to admin", "success");
-
-    } catch (error) {
-      console.error("Error getting user details:", error);
-      this.showNotification("Error", "Failed to get user details", "error");
-    }
   }
 
   showApproveModal(requestId, amount, wallet, userId, userName) {
@@ -2289,9 +2216,7 @@ class AdminPanel {
         ...request,
         status: 'completed',
         processedAt: Date.now(),
-        transaction_link: transactionLink,
-        total_tasks: userData?.totalTasksCompleted || 0,
-        total_referrals: userData?.referrals || 0
+        transaction_link: transactionLink
       };
       
       await this.db.ref(`withdrawals/completed/${requestId}`).set(completedData);
@@ -2299,8 +2224,6 @@ class AdminPanel {
       await requestRef.remove();
       
       await this.sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData);
-      
-      await this.sendWithdrawalStats();
       
       this.showNotification("Success", "Withdrawal approved!", "success");
       
@@ -2345,68 +2268,36 @@ class AdminPanel {
 
   async sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData) {
     try {
-      const txId = this.extractTransactionId(transactionLink);
-      const shortTx = txId ? `${txId.substring(0, 5)}...${txId.substring(txId.length - 5)}` : 'N/A';
+      let message = this.settings.withdrawalMessage || "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using Pop Buzz!";
       
-      const message = `✅ Withdrawal Approved!\n\n💎 Amount: ${amount.toFixed(5)} TON\n\n💼 Wallet: ${wallet}\n\n🔗 Transaction: ${shortTx}\n\n🥷 Work hard to earn more!`;
+      message = message.replace('{amount}', amount.toFixed(5))
+        .replace('{wallet}', wallet)
+        .replace('{transaction}', transactionLink);
       
-      const inlineButtons = [[
-        {
-          text: "View on Explorer",
+      const inlineButtons = [];
+      
+      if (transactionLink) {
+        inlineButtons.push([{
+          text: "🔗 View on Explorer",
           url: transactionLink
-        }
-      ]];
+        }]);
+      }
+      
+      if (this.settings.withdrawalButtons && this.settings.withdrawalButtons.length > 0) {
+        this.settings.withdrawalButtons.forEach(btn => {
+          if (btn.text && btn.url) {
+            inlineButtons.push([{
+              text: btn.text,
+              url: btn.url
+            }]);
+          }
+        });
+      }
       
       await this.sendTelegramMessage(userId, message, inlineButtons);
       
     } catch (error) {
       console.error("Error sending notification:", error);
-    }
-  }
-
-  extractTransactionId(link) {
-    try {
-      const url = new URL(link);
-      const pathParts = url.pathname.split('/');
-      return pathParts[pathParts.length - 1] || link;
-    } catch {
-      return link;
-    }
-  }
-
-  async sendWithdrawalStats() {
-    try {
-      const [withdrawalsSnap, usersSnap] = await Promise.all([
-        this.db.ref('withdrawals/completed').once('value'),
-        this.db.ref('users').once('value')
-      ]);
-      
-      const today = new Date().setHours(0, 0, 0, 0);
-      let totalWithdrawals = 0;
-      let totalDistributed = 0;
-      let todayWithdrawals = 0;
-      let todayDistributed = 0;
-      let totalUsers = usersSnap.numChildren();
-      
-      if (withdrawalsSnap.exists()) {
-        withdrawalsSnap.forEach(child => {
-          const withdrawal = child.val();
-          totalWithdrawals++;
-          totalDistributed += this.safeNumber(withdrawal.amount);
-          
-          if (withdrawal.createdAt && withdrawal.createdAt >= today) {
-            todayWithdrawals++;
-            todayDistributed += this.safeNumber(withdrawal.amount);
-          }
-        });
-      }
-      
-      const message = `📊 Withdrawal Statistics\n\n👥 Total Users: ${totalUsers}\n\n💰 Total Distributed: ${totalDistributed.toFixed(3)} TON\n📈 Total Withdrawals: ${totalWithdrawals}\n\n📅 Today Distributed: ${todayDistributed.toFixed(3)} TON\n📈 Today Withdrawals: ${todayWithdrawals}`;
-      
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
-      
-    } catch (error) {
-      console.error("Error sending stats:", error);
     }
   }
 
@@ -2438,7 +2329,7 @@ class AdminPanel {
             <div class="form-group">
               <label>Message *</label>
               <textarea id="broadcastMessage" rows="5" placeholder="Enter your message here..."></textarea>
-              <small>Supports HTML formatting</small>
+              <small>Supports HTML formatting and emojis</small>
             </div>
             
             <div class="html-tools">
@@ -2446,7 +2337,8 @@ class AdminPanel {
               <button class="html-btn" onclick="admin.insertHtmlTag('i')"><i>I</i></button>
               <button class="html-btn" onclick="admin.insertHtmlTag('u')"><u>U</u></button>
               <button class="html-btn" onclick="admin.insertHtmlTag('code')"><code>C</code></button>
-              <button class="html-btn" onclick="admin.insertLink()">🔗</button>
+              <button class="html-btn" onclick="admin.insertLink()">🔗 Link</button>
+              <button class="html-btn" onclick="admin.insertEmoji()">😊 Emoji</button>
             </div>
             
             <div class="inline-buttons-section">
@@ -2455,7 +2347,7 @@ class AdminPanel {
               
               <div id="inlineButtonsContainer">
                 <div class="button-row">
-                  <input type="text" class="button-text" placeholder="Button text" maxlength="20">
+                  <input type="text" class="button-text" placeholder="Button text" maxlength="30">
                   <input type="text" class="button-url" placeholder="URL">
                   <button class="btn-sm btn-danger" onclick="this.parentElement.remove(); admin.updatePreview()">
                     <i class="fas fa-times"></i>
@@ -2466,7 +2358,7 @@ class AdminPanel {
               <button class="action-btn btn-secondary" onclick="admin.addInlineButton()">
                 <i class="fas fa-plus"></i> Add Button
               </button>
-              <small>Max 3 buttons per row, 5 rows maximum</small>
+              <small>Max 5 rows, each button up to 30 characters</small>
             </div>
             
             <div class="broadcast-preview">
@@ -2513,7 +2405,7 @@ class AdminPanel {
     const buttonRow = document.createElement('div');
     buttonRow.className = 'button-row';
     buttonRow.innerHTML = `
-      <input type="text" class="button-text" placeholder="Button text" maxlength="20">
+      <input type="text" class="button-text" placeholder="Button text" maxlength="30">
       <input type="text" class="button-url" placeholder="URL">
       <button class="btn-sm btn-danger" onclick="this.parentElement.remove(); admin.updatePreview()">
         <i class="fas fa-times"></i>
@@ -2563,6 +2455,21 @@ class AdminPanel {
     textarea.value = textarea.value.substring(0, start) + `<a href="${url}">${text}</a>` + textarea.value.substring(start);
     textarea.focus();
     textarea.setSelectionRange(start, start + `<a href="${url}">${text}</a>`.length);
+    
+    this.updatePreview();
+  }
+
+  insertEmoji() {
+    const emojis = ['😊', '🎉', '🔥', '💰', '💎', '⭐', '✅', '❌', '⚠️', '🔔', '📢', '🎁', '🏆', '🚀', '💪', '👑', '🌟', '✨', '💫', '⚡'];
+    const emoji = prompt('Select emoji (or paste any):\n\n' + emojis.join(' '), '🎉');
+    if (!emoji) return;
+    
+    const textarea = document.getElementById('broadcastMessage');
+    const start = textarea.selectionStart;
+    
+    textarea.value = textarea.value.substring(0, start) + emoji + textarea.value.substring(start);
+    textarea.focus();
+    textarea.setSelectionRange(start + emoji.length, start + emoji.length);
     
     this.updatePreview();
   }
@@ -2840,6 +2747,137 @@ class AdminPanel {
     }
   }
 
+  async renderSettings() {
+    this.elements.contentArea.innerHTML = `
+      <div class="settings-page">
+        <div class="page-header">
+          <h2><i class="fas fa-sliders-h"></i> Settings</h2>
+          <p>Configure admin panel settings</p>
+        </div>
+        
+        <div class="settings-section">
+          <div class="settings-card">
+            <h3><i class="fas fa-envelope"></i> Withdrawal Notification Settings</h3>
+            
+            <div class="form-group">
+              <label>Withdrawal Approval Message</label>
+              <textarea id="withdrawalMessage" rows="6" placeholder="Enter message...">${this.settings.withdrawalMessage || ''}</textarea>
+              <small>Available placeholders: {amount}, {wallet}, {transaction}</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Message Image URL (Optional)</label>
+              <input type="text" id="withdrawalImage" placeholder="https://example.com/image.jpg" value="${this.settings.withdrawalImage || ''}">
+              <small>Image will be sent with the message</small>
+            </div>
+            
+            <div class="inline-buttons-section">
+              <h4><i class="fas fa-th-large"></i> Message Buttons</h4>
+              <p class="section-description">Add buttons to the withdrawal approval message</p>
+              
+              <div id="withdrawalButtonsContainer">
+                ${this.renderWithdrawalButtons()}
+              </div>
+              
+              <button class="action-btn btn-secondary" onclick="admin.addWithdrawalButton()">
+                <i class="fas fa-plus"></i> Add Button
+              </button>
+              <small>Each button up to 30 characters</small>
+            </div>
+            
+            <div class="settings-actions" style="margin-top: 20px;">
+              <button class="action-btn btn-success" onclick="admin.saveSettings()">
+                <i class="fas fa-save"></i> Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    this.setupWithdrawalButtonsEvents();
+  }
+
+  renderWithdrawalButtons() {
+    const buttons = this.settings.withdrawalButtons || [];
+    if (buttons.length === 0) {
+      return `
+        <div class="button-row">
+          <input type="text" class="button-text" placeholder="Button text" maxlength="30">
+          <input type="text" class="button-url" placeholder="URL">
+          <button class="btn-sm btn-danger" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+    }
+    
+    return buttons.map(btn => `
+      <div class="button-row">
+        <input type="text" class="button-text" value="${btn.text}" placeholder="Button text" maxlength="30">
+        <input type="text" class="button-url" value="${btn.url}" placeholder="URL">
+        <button class="btn-sm btn-danger" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  setupWithdrawalButtonsEvents() {
+    const container = document.getElementById('withdrawalButtonsContainer');
+    if (!container) return;
+    
+    const inputs = container.querySelectorAll('.button-text, .button-url');
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {});
+    });
+  }
+
+  addWithdrawalButton() {
+    const container = document.getElementById('withdrawalButtonsContainer');
+    if (!container) return;
+    
+    const rows = container.querySelectorAll('.button-row');
+    if (rows.length >= 5) {
+      this.showNotification("Warning", "Maximum 5 buttons allowed", "warning");
+      return;
+    }
+    
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'button-row';
+    buttonRow.innerHTML = `
+      <input type="text" class="button-text" placeholder="Button text" maxlength="30">
+      <input type="text" class="button-url" placeholder="URL">
+      <button class="btn-sm btn-danger" onclick="this.parentElement.remove()">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    
+    container.appendChild(buttonRow);
+  }
+
+  saveSettings() {
+    const message = document.getElementById('withdrawalMessage')?.value || '';
+    const image = document.getElementById('withdrawalImage')?.value || '';
+    
+    const buttons = [];
+    const buttonRows = document.querySelectorAll('#withdrawalButtonsContainer .button-row');
+    buttonRows.forEach(row => {
+      const text = row.querySelector('.button-text')?.value.trim();
+      const url = row.querySelector('.button-url')?.value.trim();
+      if (text && url) {
+        buttons.push({ text, url });
+      }
+    });
+    
+    this.settings.withdrawalMessage = message;
+    this.settings.withdrawalImage = image;
+    this.settings.withdrawalButtons = buttons;
+    
+    this.saveSettings();
+    this.showNotification("Success", "Settings saved successfully", "success");
+  }
+
   async renderMyUid() {
     this.elements.contentArea.innerHTML = `
       <div class="uid-page">
@@ -2947,6 +2985,28 @@ class AdminPanel {
       const data = await response.json();
       if (!data.ok) {
         throw new Error(data.description || 'Telegram API error');
+      }
+      
+      if (this.settings.withdrawalImage) {
+        try {
+          const photoUrl = `https://api.telegram.org/bot${this.botToken}/sendPhoto`;
+          const photoPayload = {
+            chat_id: chatId,
+            photo: this.settings.withdrawalImage,
+            caption: message,
+            parse_mode: 'HTML'
+          };
+          
+          if (inlineButtons.length > 0) {
+            photoPayload.reply_markup = payload.reply_markup;
+          }
+          
+          await fetch(photoUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(photoPayload)
+          });
+        } catch (photoError) {}
       }
       
       return true;
