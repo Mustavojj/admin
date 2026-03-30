@@ -22,6 +22,9 @@ class AdminPanel {
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
     this.adminData = null;
+    this.activeBroadcast = null;
+    this.broadcastQueue = [];
+    this.isBroadcasting = false;
     this.settings = {
       withdrawalMessage: "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using Pop Buzz!",
       withdrawalImage: "",
@@ -45,6 +48,7 @@ class AdminPanel {
     
     this.initializeFirebase();
     this.loadSettings();
+    this.loadBroadcastQueue();
   }
 
   async initializeFirebase() {
@@ -59,6 +63,7 @@ class AdminPanel {
       console.log("✅ Firebase initialized successfully");
       
       this.setupEventListeners();
+      this.startBroadcastProcessor();
       
     } catch (error) {
       console.error("❌ Firebase initialization error:", error);
@@ -77,6 +82,56 @@ class AdminPanel {
 
   saveSettings() {
     localStorage.setItem('popbuzz_settings', JSON.stringify(this.settings));
+  }
+
+  loadBroadcastQueue() {
+    const saved = localStorage.getItem('popbuzz_broadcast_queue');
+    if (saved) {
+      try {
+        this.broadcastQueue = JSON.parse(saved);
+      } catch(e) {
+        this.broadcastQueue = [];
+      }
+    }
+  }
+
+  saveBroadcastQueue() {
+    localStorage.setItem('popbuzz_broadcast_queue', JSON.stringify(this.broadcastQueue));
+  }
+
+  startBroadcastProcessor() {
+    setInterval(() => {
+      if (this.broadcastQueue.length > 0 && !this.isBroadcasting) {
+        this.processNextBroadcast();
+      }
+    }, 1000);
+  }
+
+  async processNextBroadcast() {
+    if (this.broadcastQueue.length === 0 || this.isBroadcasting) return;
+    
+    this.isBroadcasting = true;
+    const broadcastJob = this.broadcastQueue[0];
+    
+    try {
+      await this.executeBroadcast(broadcastJob);
+      this.broadcastQueue.shift();
+      this.saveBroadcastQueue();
+      
+      if (broadcastJob.onComplete) {
+        broadcastJob.onComplete(true);
+      }
+    } catch (error) {
+      console.error("Broadcast failed:", error);
+      if (broadcastJob.onComplete) {
+        broadcastJob.onComplete(false, error);
+      }
+    } finally {
+      this.isBroadcasting = false;
+      if (this.broadcastQueue.length > 0) {
+        this.processNextBroadcast();
+      }
+    }
   }
 
   setupEventListeners() {
@@ -312,14 +367,6 @@ class AdminPanel {
                     <span class="stat-value" id="partnerTasks">0</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Social Tasks</span>
-                    <span class="stat-value" id="socialTasks">0</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Daily Tasks</span>
-                    <span class="stat-value" id="dailyTasks">0</span>
-                  </div>
-                  <div class="stat-item">
                     <span class="stat-label">Completed Tasks</span>
                     <span class="stat-value" id="completedTasks">0</span>
                   </div>
@@ -430,8 +477,6 @@ class AdminPanel {
       let totalTasks = 0;
       let mainTasks = 0;
       let partnerTasks = 0;
-      let socialTasks = 0;
-      let dailyTasks = 0;
       let completedTasks = 0;
       
       if (tasksSnap.exists()) {
@@ -445,10 +490,6 @@ class AdminPanel {
               mainTasks++;
             } else if (category === 'partner') {
               partnerTasks++;
-            } else if (category === 'social') {
-              socialTasks++;
-            } else if (category === 'daily') {
-              dailyTasks++;
             }
             
             if (task.currentCompletions >= task.maxCompletions) {
@@ -508,8 +549,6 @@ class AdminPanel {
       updateElement('totalTasks', totalTasks);
       updateElement('mainTasks', mainTasks);
       updateElement('partnerTasks', partnerTasks);
-      updateElement('socialTasks', socialTasks);
-      updateElement('dailyTasks', dailyTasks);
       updateElement('completedTasks', completedTasks);
       updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
       updateElement('totalBalance', totalBalance.toFixed(3) + ' TON');
@@ -639,7 +678,6 @@ class AdminPanel {
       const popBalance = this.safeNumber(user.pop);
       const referrals = this.safeNumber(user.referrals || 0);
       const tasks = this.safeNumber(user.totalTasksCompleted || 0);
-      const totalCheckins = this.safeNumber(user.totalCheckins || 0);
       const totalPromoCodes = this.safeNumber(user.totalPromoCodes || 0);
       const referralEarnings = this.safeNumber(user.referralEarnings || 0);
       const totalEarned = this.safeNumber(user.totalEarned || 0);
@@ -649,6 +687,7 @@ class AdminPanel {
       const firstName = user.firstName || 'User';
       const joinedAt = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
       const lastActive = user.lastActive ? this.formatDateTime(user.lastActive) : 'N/A';
+      const telegramProfileUrl = cleanUsername ? `https://t.me/${cleanUsername}` : '#';
       
       html += `
         <div class="user-card">
@@ -668,6 +707,20 @@ class AdminPanel {
           </div>
           
           <div class="user-stats-grid">
+            <div class="user-stat-item">
+              <i class="fas fa-calendar-plus"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Joined at</div>
+                <div class="user-stat-value">${joinedAt}</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-clock"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Last Active</div>
+                <div class="user-stat-value">${lastActive}</div>
+              </div>
+            </div>
             <div class="user-stat-item">
               <i class="fas fa-coins"></i>
               <div class="user-stat-info">
@@ -694,13 +747,6 @@ class AdminPanel {
               <div class="user-stat-info">
                 <div class="user-stat-label">Tasks Completed</div>
                 <div class="user-stat-value">${tasks}</div>
-              </div>
-            </div>
-            <div class="user-stat-item">
-              <i class="fas fa-calendar-check"></i>
-              <div class="user-stat-info">
-                <div class="user-stat-label">Total Check-ins</div>
-                <div class="user-stat-value">${totalCheckins}</div>
               </div>
             </div>
             <div class="user-stat-item">
@@ -731,11 +777,20 @@ class AdminPanel {
               <button class="action-btn btn-success" onclick="admin.showAddBalanceModal('${user.id}', '${cleanUsername || firstName}')">
                 <i class="fas fa-plus"></i> Add TON
               </button>
+              <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${user.id}', '${cleanUsername || firstName}')">
+                <i class="fas fa-minus"></i> Remove TON
+              </button>
               <button class="action-btn btn-warning" onclick="admin.showAddPopModal('${user.id}', '${cleanUsername || firstName}')">
                 <i class="fas fa-plus"></i> Add POP
               </button>
+              <button class="action-btn btn-danger" onclick="admin.showRemovePopModal('${user.id}', '${cleanUsername || firstName}')">
+                <i class="fas fa-minus"></i> Remove POP
+              </button>
             </div>
             <div class="ban-buttons">
+              <button class="action-btn btn-info" onclick="window.open('${telegramProfileUrl}', '_blank')">
+                <i class="fas fa-eye"></i> VIEW
+              </button>
               ${status === 'free' ? 
                 `<button class="action-btn btn-danger" onclick="admin.banUser('${user.id}', this)">
                   <i class="fas fa-ban"></i> BAN
@@ -798,6 +853,164 @@ class AdminPanel {
     } catch (error) {
       console.error("Error getting referrals:", error);
       this.showNotification("Error", "Failed to get referrals", "error");
+    }
+  }
+
+  showRemoveBalanceModal(userId, userName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-minus-circle"></i> Remove TON Balance</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Remove TON balance from user:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
+          <div class="form-group">
+            <label>Amount to Remove (TON)</label>
+            <input type="number" id="removeBalanceAmount" placeholder="0.100" step="0.001" min="0.001" value="0.100">
+          </div>
+          <div class="form-group">
+            <label>Reason (Optional)</label>
+            <input type="text" id="removeBalanceReason" placeholder="Admin removed balance">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-danger" onclick="admin.removeBalance('${userId}')">
+            <i class="fas fa-check"></i> Remove Balance
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  async removeBalance(userId) {
+    const amount = parseFloat(document.getElementById('removeBalanceAmount').value);
+    const reason = document.getElementById('removeBalanceReason').value.trim() || 'Admin removed balance';
+
+    if (!amount || amount <= 0) {
+      this.showNotification("Error", "Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const userRef = this.db.ref(`users/${userId}`);
+      const snapshot = await userRef.once('value');
+      
+      if (!snapshot.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const user = snapshot.val();
+      const currentBalance = this.safeNumber(user.balance);
+      
+      if (currentBalance < amount) {
+        this.showNotification("Error", "Insufficient balance", "error");
+        return;
+      }
+      
+      const newBalance = currentBalance - amount;
+
+      await userRef.update({
+        balance: newBalance
+      });
+
+      this.showNotification("Success", `Removed ${amount} TON from user`, "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error removing balance:", error);
+      this.showNotification("Error", "Failed to remove balance", "error");
+    }
+  }
+
+  showRemovePopModal(userId, userName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-minus-circle"></i> Remove POP Balance</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Remove POP balance from user:</p>
+          <div class="user-info-modal">
+            <strong>${userName}</strong>
+          </div>
+          <div class="form-group">
+            <label>Amount to Remove (POP)</label>
+            <input type="number" id="removePopAmount" placeholder="100" step="1" min="1" value="100">
+          </div>
+          <div class="form-group">
+            <label>Reason (Optional)</label>
+            <input type="text" id="removePopReason" placeholder="Admin removed POP">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-danger" onclick="admin.removePopBalance('${userId}')">
+            <i class="fas fa-check"></i> Remove POP
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  async removePopBalance(userId) {
+    const amount = parseInt(document.getElementById('removePopAmount').value);
+    const reason = document.getElementById('removePopReason').value.trim() || 'Admin removed POP';
+
+    if (!amount || amount <= 0) {
+      this.showNotification("Error", "Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const userRef = this.db.ref(`users/${userId}`);
+      const snapshot = await userRef.once('value');
+      
+      if (!snapshot.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+
+      const user = snapshot.val();
+      const currentPop = this.safeNumber(user.pop);
+      
+      if (currentPop < amount) {
+        this.showNotification("Error", "Insufficient POP balance", "error");
+        return;
+      }
+      
+      const newPop = currentPop - amount;
+
+      await userRef.update({
+        pop: newPop
+      });
+
+      this.showNotification("Success", `Removed ${amount} POP from user`, "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.searchUser();
+      
+    } catch (error) {
+      console.error("Error removing POP:", error);
+      this.showNotification("Error", "Failed to remove POP", "error");
     }
   }
 
@@ -991,7 +1204,7 @@ class AdminPanel {
       <div class="tasks-page">
         <div class="page-header">
           <h2><i class="fas fa-list-check"></i> Tasks Management</h2>
-          <p>Create and manage Main, Partner & Social tasks</p>
+          <p>Create and manage Main & Partner tasks</p>
         </div>
         
         <div class="search-section">
@@ -1038,10 +1251,13 @@ class AdminPanel {
                   <button class="type-btn" data-type="partner">
                     <i class="fas fa-handshake"></i> Partner
                   </button>
-                  <button class="type-btn" data-type="social">
-                    <i class="fas fa-users"></i> Social
-                  </button>
                 </div>
+              </div>
+              
+              <div class="form-group">
+                <label>Task Reward (TON) *</label>
+                <input type="number" id="taskReward" step="0.001" min="0.001" value="0.02">
+                <small>Main task default: 0.02 TON | Partner task default: 0.01 TON</small>
               </div>
               
               <div class="form-group">
@@ -1094,6 +1310,14 @@ class AdminPanel {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        
+        const taskType = btn.dataset.type;
+        const rewardInput = document.getElementById('taskReward');
+        if (taskType === 'main') {
+          rewardInput.value = '0.02';
+        } else if (taskType === 'partner') {
+          rewardInput.value = '0.01';
+        }
       });
     });
   }
@@ -1199,16 +1423,13 @@ class AdminPanel {
           typeClass = 'type-partner';
           typeText = 'Partner';
           break;
-        case 'social':
-          typeClass = 'type-social';
-          typeText = 'Social';
-          break;
       }
       
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || DEFAULT_IMAGE_URL;
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
       const verificationIcon = task.verification === 'YES' ? '🔒' : '🔓';
+      const reward = this.safeNumber(task.reward || (task.category === 'main' ? 0.02 : 0.01));
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
@@ -1223,6 +1444,7 @@ class AdminPanel {
             <h4>${task.name} ${verificationIcon}</h4>
             <div class="task-meta">
               <span class="task-type ${typeClass}">${typeText}</span>
+              <span class="task-reward">💰 ${reward.toFixed(3)} TON</span>
               <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
                 ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
               </span>
@@ -1245,8 +1467,8 @@ class AdminPanel {
           </div>
           
           <div class="task-actions">
-            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions})">
-              <i class="fas fa-edit"></i> Edit Total
+            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions}, ${reward})">
+              <i class="fas fa-edit"></i> Edit
             </button>
             <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}')">
               <i class="fas fa-trash"></i> Delete
@@ -1259,26 +1481,29 @@ class AdminPanel {
     container.innerHTML = html;
   }
 
-  showEditTaskModal(taskId, currentMaxCompletions) {
+  showEditTaskModal(taskId, currentMaxCompletions, currentReward) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h3><i class="fas fa-edit"></i> Edit Task Max Completions</h3>
+          <h3><i class="fas fa-edit"></i> Edit Task</h3>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Edit the maximum completions for this task</p>
           <div class="form-group">
-            <label>New Max Completions *</label>
+            <label>Max Completions *</label>
             <input type="number" id="editMaxCompletions" value="${currentMaxCompletions}" min="1" step="1">
             <small>Current: ${currentMaxCompletions} completions</small>
+          </div>
+          <div class="form-group">
+            <label>Reward (TON) *</label>
+            <input type="number" id="editReward" step="0.001" min="0.001" value="${currentReward.toFixed(3)}">
           </div>
         </div>
         <div class="modal-footer">
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-primary" onclick="admin.updateTaskMaxCompletions('${taskId}')">
+          <button class="action-btn btn-primary" onclick="admin.updateTask('${taskId}')">
             <i class="fas fa-check"></i> Update
           </button>
         </div>
@@ -1289,16 +1514,25 @@ class AdminPanel {
     setTimeout(() => modal.classList.add('show'), 10);
   }
 
-  async updateTaskMaxCompletions(taskId) {
+  async updateTask(taskId) {
     const newMaxCompletions = parseInt(document.getElementById('editMaxCompletions').value);
+    const newReward = parseFloat(document.getElementById('editReward').value);
     
     if (!newMaxCompletions || newMaxCompletions < 1) {
-      this.showNotification("Error", "Please enter a valid number", "error");
+      this.showNotification("Error", "Please enter a valid max completions number", "error");
+      return;
+    }
+    
+    if (!newReward || newReward < 0.001) {
+      this.showNotification("Error", "Please enter a valid reward amount", "error");
       return;
     }
 
     try {
-      await this.db.ref(`config/tasks/${taskId}/maxCompletions`).set(newMaxCompletions);
+      await this.db.ref(`config/tasks/${taskId}`).update({
+        maxCompletions: newMaxCompletions,
+        reward: newReward
+      });
       
       this.showNotification("Success", "Task updated successfully", "success");
       
@@ -1316,6 +1550,7 @@ class AdminPanel {
     const image = document.getElementById('taskImage').value.trim();
     const link = document.getElementById('taskLink').value.trim();
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
+    const reward = parseFloat(document.getElementById('taskReward').value) || 0;
     const typeBtn = document.querySelector('.type-btn.active');
     const type = typeBtn ? typeBtn.dataset.type : 'main';
     const verification = document.getElementById('taskVerification').value;
@@ -1335,6 +1570,11 @@ class AdminPanel {
       return;
     }
     
+    if (reward <= 0) {
+      this.showNotification("Error", "Reward must be positive", "error");
+      return;
+    }
+    
     try {
       let formattedLink = link.trim();
       if (!formattedLink.startsWith('http') && !formattedLink.startsWith('@')) {
@@ -1347,7 +1587,7 @@ class AdminPanel {
         name: name,
         url: formattedLink,
         category: type,
-        reward: type === 'main' ? 0.001 : (type === 'partner' ? 0.0005 : 0.0003),
+        reward: reward,
         popReward: 1,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
@@ -1368,6 +1608,7 @@ class AdminPanel {
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
+      document.getElementById('taskReward').value = type === 'main' ? '0.02' : '0.01';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -2332,6 +2573,12 @@ class AdminPanel {
               <small>Supports HTML formatting and emojis</small>
             </div>
             
+            <div class="form-group">
+              <label>Image (Optional - PNG/JPG)</label>
+              <input type="text" id="broadcastImage" placeholder="https://example.com/image.jpg">
+              <small>Add an image URL to send with the message (PNG or JPG format)</small>
+            </div>
+            
             <div class="html-tools">
               <button class="html-btn" onclick="admin.insertHtmlTag('b')"><b>B</b></button>
               <button class="html-btn" onclick="admin.insertHtmlTag('i')"><i>I</i></button>
@@ -2379,12 +2626,54 @@ class AdminPanel {
                 <i class="fas fa-paper-plane"></i> Send Broadcast
               </button>
             </div>
+            
+            <div class="broadcast-status" style="margin-top: 20px;">
+              <h4><i class="fas fa-history"></i> Broadcast Queue</h4>
+              <div id="queueStatus" class="queue-status">
+                ${this.getQueueStatusHTML()}
+              </div>
+            </div>
           </div>
         </div>
       </div>
     `;
     
     this.updatePreview();
+    this.updateQueueDisplay();
+  }
+
+  getQueueStatusHTML() {
+    if (this.broadcastQueue.length === 0) {
+      return '<div class="empty-state"><i class="fas fa-check-circle"></i><p>No broadcasts in queue</p></div>';
+    }
+    
+    let html = '<div class="queue-list">';
+    this.broadcastQueue.forEach((job, index) => {
+      const date = new Date(job.createdAt).toLocaleString();
+      const status = job.status || 'pending';
+      html += `
+        <div class="queue-item ${status}">
+          <div class="queue-header">
+            <span class="queue-icon"><i class="fas ${status === 'completed' ? 'fa-check-circle' : 'fa-clock'}"></i></span>
+            <span class="queue-title">Broadcast #${index + 1}</span>
+            <span class="queue-date">${date}</span>
+          </div>
+          <div class="queue-details">
+            <span>Recipients: ${job.type === 'all' ? 'All Users' : 'Specific User'}</span>
+            <span>Status: ${status.toUpperCase()}</span>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    return html;
+  }
+
+  updateQueueDisplay() {
+    const queueStatus = document.getElementById('queueStatus');
+    if (queueStatus) {
+      queueStatus.innerHTML = this.getQueueStatusHTML();
+    }
   }
 
   toggleBroadcastTarget() {
@@ -2477,11 +2766,16 @@ class AdminPanel {
   updatePreview() {
     const message = document.getElementById('broadcastMessage').value;
     const preview = document.getElementById('broadcastPreview');
+    const imageUrl = document.getElementById('broadcastImage')?.value;
     
     let previewHTML = '';
     
+    if (imageUrl) {
+      previewHTML += `<div class="preview-image"><img src="${imageUrl}" alt="Broadcast image" style="max-width: 100%; border-radius: 12px; margin-bottom: 12px;"></div>`;
+    }
+    
     if (message.trim()) {
-      previewHTML = `<div class="message-content">${message.replace(/\n/g, '<br>')}</div>`;
+      previewHTML += `<div class="message-content">${message.replace(/\n/g, '<br>')}</div>`;
       
       const buttons = this.getInlineButtons();
       if (buttons.length > 0) {
@@ -2542,6 +2836,7 @@ class AdminPanel {
     const type = document.getElementById('broadcastType').value;
     const userId = document.getElementById('broadcastUserId')?.value.trim();
     const inlineButtons = this.getInlineButtons();
+    const imageUrl = document.getElementById('broadcastImage')?.value.trim();
     
     if (!message) {
       this.showNotification("Error", "Please enter a message", "error");
@@ -2554,196 +2849,96 @@ class AdminPanel {
     }
     
     const totalUsers = type === 'all' ? 'ALL users' : '1 user';
-    if (!confirm(`Send broadcast to ${totalUsers}?`)) {
+    if (!confirm(`Send broadcast to ${totalUsers}? The broadcast will continue even if you close the panel.`)) {
       return;
     }
     
+    this.showNotification("Info", "Broadcast added to queue. It will continue even if you close the panel.", "info");
+    
+    const broadcastJob = {
+      id: Date.now(),
+      message: message,
+      type: type,
+      userId: userId,
+      inlineButtons: inlineButtons,
+      imageUrl: imageUrl,
+      createdAt: Date.now(),
+      status: 'pending'
+    };
+    
+    this.broadcastQueue.push(broadcastJob);
+    this.saveBroadcastQueue();
+    this.updateQueueDisplay();
+    
+    this.showNotification("Success", "Broadcast added to queue", "success");
+    
+    document.getElementById('broadcastMessage').value = '';
+    document.getElementById('broadcastImage').value = '';
+    this.updatePreview();
+  }
+
+  async executeBroadcast(job) {
     try {
       let users = [];
       
-      if (type === 'all') {
+      if (job.type === 'all') {
         const usersSnap = await this.db.ref('users').once('value');
         usersSnap.forEach(child => {
           users.push({
             id: child.key,
-            username: child.val().username
+            username: child.val().username,
+            firstName: child.val().firstName
           });
         });
       } else {
-        const userSnap = await this.db.ref(`users/${userId}`).once('value');
+        const userSnap = await this.db.ref(`users/${job.userId}`).once('value');
         if (!userSnap.exists()) {
-          this.showNotification("Error", "User not found", "error");
-          return;
+          throw new Error('User not found');
         }
         
         users.push({
-          id: userId,
-          username: userSnap.val().username
+          id: job.userId,
+          username: userSnap.val().username,
+          firstName: userSnap.val().firstName
         });
       }
       
       const total = users.length;
       if (total === 0) {
-        this.showNotification("Info", "No users found", "info");
-        return;
+        throw new Error('No users found');
       }
-      
-      this.showBroadcastProgress(total);
       
       let sent = 0;
       let failed = 0;
-      const failedUsers = [];
       
       for (const user of users) {
         try {
-          await this.sendTelegramMessage(user.id, message, inlineButtons);
+          await this.sendTelegramMessage(user.id, job.message, job.inlineButtons, job.imageUrl);
           sent++;
-          
-          this.updateBroadcastProgress(sent, failed, total);
-          
           await new Promise(resolve => setTimeout(resolve, 100));
-          
         } catch (error) {
           console.error(`Failed to send to ${user.id}:`, error);
           failed++;
-          failedUsers.push({
-            id: user.id,
-            username: user.username,
-            error: error.message
-          });
-          
-          this.updateBroadcastProgress(sent, failed, total, failedUsers);
         }
       }
       
-      setTimeout(() => {
-        document.querySelector('.modal-overlay.show')?.remove();
-        
-        const resultMsg = `Broadcast completed! Sent: ${sent}, Failed: ${failed}`;
-        this.showNotification("Broadcast Complete", resultMsg, failed === 0 ? "success" : "warning");
-        
-        this.sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons);
-        
-      }, 2000);
+      job.status = 'completed';
+      job.completedAt = Date.now();
+      job.sent = sent;
+      job.failed = failed;
+      this.saveBroadcastQueue();
+      this.updateQueueDisplay();
+      
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `✅ Broadcast completed!\n\nSent: ${sent}\nFailed: ${failed}\nTotal: ${total}`);
       
     } catch (error) {
-      console.error("Broadcast error:", error);
-      document.querySelector('.modal-overlay.show')?.remove();
-      this.showNotification("Error", "Broadcast failed", "error");
-    }
-  }
-
-  showBroadcastProgress(total) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3><i class="fas fa-paper-plane"></i> Sending Broadcast</h3>
-        </div>
-        <div class="modal-body">
-          <div class="progress-stats">
-            <div class="stat">
-              <span>Total:</span>
-              <span id="broadcastTotal">${total}</span>
-            </div>
-            <div class="stat">
-              <span>Sent:</span>
-              <span id="broadcastSent" class="success">0</span>
-            </div>
-            <div class="stat">
-              <span>Failed:</span>
-              <span id="broadcastFailed" class="error">0</span>
-            </div>
-          </div>
-          
-          <div class="progress-container">
-            <div class="progress-bar">
-              <div class="progress-fill" id="broadcastProgress" style="width: 0%"></div>
-            </div>
-            <div class="progress-text" id="broadcastPercent">0%</div>
-          </div>
-          
-          <div id="broadcastStatus" class="status-message">Starting...</div>
-          
-          <div id="failedList" class="failed-list" style="display: none;">
-            <h4>Failed Users:</h4>
-            <div id="failedUsers"></div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('show'), 10);
-  }
-
-  updateBroadcastProgress(sent, failed, total, failedUsers = []) {
-    const processed = sent + failed;
-    const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-    
-    const updateEl = (id, text) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    };
-    
-    updateEl('broadcastSent', sent);
-    updateEl('broadcastFailed', failed);
-    updateEl('broadcastPercent', percent + '%');
-    
-    const progress = document.getElementById('broadcastProgress');
-    if (progress) progress.style.width = percent + '%';
-    
-    const status = document.getElementById('broadcastStatus');
-    if (status) {
-      if (processed >= total) {
-        status.textContent = `Complete! Sent: ${sent}, Failed: ${failed}`;
-        status.className = 'status-message success';
-      } else {
-        status.textContent = `Processing... (${processed}/${total})`;
-        status.className = 'status-message';
-      }
-    }
-    
-    if (failedUsers.length > 0) {
-      const container = document.getElementById('failedList');
-      const list = document.getElementById('failedUsers');
+      console.error("Broadcast execution error:", error);
+      job.status = 'failed';
+      job.error = error.message;
+      this.saveBroadcastQueue();
+      this.updateQueueDisplay();
       
-      if (container) container.style.display = 'block';
-      if (list) {
-        list.innerHTML = failedUsers.map(user => `
-          <div class="failed-user">
-            <span>${user.id} (@${user.username || 'none'})</span>
-            <small>${user.error}</small>
-          </div>
-        `).join('');
-      }
-    }
-  }
-
-  async sendBroadcastReport(total, sent, failed, failedUsers, inlineButtons) {
-    try {
-      let report = `📊 Broadcast Report\n\n`;
-      report += `👥 Total Users: ${total}\n`;
-      report += `✅ Successfully Sent: ${sent}\n`;
-      report += `❌ Failed: ${failed}\n`;
-      report += `🔘 Inline Buttons: ${inlineButtons.length} rows\n\n`;
-      
-      if (failed > 0) {
-        report += `Failed Users:\n`;
-        failedUsers.slice(0, 10).forEach(user => {
-          report += `- ${user.id} (${user.username || 'no username'})\n`;
-        });
-        
-        if (failedUsers.length > 10) {
-          report += `... and ${failedUsers.length - 10} more`;
-        }
-      }
-      
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, report);
-      
-    } catch (error) {
-      console.error("Error sending report:", error);
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `❌ Broadcast failed!\n\nError: ${error.message}`);
     }
   }
 
@@ -2948,65 +3143,79 @@ class AdminPanel {
     this.renderMyUid();
   }
 
-  async sendTelegramMessage(chatId, message, inlineButtons = []) {
+  async sendTelegramMessage(chatId, message, inlineButtons = [], imageUrl = null) {
     try {
-      const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
-      
-      const payload = {
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'HTML',
-        disable_web_page_preview: false
-      };
-      
-      if (inlineButtons.length > 0) {
-        const keyboard = [];
-        inlineButtons.forEach(row => {
-          const rowButtons = row.map(button => ({
-            text: button.text,
-            url: button.url
-          }));
-          keyboard.push(rowButtons);
+      if (imageUrl) {
+        const photoUrl = `https://api.telegram.org/bot${this.botToken}/sendPhoto`;
+        const photoPayload = {
+          chat_id: chatId,
+          photo: imageUrl,
+          caption: message,
+          parse_mode: 'HTML'
+        };
+        
+        if (inlineButtons.length > 0) {
+          const keyboard = [];
+          inlineButtons.forEach(row => {
+            const rowButtons = row.map(button => ({
+              text: button.text,
+              url: button.url
+            }));
+            keyboard.push(rowButtons);
+          });
+          
+          photoPayload.reply_markup = {
+            inline_keyboard: keyboard
+          };
+        }
+        
+        const photoResponse = await fetch(photoUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(photoPayload)
         });
         
-        payload.reply_markup = {
-          inline_keyboard: keyboard
+        const photoData = await photoResponse.json();
+        if (!photoData.ok) {
+          throw new Error(photoData.description || 'Telegram API error');
+        }
+      } else {
+        const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
+        
+        const payload = {
+          chat_id: chatId,
+          text: message,
+          parse_mode: 'HTML',
+          disable_web_page_preview: false
         };
-      }
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await response.json();
-      if (!data.ok) {
-        throw new Error(data.description || 'Telegram API error');
-      }
-      
-      if (this.settings.withdrawalImage) {
-        try {
-          const photoUrl = `https://api.telegram.org/bot${this.botToken}/sendPhoto`;
-          const photoPayload = {
-            chat_id: chatId,
-            photo: this.settings.withdrawalImage,
-            caption: message,
-            parse_mode: 'HTML'
-          };
-          
-          if (inlineButtons.length > 0) {
-            photoPayload.reply_markup = payload.reply_markup;
-          }
-          
-          await fetch(photoUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(photoPayload)
+        
+        if (inlineButtons.length > 0) {
+          const keyboard = [];
+          inlineButtons.forEach(row => {
+            const rowButtons = row.map(button => ({
+              text: button.text,
+              url: button.url
+            }));
+            keyboard.push(rowButtons);
           });
-        } catch (photoError) {}
+          
+          payload.reply_markup = {
+            inline_keyboard: keyboard
+          };
+        }
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!data.ok) {
+          throw new Error(data.description || 'Telegram API error');
+        }
       }
       
       return true;
