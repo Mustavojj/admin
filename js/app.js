@@ -26,7 +26,7 @@ class AdminPanel {
     this.broadcastQueue = [];
     this.isBroadcasting = false;
     this.settings = {
-      withdrawalMessage: "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using Pop Buzz!",
+      withdrawalMessage: "✅<tg-emoji emoji-id="6237759794879403852">🤖</tg-emoji> Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n\nThank you for using Pop Buzz!",
       withdrawalImage: "",
       withdrawalButtons: []
     };
