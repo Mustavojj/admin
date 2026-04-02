@@ -26,7 +26,7 @@ class AdminPanel {
     this.broadcastQueue = [];
     this.isBroadcasting = false;
     this.settings = {
-      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n∈ Wallet: {wallet}\n\n✦ Invite & Earn More TON!\n\n♡ Thanks for using Pop Buzz!</b>",
+      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using Pop Buzz!</b>",
       withdrawalImage: "",
       withdrawalButtons: []
     };
