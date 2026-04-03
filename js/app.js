@@ -1,4 +1,3 @@
-// app.js - الجزء الأول
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCt7Jf3Br786BTuVKGBzkSyiZb3j-qA4RI",
   authDomain: "pobozz.firebaseapp.com",
@@ -12,7 +11,7 @@ const FIREBASE_CONFIG = {
 
 const BOT_TOKEN = "8007486383:AAHdBVBjGPBVht1MYo6TNqTKU0wtyjhRqmg";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
-const ADMIN_TELEGRAM_ID = "1891231976";
+const ADMIN_TELEGRAM_ID = "6978839593";
 
 const DEFAULT_IMAGE_URL = "https://i.ibb.co/xqL5tXyF/file-00000000473871f4b2902b2708daa633.png";
 
