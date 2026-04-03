@@ -1,3 +1,4 @@
+// app.js - الجزء الأول
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCt7Jf3Br786BTuVKGBzkSyiZb3j-qA4RI",
   authDomain: "pobozz.firebaseapp.com",
@@ -25,6 +26,7 @@ class AdminPanel {
     this.activeBroadcast = null;
     this.broadcastQueue = [];
     this.isBroadcasting = false;
+    this.currentTaskTab = 'main';
     this.settings = {
       withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using Pop Buzz!</b>",
       withdrawalImage: "",
@@ -121,6 +123,9 @@ class AdminPanel {
       if (broadcastJob.onComplete) {
         broadcastJob.onComplete(true);
       }
+      
+      await this.saveBroadcastToDatabase(broadcastJob);
+      
     } catch (error) {
       console.error("Broadcast failed:", error);
       if (broadcastJob.onComplete) {
@@ -131,6 +136,18 @@ class AdminPanel {
       if (this.broadcastQueue.length > 0) {
         this.processNextBroadcast();
       }
+    }
+  }
+
+  async saveBroadcastToDatabase(broadcastJob) {
+    try {
+      const broadcastData = {
+        ...broadcastJob,
+        completedAt: Date.now()
+      };
+      await this.db.ref('config/broadcasts').push(broadcastData);
+    } catch(e) {
+      console.error("Failed to save broadcast to DB:", e);
     }
   }
 
@@ -367,6 +384,10 @@ class AdminPanel {
                     <span class="stat-value" id="partnerTasks">0</span>
                   </div>
                   <div class="stat-item">
+                    <span class="stat-label">Social Tasks</span>
+                    <span class="stat-value" id="socialTasks">0</span>
+                  </div>
+                  <div class="stat-item">
                     <span class="stat-label">Completed Tasks</span>
                     <span class="stat-value" id="completedTasks">0</span>
                   </div>
@@ -436,9 +457,10 @@ class AdminPanel {
     try {
       const today = new Date().setHours(0, 0, 0, 0);
       
-      const [usersSnap, tasksSnap, withdrawalsSnap] = await Promise.all([
+      const [usersSnap, tasksSnap, configTasksSnap, withdrawalsSnap] = await Promise.all([
         this.db.ref('users').once('value'),
         this.db.ref('config/tasks').once('value'),
+        this.db.ref('config/userTasks').once('value'),
         this.db.ref('withdrawals').once('value')
       ]);
       
@@ -477,6 +499,7 @@ class AdminPanel {
       let totalTasks = 0;
       let mainTasks = 0;
       let partnerTasks = 0;
+      let socialTasks = 0;
       let completedTasks = 0;
       
       if (tasksSnap.exists()) {
@@ -496,6 +519,21 @@ class AdminPanel {
               completedTasks++;
             }
           }
+        });
+      }
+      
+      if (configTasksSnap.exists()) {
+        configTasksSnap.forEach(owner => {
+          owner.forEach(task => {
+            const taskData = task.val();
+            if (taskData.status === 'active') {
+              socialTasks++;
+              totalTasks++;
+              if (taskData.currentCompletions >= taskData.maxCompletions) {
+                completedTasks++;
+              }
+            }
+          });
         });
       }
       
@@ -519,7 +557,7 @@ class AdminPanel {
           
           Object.values(withdrawals.completed).forEach(w => {
             totalDistributed += this.safeNumber(w.amount);
-            if (w.createdAt && w.createdAt >= today) {
+            if (w.timestamp && w.timestamp >= today) {
               todayWithdrawals++;
             }
           });
@@ -549,6 +587,7 @@ class AdminPanel {
       updateElement('totalTasks', totalTasks);
       updateElement('mainTasks', mainTasks);
       updateElement('partnerTasks', partnerTasks);
+      updateElement('socialTasks', socialTasks);
       updateElement('completedTasks', completedTasks);
       updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
       updateElement('totalBalance', totalBalance.toFixed(3) + ' TON');
@@ -839,10 +878,12 @@ class AdminPanel {
         
         recentReferrals.forEach((ref, index) => {
           const joinedDate = ref.joinedAt ? this.formatDateTime(ref.joinedAt) : 'N/A';
+          const verifiedDate = ref.verifiedAt ? this.formatDateTime(ref.verifiedAt) : 'Not verified';
           message += `${index + 1}. <b>${ref.firstName || 'User'}</b>\n`;
           message += `   🆔 ID: ${ref.userId || ref.id}\n`;
           if (ref.username) message += `   👤 Username: ${ref.username}\n`;
           message += `   📅 Joined: ${joinedDate}\n`;
+          message += `   ✅ Verified: ${verifiedDate}\n`;
           message += `   📌 Status: ${ref.state === 'verified' ? '✅ Verified' : '⏳ Pending'}\n\n`;
         });
       }
@@ -1199,12 +1240,14 @@ class AdminPanel {
     }
   }
 
+// app.js - الجزء الثاني
+
   async renderTasks() {
     this.elements.contentArea.innerHTML = `
       <div class="tasks-page">
         <div class="page-header">
           <h2><i class="fas fa-list-check"></i> Tasks Management</h2>
-          <p>Create and manage Main & Partner tasks</p>
+          <p>Create and manage Main, Partner & Social tasks</p>
         </div>
         
         <div class="search-section">
@@ -1251,13 +1294,22 @@ class AdminPanel {
                   <button class="type-btn" data-type="partner">
                     <i class="fas fa-handshake"></i> Partner
                   </button>
+                  <button class="type-btn" data-type="social">
+                    <i class="fas fa-users"></i> Social
+                  </button>
                 </div>
+              </div>
+              
+              <div class="form-group" id="ownerIdField" style="display: none;">
+                <label>Owner ID (Required for Social Tasks)</label>
+                <input type="text" id="taskOwnerId" placeholder="Enter Telegram User ID">
+                <small>The user who owns this social task</small>
               </div>
               
               <div class="form-group">
                 <label>Task Reward (TON) *</label>
                 <input type="number" id="taskReward" step="0.001" min="0.001" value="0.02">
-                <small>Main task default: 0.02 TON | Partner task default: 0.01 TON</small>
+                <small>Main: 0.02 | Partner: 0.01 | Social: Custom</small>
               </div>
               
               <div class="form-group">
@@ -1288,6 +1340,12 @@ class AdminPanel {
                 </button>
               </div>
               
+              <div class="task-tabs">
+                <button class="task-tab active" data-tab="main">Main</button>
+                <button class="task-tab" data-tab="partner">Partner</button>
+                <button class="task-tab" data-tab="social">Social</button>
+              </div>
+              
               <div id="tasksList" class="tasks-list">
                 <div class="loading">
                   <div class="spinner"></div>
@@ -1301,23 +1359,44 @@ class AdminPanel {
     `;
     
     this.setupTaskTypeButtons();
+    this.setupTaskTabs();
     await this.loadTasks();
   }
 
   setupTaskTypeButtons() {
     const buttons = document.querySelectorAll('.type-btn');
+    const ownerField = document.getElementById('ownerIdField');
+    const rewardInput = document.getElementById('taskReward');
+    
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
         const taskType = btn.dataset.type;
-        const rewardInput = document.getElementById('taskReward');
+        
         if (taskType === 'main') {
           rewardInput.value = '0.02';
+          if (ownerField) ownerField.style.display = 'none';
         } else if (taskType === 'partner') {
           rewardInput.value = '0.01';
+          if (ownerField) ownerField.style.display = 'none';
+        } else if (taskType === 'social') {
+          rewardInput.value = '0.005';
+          if (ownerField) ownerField.style.display = 'block';
         }
+      });
+    });
+  }
+
+  setupTaskTabs() {
+    const tabs = document.querySelectorAll('.task-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.currentTaskTab = tab.dataset.tab;
+        this.loadTasks();
       });
     });
   }
@@ -1331,22 +1410,47 @@ class AdminPanel {
     }
     
     try {
-      const tasksSnap = await this.db.ref('config/tasks').once('value');
-      const tasks = [];
+      let allTasks = [];
       
-      if (tasksSnap.exists()) {
-        tasksSnap.forEach(child => {
+      const configTasksSnap = await this.db.ref('config/tasks').once('value');
+      if (configTasksSnap.exists()) {
+        configTasksSnap.forEach(child => {
           const task = child.val();
           if (task.status !== 'deleted' && task.name.toLowerCase().includes(searchTerm)) {
-            tasks.push({
+            allTasks.push({
               id: child.key,
+              source: 'config',
               ...task
             });
           }
         });
       }
       
-      this.displayTasks(tasks);
+      const userTasksSnap = await this.db.ref('config/userTasks').once('value');
+      if (userTasksSnap.exists()) {
+        userTasksSnap.forEach(owner => {
+          owner.forEach(task => {
+            const taskData = task.val();
+            if (taskData.name && taskData.name.toLowerCase().includes(searchTerm)) {
+              allTasks.push({
+                id: task.key,
+                ownerId: owner.key,
+                source: 'userTasks',
+                ...taskData
+              });
+            }
+          });
+        });
+      }
+      
+      allTasks = allTasks.filter(t => {
+        if (this.currentTaskTab === 'main') return t.category === 'main';
+        if (this.currentTaskTab === 'partner') return t.category === 'partner';
+        if (this.currentTaskTab === 'social') return t.source === 'userTasks' || t.category === 'social';
+        return true;
+      });
+      
+      this.displayTasks(allTasks);
       
     } catch (error) {
       console.error("Error searching tasks:", error);
@@ -1361,20 +1465,43 @@ class AdminPanel {
 
   async loadTasks() {
     try {
-      const tasksSnap = await this.db.ref('config/tasks').once('value');
-      const tasks = [];
+      let tasks = [];
       
-      if (tasksSnap.exists()) {
-        tasksSnap.forEach(child => {
+      const configTasksSnap = await this.db.ref('config/tasks').once('value');
+      if (configTasksSnap.exists()) {
+        configTasksSnap.forEach(child => {
           const task = child.val();
           if (task.status !== 'deleted') {
             tasks.push({
               id: child.key,
+              source: 'config',
               ...task
             });
           }
         });
       }
+      
+      const userTasksSnap = await this.db.ref('config/userTasks').once('value');
+      if (userTasksSnap.exists()) {
+        userTasksSnap.forEach(owner => {
+          owner.forEach(task => {
+            const taskData = task.val();
+            tasks.push({
+              id: task.key,
+              ownerId: owner.key,
+              source: 'userTasks',
+              ...taskData
+            });
+          });
+        });
+      }
+      
+      tasks = tasks.filter(task => {
+        if (this.currentTaskTab === 'main') return task.category === 'main';
+        if (this.currentTaskTab === 'partner') return task.category === 'partner';
+        if (this.currentTaskTab === 'social') return task.source === 'userTasks';
+        return true;
+      });
       
       this.displayTasks(tasks);
       
@@ -1414,22 +1541,22 @@ class AdminPanel {
       let typeClass = 'type-main';
       let typeText = 'Main';
       
-      switch(task.category) {
-        case 'main':
-          typeClass = 'type-main';
-          typeText = 'Main';
-          break;
-        case 'partner':
-          typeClass = 'type-partner';
-          typeText = 'Partner';
-          break;
+      if (task.category === 'main') {
+        typeClass = 'type-main';
+        typeText = 'Main';
+      } else if (task.category === 'partner') {
+        typeClass = 'type-partner';
+        typeText = 'Partner';
+      } else if (task.source === 'userTasks') {
+        typeClass = 'type-social';
+        typeText = 'Social';
       }
       
       const isCompleted = progress >= 100;
       const imageUrl = task.picture || DEFAULT_IMAGE_URL;
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
       const verificationIcon = task.verification === 'YES' ? '🔒' : '🔓';
-      const reward = this.safeNumber(task.reward || (task.category === 'main' ? 0.02 : 0.01));
+      const reward = this.safeNumber(task.reward || (task.category === 'main' ? 0.02 : task.category === 'partner' ? 0.01 : 0.005));
       
       html += `
         <div class="task-item ${isCompleted ? 'completed' : ''}">
@@ -1454,7 +1581,17 @@ class AdminPanel {
           <div class="task-url">
             <i class="fas fa-link"></i>
             <a href="${task.url}" target="_blank">${task.url.substring(0, 40)}${task.url.length > 40 ? '...' : ''}</a>
+            <button class="btn-copy" onclick="admin.copyToClipboard('${task.url}')" title="Copy link">
+              <i class="fas fa-copy"></i>
+            </button>
           </div>
+          
+          ${task.ownerId ? `
+            <div class="task-owner" onclick="admin.copyToClipboard('${task.ownerId}')" title="Click to copy Owner ID">
+              <i class="fas fa-user"></i> Owner: ${task.ownerId.substring(0, 8)}...
+              <i class="fas fa-copy"></i>
+            </div>
+          ` : ''}
           
           <div class="task-progress">
             <div class="progress-info">
@@ -1467,10 +1604,10 @@ class AdminPanel {
           </div>
           
           <div class="task-actions">
-            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions}, ${reward})">
+            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions}, ${reward}, '${task.source}', '${task.ownerId || ''}')">
               <i class="fas fa-edit"></i> Edit
             </button>
-            <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}')">
+            <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}', '${task.source}', '${task.ownerId || ''}')">
               <i class="fas fa-trash"></i> Delete
             </button>
           </div>
@@ -1481,7 +1618,7 @@ class AdminPanel {
     container.innerHTML = html;
   }
 
-  showEditTaskModal(taskId, currentMaxCompletions, currentReward) {
+  showEditTaskModal(taskId, currentMaxCompletions, currentReward, source, ownerId) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -1503,7 +1640,7 @@ class AdminPanel {
         </div>
         <div class="modal-footer">
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-primary" onclick="admin.updateTask('${taskId}')">
+          <button class="action-btn btn-primary" onclick="admin.updateTask('${taskId}', '${source}', '${ownerId}')">
             <i class="fas fa-check"></i> Update
           </button>
         </div>
@@ -1514,7 +1651,7 @@ class AdminPanel {
     setTimeout(() => modal.classList.add('show'), 10);
   }
 
-  async updateTask(taskId) {
+  async updateTask(taskId, source, ownerId) {
     const newMaxCompletions = parseInt(document.getElementById('editMaxCompletions').value);
     const newReward = parseFloat(document.getElementById('editReward').value);
     
@@ -1529,7 +1666,14 @@ class AdminPanel {
     }
 
     try {
-      await this.db.ref(`config/tasks/${taskId}`).update({
+      let taskRef;
+      if (source === 'userTasks' && ownerId) {
+        taskRef = this.db.ref(`config/userTasks/${ownerId}/${taskId}`);
+      } else {
+        taskRef = this.db.ref(`config/tasks/${taskId}`);
+      }
+      
+      await taskRef.update({
         maxCompletions: newMaxCompletions,
         reward: newReward
       });
@@ -1554,6 +1698,7 @@ class AdminPanel {
     const typeBtn = document.querySelector('.type-btn.active');
     const type = typeBtn ? typeBtn.dataset.type : 'main';
     const verification = document.getElementById('taskVerification').value;
+    const ownerId = document.getElementById('taskOwnerId')?.value.trim();
     
     if (!name || !link) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1575,6 +1720,11 @@ class AdminPanel {
       return;
     }
     
+    if (type === 'social' && !ownerId) {
+      this.showNotification("Error", "Owner ID is required for Social tasks", "error");
+      return;
+    }
+    
     try {
       let formattedLink = link.trim();
       if (!formattedLink.startsWith('http') && !formattedLink.startsWith('@')) {
@@ -1586,7 +1736,8 @@ class AdminPanel {
       const taskData = {
         name: name,
         url: formattedLink,
-        category: type,
+        category: type === 'social' ? 'social' : type,
+        type: 'channel',
         reward: reward,
         popReward: 1,
         maxCompletions: maxCompletions,
@@ -1603,12 +1754,18 @@ class AdminPanel {
         taskData.picture = DEFAULT_IMAGE_URL;
       }
       
-      await this.db.ref('config/tasks').push(taskData);
+      if (type === 'social' && ownerId) {
+        taskData.owner = ownerId;
+        await this.db.ref(`config/userTasks/${ownerId}`).push(taskData);
+      } else {
+        await this.db.ref('config/tasks').push(taskData);
+      }
       
       document.getElementById('taskName').value = '';
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
-      document.getElementById('taskReward').value = type === 'main' ? '0.02' : '0.01';
+      document.getElementById('taskOwnerId').value = '';
+      document.getElementById('taskReward').value = type === 'main' ? '0.02' : type === 'partner' ? '0.01' : '0.005';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -1619,14 +1776,18 @@ class AdminPanel {
     }
   }
 
-  async deleteTask(taskId) {
+  async deleteTask(taskId, source, ownerId) {
     if (!confirm('Are you sure you want to delete this task?')) return;
     
     try {
-      await this.db.ref(`config/tasks/${taskId}`).update({
-        status: 'deleted',
-        deletedAt: Date.now()
-      });
+      if (source === 'userTasks' && ownerId) {
+        await this.db.ref(`config/userTasks/${ownerId}/${taskId}`).remove();
+      } else {
+        await this.db.ref(`config/tasks/${taskId}`).update({
+          status: 'deleted',
+          deletedAt: Date.now()
+        });
+      }
       
       this.showNotification("Success", "Task deleted", "success");
       await this.loadTasks();
@@ -1675,6 +1836,12 @@ class AdminPanel {
               <div class="form-group">
                 <label>Reward Amount *</label>
                 <input type="number" id="promoReward" step="0.001" min="0.001" placeholder="Enter amount...">
+              </div>
+              
+              <div class="form-group">
+                <label>Required Channel (Optional)</label>
+                <input type="text" id="promoRequired" placeholder="@CHANNEL_NAME" value="@POP_BUZZ">
+                <small>User must join this channel to use the promo code</small>
               </div>
               
               <div class="form-group">
@@ -1789,6 +1956,7 @@ class AdminPanel {
       const totalDistributed = used * (promo.reward || 0);
       const rewardType = promo.rewardType || 'ton';
       const rewardSymbol = rewardType === 'ton' ? 'TON' : 'POP';
+      const required = promo.required || '@POP_BUZZ';
       
       let status = 'active';
       let statusClass = 'status-active';
@@ -1821,6 +1989,10 @@ class AdminPanel {
           </div>
           
           <div class="promo-details">
+            <div class="detail">
+              <span>Required:</span>
+              <span>${required}</span>
+            </div>
             <div class="detail">
               <span>Used:</span>
               <span>${used} / ${max > 0 ? max : '∞'}</span>
@@ -1859,6 +2031,7 @@ class AdminPanel {
     const rewardType = rewardTypeBtn ? rewardTypeBtn.dataset.type : 'ton';
     const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
+    const required = document.getElementById('promoRequired').value.trim() || '@POP_BUZZ';
     
     if (!code) {
       this.showNotification("Error", "Please enter promo code", "error");
@@ -1888,6 +2061,7 @@ class AdminPanel {
         reward: reward,
         maxUses: maxUses,
         usedCount: 0,
+        required: required,
         status: 'active',
         createdBy: 'admin',
         createdAt: Date.now()
@@ -1898,6 +2072,7 @@ class AdminPanel {
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '';
       document.getElementById('promoMaxUses').value = '0';
+      document.getElementById('promoRequired').value = '@POP_BUZZ';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -1931,6 +2106,8 @@ class AdminPanel {
     }
   }
 
+// app.js - الجزء الثالث
+
   async renderWithdrawals() {
     this.elements.contentArea.innerHTML = `
       <div class="withdrawals-page">
@@ -1942,7 +2119,7 @@ class AdminPanel {
         <div class="search-section">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchWithdrawalUser" placeholder="Search by Telegram ID">
+            <input type="text" id="searchWithdrawalUser" placeholder="Search by User ID">
             <button class="search-btn" onclick="admin.searchUserWithdrawals()">
               <i class="fas fa-search"></i> Search User
             </button>
@@ -2020,15 +2197,23 @@ class AdminPanel {
     try {
       const userSnap = await this.db.ref(`users`).orderByChild('telegramId').equalTo(userId).once('value');
       let actualUserId = null;
+      let userData = null;
       
       if (!userSnap.exists()) {
-        this.showNotification("Error", "User not found", "error");
-        return;
+        const directSnap = await this.db.ref(`users/${userId}`).once('value');
+        if (directSnap.exists()) {
+          actualUserId = userId;
+          userData = directSnap.val();
+        } else {
+          this.showNotification("Error", "User not found", "error");
+          return;
+        }
+      } else {
+        userSnap.forEach(child => {
+          actualUserId = child.key;
+          userData = child.val();
+        });
       }
-      
-      userSnap.forEach(child => {
-        actualUserId = child.key;
-      });
       
       if (!actualUserId) {
         this.showNotification("Error", "User not found", "error");
@@ -2041,12 +2226,10 @@ class AdminPanel {
         this.db.ref('withdrawals/rejected').orderByChild('userId').equalTo(actualUserId).once('value')
       ]);
       
-      const userDataSnap = await this.db.ref(`users/${actualUserId}`).once('value');
-      const userData = userDataSnap.val();
-      
       const userName = userData.firstName || userData.username || actualUserId;
       const username = userData.username || '';
       const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const photoUrl = userData.photoUrl || DEFAULT_IMAGE_URL;
       
       let allWithdrawals = [];
       
@@ -2080,19 +2263,7 @@ class AdminPanel {
         });
       }
       
-      if (allWithdrawals.length === 0) {
-        document.getElementById('userWithdrawalsResults').innerHTML = `
-          <div class="card">
-            <h3>Withdrawals for ${cleanUsername || userName}</h3>
-            <div class="empty-state">
-              <i class="fas fa-wallet"></i>
-              <p>No withdrawals found for this user</p>
-            </div>
-          </div>
-        `;
-      } else {
-        this.displayUserWithdrawals(allWithdrawals, cleanUsername || userName, actualUserId);
-      }
+      this.displayUserWithdrawals(allWithdrawals, cleanUsername || userName, actualUserId, photoUrl);
       
       document.getElementById('userWithdrawalsResults').style.display = 'block';
       
@@ -2102,8 +2273,8 @@ class AdminPanel {
     }
   }
 
-  displayUserWithdrawals(withdrawals, userName, userId) {
-    withdrawals.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  displayUserWithdrawals(withdrawals, userName, userId, photoUrl) {
+    withdrawals.sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
     
     let html = `
       <div class="card">
@@ -2118,12 +2289,13 @@ class AdminPanel {
     `;
     
     withdrawals.forEach(w => {
-      const date = w.createdAt ? this.formatDateTime(w.createdAt) : 'N/A';
-      const processedDate = w.processedAt ? this.formatDateTime(w.processedAt) : 'N/A';
+      const date = w.timestamp || w.createdAt ? this.formatDateTime(w.timestamp || w.createdAt) : 'N/A';
+      const processedDate = w.completedAt || w.processedAt || w.rejectedAt ? this.formatDateTime(w.completedAt || w.processedAt || w.rejectedAt) : 'N/A';
       const walletAddress = w.walletAddress || '';
       const walletDisplay = walletAddress.length > 10 ? 
         `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
         walletAddress;
+      const transactionLink = w.transactionLink || (w.transaction_hash ? `https://tonviewer.com/transaction/${w.transaction_hash}` : null);
       
       let statusClass = '';
       let statusText = '';
@@ -2145,6 +2317,20 @@ class AdminPanel {
       
       html += `
         <div class="withdrawal-item ${w.status}">
+          <div class="withdrawal-header">
+            <div class="user-info">
+              <div class="user-avatar">
+                <img src="${photoUrl}" alt="${userName}" onerror="this.src='${DEFAULT_IMAGE_URL}'">
+              </div>
+              <div>
+                <h4>${userName}</h4>
+                <p class="user-details">
+                  <span>ID: ${userId}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <div class="withdrawal-status ${statusClass}">${statusText}</div>
           
           <div class="withdrawal-details">
@@ -2164,34 +2350,46 @@ class AdminPanel {
                 ${w.amount ? w.amount.toFixed(5) : '0.00000'} TON
               </span>
             </div>
-            ${w.processedAt ? `
+            ${w.status !== 'pending' ? `
               <div class="detail">
                 <span><i class="fas fa-calendar-check"></i> Processed:</span>
                 <span>${processedDate}</span>
               </div>
             ` : ''}
-            ${w.transaction_link ? `
+            ${transactionLink ? `
               <div class="detail">
                 <span><i class="fas fa-link"></i> Transaction:</span>
                 <span>
-                  <a href="${w.transaction_link}" target="_blank" style="color: #3b82f6;">
+                  <a href="${transactionLink}" target="_blank" style="color: var(--primary);">
                     View on Explorer
                   </a>
                 </span>
               </div>
             ` : ''}
+            ${w.rejectReason ? `
+              <div class="detail">
+                <span><i class="fas fa-ban"></i> Reason:</span>
+                <span>${w.rejectReason}</span>
+              </div>
+            ` : ''}
           </div>
           
-          ${w.status === 'pending' ? `
-            <div class="withdrawal-actions">
-              <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${w.userId}', '${userName}')">
+          <div class="withdrawal-actions">
+            <button class="action-btn btn-info" onclick="admin.getUserReferrals('${userId}', '${userName}')">
+              <i class="fas fa-users"></i> Get Referrals
+            </button>
+            <button class="action-btn btn-info" onclick="admin.viewUser('${userId}')">
+              <i class="fas fa-eye"></i> View
+            </button>
+            ${w.status === 'pending' ? `
+              <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${userId}', '${userName}')">
                 <i class="fas fa-check"></i> Approve
               </button>
               <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${w.id}')">
                 <i class="fas fa-times"></i> Reject
               </button>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
         </div>
       `;
     });
@@ -2202,6 +2400,27 @@ class AdminPanel {
     `;
     
     document.getElementById('userWithdrawalsResults').innerHTML = html;
+  }
+
+  async viewUser(userId) {
+    try {
+      const userSnap = await this.db.ref(`users/${userId}`).once('value');
+      if (!userSnap.exists()) {
+        this.showNotification("Error", "User not found", "error");
+        return;
+      }
+      
+      const user = userSnap.val();
+      const username = user.username || '';
+      const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+      const telegramProfileUrl = cleanUsername ? `https://t.me/${cleanUsername}` : '#';
+      
+      window.open(telegramProfileUrl, '_blank');
+      
+    } catch (error) {
+      console.error("Error viewing user:", error);
+      this.showNotification("Error", "Failed to view user", "error");
+    }
   }
 
   clearWithdrawalSearch() {
@@ -2231,7 +2450,7 @@ class AdminPanel {
         completedCount = completedSnap.numChildren();
         completedSnap.forEach(child => {
           const withdrawal = child.val();
-          if (withdrawal.createdAt && withdrawal.createdAt >= today) {
+          if (withdrawal.timestamp && withdrawal.timestamp >= today) {
             todayCount++;
           }
         });
@@ -2290,8 +2509,8 @@ class AdminPanel {
     const results = await Promise.all(promises);
     
     results.forEach(({ request, requestId, userData }) => {
-      const date = request.createdAt ? new Date(request.createdAt) : new Date();
-      const formattedDate = this.formatDateTime(request.createdAt);
+      const date = request.timestamp || request.createdAt ? new Date(request.timestamp || request.createdAt) : new Date();
+      const formattedDate = this.formatDateTime(request.timestamp || request.createdAt);
       const walletAddress = request.walletAddress || '';
       const walletDisplay = walletAddress.length > 10 ? 
         `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
@@ -2339,6 +2558,12 @@ class AdminPanel {
           </div>
           
           <div class="withdrawal-actions">
+            <button class="action-btn btn-info" onclick="admin.getUserReferrals('${request.userId}', '${cleanUsername || request.userName || ''}')">
+              <i class="fas fa-users"></i> Get Referrals
+            </button>
+            <button class="action-btn btn-info" onclick="admin.viewUser('${request.userId}')">
+              <i class="fas fa-eye"></i> View
+            </button>
             <button class="action-btn btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${cleanUsername || request.userName || ''}')">
               <i class="fas fa-check"></i> Approve
             </button>
@@ -2455,13 +2680,14 @@ class AdminPanel {
       
       const completedData = {
         ...request,
+        id: requestId,
         status: 'completed',
-        processedAt: Date.now(),
-        transaction_link: transactionLink
+        completedAt: Date.now(),
+        transactionHash: transactionHash,
+        transactionLink: transactionLink
       };
       
       await this.db.ref(`withdrawals/completed/${requestId}`).set(completedData);
-      
       await requestRef.remove();
       
       await this.sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData);
@@ -2490,10 +2716,15 @@ class AdminPanel {
         return;
       }
       
+      const rejectReason = prompt("Enter reason for rejection:", "Invalid wallet address");
+      if (!rejectReason) return;
+      
       await this.db.ref(`withdrawals/rejected/${requestId}`).set({
         ...request,
+        id: requestId,
         status: 'rejected',
-        processedAt: Date.now()
+        rejectedAt: Date.now(),
+        rejectReason: rejectReason
       });
       
       await requestRef.remove();
@@ -2535,7 +2766,8 @@ class AdminPanel {
         });
       }
       
-      await this.sendTelegramMessage(userId, message, inlineButtons);
+      const imageUrl = this.settings.withdrawalImage || null;
+      await this.sendTelegramMessage(userId, message, inlineButtons, imageUrl);
       
     } catch (error) {
       console.error("Error sending notification:", error);
