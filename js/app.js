@@ -1,17 +1,17 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCt7Jf3Br786BTuVKGBzkSyiZb3j-qA4RI",
-  authDomain: "pobozz.firebaseapp.com",
-  databaseURL: "https://pobozz-default-rtdb.firebaseio.com",
-  projectId: "pobozz",
-  storageBucket: "pobozz.firebasestorage.app",
-  messagingSenderId: "589658303921",
-  appId: "1:589658303921:web:956813637db1e9d5a52190",
-  measurementId: "G-SBPY6X7SBC"
-};
+  apiKey: "AIzaSyBdX9yaTJ5KJ8agE_pz0r8AM62VFcy5toI",
+  authDomain: "stars-pop.firebaseapp.com",
+  databaseURL: "https://stars-pop-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "stars-pop",
+  storageBucket: "stars-pop.firebasestorage.app",
+  messagingSenderId: "903403392954",
+  appId: "1:903403392954:web:63dac39d99222f76069783",
+  measurementId: "G-ZD8JYN8DPN"
+}; 
 
-const BOT_TOKEN = "8007486383:AAHdBVBjGPBVht1MYo6TNqTKU0wtyjhRqmg";
+const BOT_TOKEN = "8302653359:AAHUifg3Olt-YwoK0hZUOrVQH-6pQ37ors4";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
-const ADMIN_TELEGRAM_ID = "6978839593";
+const ADMIN_TELEGRAM_ID = "1891231976";
 
 const DEFAULT_IMAGE_URL = "https://i.ibb.co/xqL5tXyF/file-00000000473871f4b2902b2708daa633.png";
 
@@ -21,10 +21,7 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
-    this.adminData = null;
-    this.activeBroadcast = null;
-    this.broadcastQueue = [];
-    this.isBroadcasting = false;
+    this.isProcessingQueue = false;
     this.currentTaskTab = 'main';
     this.settings = {
       withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using Pop Buzz!</b>",
@@ -49,7 +46,6 @@ class AdminPanel {
     
     this.initializeFirebase();
     this.loadSettings();
-    this.loadBroadcastQueue();
   }
 
   async initializeFirebase() {
@@ -64,11 +60,45 @@ class AdminPanel {
       console.log("✅ Firebase initialized successfully");
       
       this.setupEventListeners();
-      this.startBroadcastProcessor();
+      await this.loadAndProcessPendingBroadcasts();
       
     } catch (error) {
       console.error("❌ Firebase initialization error:", error);
       this.showLoginMessage("Failed to initialize Firebase", "error");
+    }
+  }
+
+  async loadAndProcessPendingBroadcasts() {
+    try {
+      const broadcastsSnap = await this.db.ref('config/broadcasts')
+        .orderByChild('status')
+        .once('value');
+      
+      const pendingBroadcasts = [];
+      
+      if (broadcastsSnap.exists()) {
+        broadcastsSnap.forEach(child => {
+          const broadcast = child.val();
+          if (broadcast.status === 'pending' || broadcast.status === 'processing') {
+            pendingBroadcasts.push({
+              id: child.key,
+              ...broadcast
+            });
+          }
+        });
+      }
+      
+      pendingBroadcasts.sort((a, b) => a.createdAt - b.createdAt);
+      
+      if (pendingBroadcasts.length > 0) {
+        console.log(`📡 Found ${pendingBroadcasts.length} pending broadcasts`);
+        for (const broadcast of pendingBroadcasts) {
+          await this.executeBroadcast(broadcast);
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error loading pending broadcasts:", error);
     }
   }
 
@@ -83,71 +113,6 @@ class AdminPanel {
 
   saveSettings() {
     localStorage.setItem('popbuzz_settings', JSON.stringify(this.settings));
-  }
-
-  loadBroadcastQueue() {
-    const saved = localStorage.getItem('popbuzz_broadcast_queue');
-    if (saved) {
-      try {
-        this.broadcastQueue = JSON.parse(saved);
-      } catch(e) {
-        this.broadcastQueue = [];
-      }
-    }
-  }
-
-  saveBroadcastQueue() {
-    localStorage.setItem('popbuzz_broadcast_queue', JSON.stringify(this.broadcastQueue));
-  }
-
-  startBroadcastProcessor() {
-    setInterval(() => {
-      if (this.broadcastQueue.length > 0 && !this.isBroadcasting) {
-        this.processNextBroadcast();
-      }
-    }, 1000);
-  }
-
-  async processNextBroadcast() {
-    if (this.broadcastQueue.length === 0 || this.isBroadcasting) return;
-    
-    this.isBroadcasting = true;
-    const broadcastJob = this.broadcastQueue[0];
-    
-    try {
-      await this.executeBroadcast(broadcastJob);
-      this.broadcastQueue.shift();
-      this.saveBroadcastQueue();
-      
-      if (broadcastJob.onComplete) {
-        broadcastJob.onComplete(true);
-      }
-      
-      await this.saveBroadcastToDatabase(broadcastJob);
-      
-    } catch (error) {
-      console.error("Broadcast failed:", error);
-      if (broadcastJob.onComplete) {
-        broadcastJob.onComplete(false, error);
-      }
-    } finally {
-      this.isBroadcasting = false;
-      if (this.broadcastQueue.length > 0) {
-        this.processNextBroadcast();
-      }
-    }
-  }
-
-  async saveBroadcastToDatabase(broadcastJob) {
-    try {
-      const broadcastData = {
-        ...broadcastJob,
-        completedAt: Date.now()
-      };
-      await this.db.ref('config/broadcasts').push(broadcastData);
-    } catch(e) {
-      console.error("Failed to save broadcast to DB:", e);
-    }
   }
 
   setupEventListeners() {
@@ -1239,8 +1204,6 @@ class AdminPanel {
     }
   }
 
-// app.js - الجزء الثاني
-
   async renderTasks() {
     this.elements.contentArea.innerHTML = `
       <div class="tasks-page">
@@ -2105,8 +2068,6 @@ class AdminPanel {
     }
   }
 
-// app.js - الجزء الثالث
-
   async renderWithdrawals() {
     this.elements.contentArea.innerHTML = `
       <div class="withdrawals-page">
@@ -2859,9 +2820,12 @@ class AdminPanel {
             </div>
             
             <div class="broadcast-status" style="margin-top: 20px;">
-              <h4><i class="fas fa-history"></i> Broadcast Queue</h4>
-              <div id="queueStatus" class="queue-status">
-                ${this.getQueueStatusHTML()}
+              <h4><i class="fas fa-history"></i> Broadcast History</h4>
+              <div id="broadcastHistory" class="queue-status">
+                <div class="loading">
+                  <div class="spinner"></div>
+                  <p>Loading broadcast history...</p>
+                </div>
               </div>
             </div>
           </div>
@@ -2870,41 +2834,89 @@ class AdminPanel {
     `;
     
     this.updatePreview();
-    this.updateQueueDisplay();
+    await this.loadBroadcastHistory();
   }
 
-  getQueueStatusHTML() {
-    if (this.broadcastQueue.length === 0) {
-      return '<div class="empty-state"><i class="fas fa-check-circle"></i><p>No broadcasts in queue</p></div>';
+  async loadBroadcastHistory() {
+    try {
+      const broadcastsSnap = await this.db.ref('config/broadcasts')
+        .orderByChild('createdAt')
+        .once('value');
+      
+      const broadcasts = [];
+      if (broadcastsSnap.exists()) {
+        broadcastsSnap.forEach(child => {
+          broadcasts.push({
+            id: child.key,
+            ...child.val()
+          });
+        });
+      }
+      
+      broadcasts.sort((a, b) => b.createdAt - a.createdAt);
+      this.displayBroadcastHistory(broadcasts);
+      
+    } catch (error) {
+      console.error("Error loading broadcast history:", error);
+      document.getElementById('broadcastHistory').innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Failed to load history</p>
+        </div>
+      `;
+    }
+  }
+
+  displayBroadcastHistory(broadcasts) {
+    const container = document.getElementById('broadcastHistory');
+    
+    if (broadcasts.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-history"></i>
+          <p>No broadcast history</p>
+        </div>
+      `;
+      return;
     }
     
     let html = '<div class="queue-list">';
-    this.broadcastQueue.forEach((job, index) => {
-      const date = new Date(job.createdAt).toLocaleString();
-      const status = job.status || 'pending';
+    broadcasts.forEach(broadcast => {
+      const date = new Date(broadcast.createdAt).toLocaleString();
+      let statusClass = '';
+      let statusIcon = '';
+      
+      if (broadcast.status === 'completed') {
+        statusClass = 'completed';
+        statusIcon = '✅';
+      } else if (broadcast.status === 'failed') {
+        statusClass = 'failed';
+        statusIcon = '❌';
+      } else {
+        statusClass = 'pending';
+        statusIcon = '⏳';
+      }
+      
       html += `
-        <div class="queue-item ${status}">
+        <div class="queue-item ${statusClass}">
           <div class="queue-header">
-            <span class="queue-icon"><i class="fas ${status === 'completed' ? 'fa-check-circle' : 'fa-clock'}"></i></span>
-            <span class="queue-title">Broadcast #${index + 1}</span>
+            <span class="queue-icon">${statusIcon}</span>
+            <span class="queue-title">Broadcast to ${broadcast.type === 'all' ? 'All Users' : 'User ' + broadcast.userId}</span>
             <span class="queue-date">${date}</span>
           </div>
           <div class="queue-details">
-            <span>Recipients: ${job.type === 'all' ? 'All Users' : 'Specific User'}</span>
-            <span>Status: ${status.toUpperCase()}</span>
+            <span>Status: ${broadcast.status.toUpperCase()}</span>
+            ${broadcast.sent ? `<span>Sent: ${broadcast.sent}</span>` : ''}
+            ${broadcast.failed ? `<span>Failed: ${broadcast.failed}</span>` : ''}
+          </div>
+          <div class="queue-message" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; padding-left: 20px;">
+            ${broadcast.message.substring(0, 100)}${broadcast.message.length > 100 ? '...' : ''}
           </div>
         </div>
       `;
     });
     html += '</div>';
-    return html;
-  }
-
-  updateQueueDisplay() {
-    const queueStatus = document.getElementById('queueStatus');
-    if (queueStatus) {
-      queueStatus.innerHTML = this.getQueueStatusHTML();
-    }
+    container.innerHTML = html;
   }
 
   toggleBroadcastTarget() {
@@ -3079,15 +3091,13 @@ class AdminPanel {
       return;
     }
     
-    const totalUsers = type === 'all' ? 'ALL users' : '1 user';
-    if (!confirm(`Send broadcast to ${totalUsers}? The broadcast will continue even if you close the panel.`)) {
+    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : '1 user'}? The broadcast will continue even if you close the panel.`)) {
       return;
     }
     
-    this.showNotification("Info", "Broadcast added to queue. It will continue even if you close the panel.", "info");
-    
-    const broadcastJob = {
-      id: Date.now(),
+    const broadcastId = Date.now().toString();
+    const broadcastData = {
+      id: broadcastId,
       message: message,
       type: type,
       userId: userId,
@@ -3097,22 +3107,39 @@ class AdminPanel {
       status: 'pending'
     };
     
-    this.broadcastQueue.push(broadcastJob);
-    this.saveBroadcastQueue();
-    this.updateQueueDisplay();
-    
-    this.showNotification("Success", "Broadcast added to queue", "success");
-    
-    document.getElementById('broadcastMessage').value = '';
-    document.getElementById('broadcastImage').value = '';
-    this.updatePreview();
+    try {
+      await this.db.ref(`config/broadcasts/${broadcastId}`).set(broadcastData);
+      this.showNotification("Success", "Broadcast started! It will continue even if you close the panel.", "success");
+      
+      this.executeBroadcast(broadcastData);
+      
+      document.getElementById('broadcastMessage').value = '';
+      document.getElementById('broadcastImage').value = '';
+      document.getElementById('inlineButtonsContainer').innerHTML = `
+        <div class="button-row">
+          <input type="text" class="button-text" placeholder="Button text" maxlength="30">
+          <input type="text" class="button-url" placeholder="URL">
+          <button class="btn-sm btn-danger" onclick="this.parentElement.remove(); admin.updatePreview()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+      this.updatePreview();
+      await this.loadBroadcastHistory();
+      
+    } catch (error) {
+      console.error("Error starting broadcast:", error);
+      this.showNotification("Error", "Failed to start broadcast", "error");
+    }
   }
 
-  async executeBroadcast(job) {
+  async executeBroadcast(broadcast) {
     try {
+      await this.db.ref(`config/broadcasts/${broadcast.id}/status`).set('processing');
+      
       let users = [];
       
-      if (job.type === 'all') {
+      if (broadcast.type === 'all') {
         const usersSnap = await this.db.ref('users').once('value');
         usersSnap.forEach(child => {
           users.push({
@@ -3122,13 +3149,12 @@ class AdminPanel {
           });
         });
       } else {
-        const userSnap = await this.db.ref(`users/${job.userId}`).once('value');
+        const userSnap = await this.db.ref(`users/${broadcast.userId}`).once('value');
         if (!userSnap.exists()) {
           throw new Error('User not found');
         }
-        
         users.push({
-          id: job.userId,
+          id: broadcast.userId,
           username: userSnap.val().username,
           firstName: userSnap.val().firstName
         });
@@ -3144,7 +3170,7 @@ class AdminPanel {
       
       for (const user of users) {
         try {
-          await this.sendTelegramMessage(user.id, job.message, job.inlineButtons, job.imageUrl);
+          await this.sendTelegramMessage(user.id, broadcast.message, broadcast.inlineButtons, broadcast.imageUrl);
           sent++;
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
@@ -3153,22 +3179,24 @@ class AdminPanel {
         }
       }
       
-      job.status = 'completed';
-      job.completedAt = Date.now();
-      job.sent = sent;
-      job.failed = failed;
-      this.saveBroadcastQueue();
-      this.updateQueueDisplay();
+      await this.db.ref(`config/broadcasts/${broadcast.id}`).update({
+        status: 'completed',
+        completedAt: Date.now(),
+        sent: sent,
+        failed: failed,
+        total: total
+      });
       
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `✅ Broadcast completed!\n\nSent: ${sent}\nFailed: ${failed}\nTotal: ${total}`);
+      await this.loadBroadcastHistory();
       
     } catch (error) {
       console.error("Broadcast execution error:", error);
-      job.status = 'failed';
-      job.error = error.message;
-      this.saveBroadcastQueue();
-      this.updateQueueDisplay();
-      
+      await this.db.ref(`config/broadcasts/${broadcast.id}`).update({
+        status: 'failed',
+        error: error.message
+      });
+      await this.loadBroadcastHistory();
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `❌ Broadcast failed!\n\nError: ${error.message}`);
     }
   }
@@ -3252,11 +3280,6 @@ class AdminPanel {
   setupWithdrawalButtonsEvents() {
     const container = document.getElementById('withdrawalButtonsContainer');
     if (!container) return;
-    
-    const inputs = container.querySelectorAll('.button-text, .button-url');
-    inputs.forEach(input => {
-      input.addEventListener('input', () => {});
-    });
   }
 
   addWithdrawalButton() {
@@ -3385,7 +3408,7 @@ class AdminPanel {
           parse_mode: 'HTML'
         };
         
-        if (inlineButtons.length > 0) {
+        if (inlineButtons && inlineButtons.length > 0) {
           const keyboard = [];
           inlineButtons.forEach(row => {
             const rowButtons = row.map(button => ({
@@ -3420,7 +3443,7 @@ class AdminPanel {
           disable_web_page_preview: false
         };
         
-        if (inlineButtons.length > 0) {
+        if (inlineButtons && inlineButtons.length > 0) {
           const keyboard = [];
           inlineButtons.forEach(row => {
             const rowButtons = row.map(button => ({
