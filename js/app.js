@@ -24,7 +24,7 @@ class AdminPanel {
     this.isProcessingQueue = false;
     this.currentTaskTab = 'main';
     this.settings = {
-      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using Pop Buzz!</b>",
+      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
       withdrawalImage: "",
       withdrawalButtons: []
     };
@@ -103,7 +103,7 @@ class AdminPanel {
   }
 
   loadSettings() {
-    const saved = localStorage.getItem('popbuzz_settings');
+    const saved = localStorage.getItem('starz_settings');
     if (saved) {
       try {
         this.settings = JSON.parse(saved);
@@ -112,7 +112,7 @@ class AdminPanel {
   }
 
   saveSettings() {
-    localStorage.setItem('popbuzz_settings', JSON.stringify(this.settings));
+    localStorage.setItem('starz_settings', JSON.stringify(this.settings));
   }
 
   setupEventListeners() {
@@ -279,56 +279,29 @@ class AdminPanel {
             <div class="stats-row">
               <div class="stat-card">
                 <div class="stat-card-header">
-                  <i class="fas fa-users"></i>
-                  <h3>Users Statistics</h3>
+                  <i class="fas fa-chart-line"></i>
+                  <h3>App Statistics</h3>
                 </div>
                 <div class="stat-card-body">
                   <div class="stat-item">
                     <span class="stat-label">Total Users</span>
-                    <span class="stat-value" id="totalUsers">0</span>
+                    <span class="stat-value" id="totalUsersStat">0</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Today Users</span>
-                    <span class="stat-value" id="todayUsers">0</span>
+                    <span class="stat-label">Total Payments</span>
+                    <span class="stat-value" id="totalPaymentsStat">0.000 TON</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Banned Users</span>
-                    <span class="stat-value" id="bannedUsers">0</span>
+                    <span class="stat-label">Total Withdrawals</span>
+                    <span class="stat-value" id="totalWithdrawalsStat">0</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Active Users</span>
-                    <span class="stat-value" id="activeUsers">0</span>
+                    <span class="stat-label">Completed Tasks</span>
+                    <span class="stat-value" id="completedTasksStat">0</span>
                   </div>
                 </div>
               </div>
               
-              <div class="stat-card">
-                <div class="stat-card-header">
-                  <i class="fas fa-money-bill-wave"></i>
-                  <h3>Withdrawals Statistics</h3>
-                </div>
-                <div class="stat-card-body">
-                  <div class="stat-item">
-                    <span class="stat-label">Total Withdrawals</span>
-                    <span class="stat-value" id="totalWithdrawals">0</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Today Withdrawals</span>
-                    <span class="stat-value" id="todayWithdrawals">0</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Pending Withdrawals</span>
-                    <span class="stat-value" id="pendingWithdrawals">0</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Confirmed Withdrawals</span>
-                    <span class="stat-value" id="confirmedWithdrawals">0</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="stats-row">
               <div class="stat-card">
                 <div class="stat-card-header">
                   <i class="fas fa-list-check"></i>
@@ -337,52 +310,19 @@ class AdminPanel {
                 <div class="stat-card-body">
                   <div class="stat-item">
                     <span class="stat-label">Total Tasks</span>
-                    <span class="stat-value" id="totalTasks">0</span>
+                    <span class="stat-value" id="totalTasksStat">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Main Tasks</span>
-                    <span class="stat-value" id="mainTasks">0</span>
+                    <span class="stat-value" id="mainTasksStat">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Partner Tasks</span>
-                    <span class="stat-value" id="partnerTasks">0</span>
+                    <span class="stat-value" id="partnerTasksStat">0</span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Social Tasks</span>
-                    <span class="stat-value" id="socialTasks">0</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Completed Tasks</span>
-                    <span class="stat-value" id="completedTasks">0</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="stat-card">
-                <div class="stat-card-header">
-                  <i class="fas fa-chart-line"></i>
-                  <h3>Financial Statistics</h3>
-                </div>
-                <div class="stat-card-body">
-                  <div class="stat-item">
-                    <span class="stat-label">Total Distributed</span>
-                    <span class="stat-value" id="totalDistributed">0 TON</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Total Balance</span>
-                    <span class="stat-value" id="totalBalance">0 TON</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Total POP Balance</span>
-                    <span class="stat-value" id="totalPopBalance">0 POP</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Referral Earnings</span>
-                    <span class="stat-value" id="referralEarnings">0 TON</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Task Earnings</span>
-                    <span class="stat-value" id="taskEarnings">0 TON</span>
+                    <span class="stat-value" id="socialTasksStat">0</span>
                   </div>
                 </div>
               </div>
@@ -419,145 +359,58 @@ class AdminPanel {
 
   async loadDashboardData() {
     try {
-      const today = new Date().setHours(0, 0, 0, 0);
+      const appStatsSnap = await this.db.ref('appStats').once('value');
+      const appStats = appStatsSnap.val() || {};
       
-      const [usersSnap, tasksSnap, configTasksSnap, withdrawalsSnap] = await Promise.all([
-        this.db.ref('users').once('value'),
-        this.db.ref('config/tasks').once('value'),
-        this.db.ref('config/userTasks').once('value'),
-        this.db.ref('withdrawals').once('value')
-      ]);
+      const totalUsers = appStats.totalUsers || 0;
+      const totalPayments = appStats.totalPayments || 0;
+      const totalWithdrawals = appStats.totalWithdrawals || 0;
+      const totalAppTasks = appStats.totalTasks || 0;
       
-      let totalUsers = 0;
-      let todayUsers = 0;
-      let bannedUsers = 0;
-      let activeUsers = 0;
-      let totalBalance = 0;
-      let totalPopBalance = 0;
-      let totalEarned = 0;
-      let referralEarnings = 0;
-      let taskEarnings = 0;
+      const configTasksSnap = await this.db.ref('config/tasks').once('value');
+      const userTasksSnap = await this.db.ref('config/userTasks').once('value');
       
-      usersSnap.forEach(child => {
-        const user = child.val();
-        totalUsers++;
-        
-        if (user.createdAt && user.createdAt >= today) {
-          todayUsers++;
-        }
-        
-        if (user.status === 'ban') {
-          bannedUsers++;
-        } else {
-          activeUsers++;
-        }
-        
-        totalBalance += this.safeNumber(user.balance);
-        totalPopBalance += this.safeNumber(user.pop);
-        totalEarned += this.safeNumber(user.totalEarned);
-        referralEarnings += this.safeNumber(user.referralEarnings);
-      });
-      
-      taskEarnings = totalEarned - referralEarnings;
-      
-      let totalTasks = 0;
       let mainTasks = 0;
       let partnerTasks = 0;
       let socialTasks = 0;
-      let completedTasks = 0;
+      let completedTasksCount = 0;
       
-      if (tasksSnap.exists()) {
-        tasksSnap.forEach(child => {
+      if (configTasksSnap.exists()) {
+        configTasksSnap.forEach(child => {
           const task = child.val();
           if (task.status !== 'deleted') {
-            totalTasks++;
-            
-            const category = task.category;
-            if (category === 'main') {
-              mainTasks++;
-            } else if (category === 'partner') {
-              partnerTasks++;
-            }
-            
-            if (task.currentCompletions >= task.maxCompletions) {
-              completedTasks++;
-            }
+            if (task.category === 'main') mainTasks++;
+            if (task.category === 'partner') partnerTasks++;
+            if (task.currentCompletions >= task.maxCompletions) completedTasksCount++;
           }
         });
       }
       
-      if (configTasksSnap.exists()) {
-        configTasksSnap.forEach(owner => {
+      if (userTasksSnap.exists()) {
+        userTasksSnap.forEach(owner => {
           owner.forEach(task => {
             const taskData = task.val();
             if (taskData.status === 'active') {
               socialTasks++;
-              totalTasks++;
-              if (taskData.currentCompletions >= taskData.maxCompletions) {
-                completedTasks++;
-              }
+              if (taskData.currentCompletions >= taskData.maxCompletions) completedTasksCount++;
             }
           });
         });
       }
       
-      let totalWithdrawals = 0;
-      let todayWithdrawals = 0;
-      let pendingWithdrawals = 0;
-      let confirmedWithdrawals = 0;
-      let totalDistributed = 0;
-      
-      if (withdrawalsSnap.exists()) {
-        const withdrawals = withdrawalsSnap.val();
-        
-        if (withdrawals.pending) {
-          pendingWithdrawals = Object.keys(withdrawals.pending).length;
-          totalWithdrawals += pendingWithdrawals;
-        }
-        
-        if (withdrawals.completed) {
-          confirmedWithdrawals = Object.keys(withdrawals.completed).length;
-          totalWithdrawals += confirmedWithdrawals;
-          
-          Object.values(withdrawals.completed).forEach(w => {
-            totalDistributed += this.safeNumber(w.amount);
-            if (w.timestamp && w.timestamp >= today) {
-              todayWithdrawals++;
-            }
-          });
-        }
-        
-        if (withdrawals.rejected) {
-          totalWithdrawals += Object.keys(withdrawals.rejected).length;
-        }
-      }
+      const totalTasksDisplay = mainTasks + partnerTasks + socialTasks;
       
       document.getElementById('dashboardLoading').style.display = 'none';
       document.getElementById('dashboardContent').style.display = 'block';
       
-      const updateElement = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
-      };
-      
-      updateElement('totalUsers', totalUsers);
-      updateElement('todayUsers', todayUsers);
-      updateElement('bannedUsers', bannedUsers);
-      updateElement('activeUsers', activeUsers);
-      updateElement('totalWithdrawals', totalWithdrawals);
-      updateElement('todayWithdrawals', todayWithdrawals);
-      updateElement('pendingWithdrawals', pendingWithdrawals);
-      updateElement('confirmedWithdrawals', confirmedWithdrawals);
-      updateElement('totalTasks', totalTasks);
-      updateElement('mainTasks', mainTasks);
-      updateElement('partnerTasks', partnerTasks);
-      updateElement('socialTasks', socialTasks);
-      updateElement('completedTasks', completedTasks);
-      updateElement('totalDistributed', totalDistributed.toFixed(3) + ' TON');
-      updateElement('totalBalance', totalBalance.toFixed(3) + ' TON');
-      updateElement('totalPopBalance', Math.floor(totalPopBalance) + ' POP');
-      updateElement('referralEarnings', referralEarnings.toFixed(3) + ' TON');
-      updateElement('taskEarnings', taskEarnings.toFixed(3) + ' TON');
+      document.getElementById('totalUsersStat').textContent = totalUsers;
+      document.getElementById('totalPaymentsStat').textContent = totalPayments.toFixed(3) + ' TON';
+      document.getElementById('totalWithdrawalsStat').textContent = totalWithdrawals;
+      document.getElementById('completedTasksStat').textContent = completedTasksCount;
+      document.getElementById('totalTasksStat').textContent = totalTasksDisplay;
+      document.getElementById('mainTasksStat').textContent = mainTasks;
+      document.getElementById('partnerTasksStat').textContent = partnerTasks;
+      document.getElementById('socialTasksStat').textContent = socialTasks;
       
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -678,7 +531,7 @@ class AdminPanel {
     
     users.forEach(user => {
       const balance = this.safeNumber(user.balance);
-      const popBalance = this.safeNumber(user.pop);
+      const starBalance = this.safeNumber(user.star);
       const referrals = this.safeNumber(user.referrals || 0);
       const tasks = this.safeNumber(user.totalTasksCompleted || 0);
       const totalPromoCodes = this.safeNumber(user.totalPromoCodes || 0);
@@ -734,8 +587,8 @@ class AdminPanel {
             <div class="user-stat-item">
               <i class="fas fa-star"></i>
               <div class="user-stat-info">
-                <div class="user-stat-label">POP Balance</div>
-                <div class="user-stat-value">${Math.floor(popBalance)} POP</div>
+                <div class="user-stat-label">STARS Balance</div>
+                <div class="user-stat-value">${Math.floor(starBalance)} STARS</div>
               </div>
             </div>
             <div class="user-stat-item">
@@ -783,11 +636,11 @@ class AdminPanel {
               <button class="action-btn btn-danger" onclick="admin.showRemoveBalanceModal('${user.id}', '${cleanUsername || firstName}')">
                 <i class="fas fa-minus"></i> Remove TON
               </button>
-              <button class="action-btn btn-warning" onclick="admin.showAddPopModal('${user.id}', '${cleanUsername || firstName}')">
-                <i class="fas fa-plus"></i> Add POP
+              <button class="action-btn btn-warning" onclick="admin.showAddStarModal('${user.id}', '${cleanUsername || firstName}')">
+                <i class="fas fa-plus"></i> Add STARS
               </button>
-              <button class="action-btn btn-danger" onclick="admin.showRemovePopModal('${user.id}', '${cleanUsername || firstName}')">
-                <i class="fas fa-minus"></i> Remove POP
+              <button class="action-btn btn-danger" onclick="admin.showRemoveStarModal('${user.id}', '${cleanUsername || firstName}')">
+                <i class="fas fa-minus"></i> Remove STARS
               </button>
             </div>
             <div class="ban-buttons">
@@ -940,33 +793,33 @@ class AdminPanel {
     }
   }
 
-  showRemovePopModal(userId, userName) {
+  showRemoveStarModal(userId, userName) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h3><i class="fas fa-minus-circle"></i> Remove POP Balance</h3>
+          <h3><i class="fas fa-minus-circle"></i> Remove STARS Balance</h3>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Remove POP balance from user:</p>
+          <p>Remove STARS balance from user:</p>
           <div class="user-info-modal">
             <strong>${userName}</strong>
           </div>
           <div class="form-group">
-            <label>Amount to Remove (POP)</label>
-            <input type="number" id="removePopAmount" placeholder="100" step="1" min="1" value="100">
+            <label>Amount to Remove (STARS)</label>
+            <input type="number" id="removeStarAmount" placeholder="100" step="1" min="1" value="100">
           </div>
           <div class="form-group">
             <label>Reason (Optional)</label>
-            <input type="text" id="removePopReason" placeholder="Admin removed POP">
+            <input type="text" id="removeStarReason" placeholder="Admin removed STARS">
           </div>
         </div>
         <div class="modal-footer">
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-danger" onclick="admin.removePopBalance('${userId}')">
-            <i class="fas fa-check"></i> Remove POP
+          <button class="action-btn btn-danger" onclick="admin.removeStarBalance('${userId}')">
+            <i class="fas fa-check"></i> Remove STARS
           </button>
         </div>
       </div>
@@ -976,9 +829,9 @@ class AdminPanel {
     setTimeout(() => modal.classList.add('show'), 10);
   }
 
-  async removePopBalance(userId) {
-    const amount = parseInt(document.getElementById('removePopAmount').value);
-    const reason = document.getElementById('removePopReason').value.trim() || 'Admin removed POP';
+  async removeStarBalance(userId) {
+    const amount = parseInt(document.getElementById('removeStarAmount').value);
+    const reason = document.getElementById('removeStarReason').value.trim() || 'Admin removed STARS';
 
     if (!amount || amount <= 0) {
       this.showNotification("Error", "Please enter a valid amount", "error");
@@ -995,57 +848,57 @@ class AdminPanel {
       }
 
       const user = snapshot.val();
-      const currentPop = this.safeNumber(user.pop);
+      const currentStar = this.safeNumber(user.star);
       
-      if (currentPop < amount) {
-        this.showNotification("Error", "Insufficient POP balance", "error");
+      if (currentStar < amount) {
+        this.showNotification("Error", "Insufficient STARS balance", "error");
         return;
       }
       
-      const newPop = currentPop - amount;
+      const newStar = currentStar - amount;
 
       await userRef.update({
-        pop: newPop
+        star: newStar
       });
 
-      this.showNotification("Success", `Removed ${amount} POP from user`, "success");
+      this.showNotification("Success", `Removed ${amount} STARS from user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
       await this.searchUser();
       
     } catch (error) {
-      console.error("Error removing POP:", error);
-      this.showNotification("Error", "Failed to remove POP", "error");
+      console.error("Error removing STARS:", error);
+      this.showNotification("Error", "Failed to remove STARS", "error");
     }
   }
 
-  showAddPopModal(userId, userName) {
+  showAddStarModal(userId, userName) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h3><i class="fas fa-star"></i> Add POP Balance</h3>
+          <h3><i class="fas fa-star"></i> Add STARS Balance</h3>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Add POP balance to user:</p>
+          <p>Add STARS balance to user:</p>
           <div class="user-info-modal">
             <strong>${userName}</strong>
           </div>
           <div class="form-group">
-            <label>Amount (POP)</label>
-            <input type="number" id="addPopAmount" placeholder="100" step="1" min="1" value="100">
+            <label>Amount (STARS)</label>
+            <input type="number" id="addStarAmount" placeholder="100" step="1" min="1" value="100">
           </div>
           <div class="form-group">
             <label>Reason (Optional)</label>
-            <input type="text" id="addPopReason" placeholder="Admin added POP">
+            <input type="text" id="addStarReason" placeholder="Admin added STARS">
           </div>
         </div>
         <div class="modal-footer">
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-          <button class="action-btn btn-warning" onclick="admin.addPopBalance('${userId}')">
-            <i class="fas fa-check"></i> Add POP
+          <button class="action-btn btn-warning" onclick="admin.addStarBalance('${userId}')">
+            <i class="fas fa-check"></i> Add STARS
           </button>
         </div>
       </div>
@@ -1055,9 +908,9 @@ class AdminPanel {
     setTimeout(() => modal.classList.add('show'), 10);
   }
 
-  async addPopBalance(userId) {
-    const amount = parseInt(document.getElementById('addPopAmount').value);
-    const reason = document.getElementById('addPopReason').value.trim() || 'Admin added POP';
+  async addStarBalance(userId) {
+    const amount = parseInt(document.getElementById('addStarAmount').value);
+    const reason = document.getElementById('addStarReason').value.trim() || 'Admin added STARS';
 
     if (!amount || amount <= 0) {
       this.showNotification("Error", "Please enter a valid amount", "error");
@@ -1074,21 +927,21 @@ class AdminPanel {
       }
 
       const user = snapshot.val();
-      const currentPop = this.safeNumber(user.pop);
-      const newPop = currentPop + amount;
+      const currentStar = this.safeNumber(user.star);
+      const newStar = currentStar + amount;
 
       await userRef.update({
-        pop: newPop
+        star: newStar
       });
 
-      this.showNotification("Success", `Added ${amount} POP to user`, "success");
+      this.showNotification("Success", `Added ${amount} STARS to user`, "success");
       
       document.querySelector('.modal-overlay.show')?.remove();
       await this.searchUser();
       
     } catch (error) {
-      console.error("Error adding POP:", error);
-      this.showNotification("Error", "Failed to add POP", "error");
+      console.error("Error adding STARS:", error);
+      this.showNotification("Error", "Failed to add STARS", "error");
     }
   }
 
@@ -1701,7 +1554,7 @@ class AdminPanel {
         category: type === 'social' ? 'social' : type,
         type: 'channel',
         reward: reward,
-        popReward: 1,
+        starReward: 1,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
         status: 'active',
@@ -1789,8 +1642,8 @@ class AdminPanel {
                   <button class="reward-type-btn active" data-type="ton">
                     <i class="fas fa-coins"></i> TON
                   </button>
-                  <button class="reward-type-btn" data-type="pop">
-                    <i class="fas fa-star"></i> POP
+                  <button class="reward-type-btn" data-type="star">
+                    <i class="fas fa-star"></i> STARS
                   </button>
                 </div>
               </div>
@@ -1802,7 +1655,7 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Required Channel (Optional)</label>
-                <input type="text" id="promoRequired" placeholder="@CHANNEL_NAME" value="@POP_BUZZ">
+                <input type="text" id="promoRequired" placeholder="@CHANNEL_NAME" value="@STAR_Z">
                 <small>User must join this channel to use the promo code</small>
               </div>
               
@@ -1917,8 +1770,8 @@ class AdminPanel {
       const createdDate = promo.createdAt ? this.formatDateTime(promo.createdAt) : 'N/A';
       const totalDistributed = used * (promo.reward || 0);
       const rewardType = promo.rewardType || 'ton';
-      const rewardSymbol = rewardType === 'ton' ? 'TON' : 'POP';
-      const required = promo.required || '@POP_BUZZ';
+      const rewardSymbol = rewardType === 'ton' ? 'TON' : 'STARS';
+      const required = promo.required || '@STAR_Z';
       
       let status = 'active';
       let statusClass = 'status-active';
@@ -1993,7 +1846,7 @@ class AdminPanel {
     const rewardType = rewardTypeBtn ? rewardTypeBtn.dataset.type : 'ton';
     const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
-    const required = document.getElementById('promoRequired').value.trim() || '@POP_BUZZ';
+    const required = document.getElementById('promoRequired').value.trim() || '@STAR_Z';
     
     if (!code) {
       this.showNotification("Error", "Please enter promo code", "error");
@@ -2034,7 +1887,7 @@ class AdminPanel {
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '';
       document.getElementById('promoMaxUses').value = '0';
-      document.getElementById('promoRequired').value = '@POP_BUZZ';
+      document.getElementById('promoRequired').value = '@STAR_Z';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -2700,7 +2553,7 @@ class AdminPanel {
 
   async sendWithdrawalNotification(userId, amount, wallet, transactionLink, userData) {
     try {
-      let message = this.settings.withdrawalMessage || "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using Pop Buzz!";
+      let message = this.settings.withdrawalMessage || "✅ Your withdrawal has been approved!\n\n💎 Amount: {amount} TON\n💰 Wallet: {wallet}\n🔗 Transaction: {transaction}\n\nThank you for using STAR Z!";
       
       message = message.replace('{amount}', amount.toFixed(5))
         .replace('{wallet}', wallet)
