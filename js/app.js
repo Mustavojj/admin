@@ -1846,7 +1846,7 @@ class AdminPanel {
     const rewardType = rewardTypeBtn ? rewardTypeBtn.dataset.type : 'ton';
     const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
-    const required = document.getElementById('promoRequired').value.trim() || '@STAR_Z';
+    const required = document.getElementById('promoRequired').value.trim() || '@STARZ_NEW';
     
     if (!code) {
       this.showNotification("Error", "Please enter promo code", "error");
