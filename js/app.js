@@ -24,7 +24,7 @@ class AdminPanel {
     this.isProcessingQueue = false;
     this.currentTaskTab = 'main';
     this.settings = {
-      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
+      withdrawalMessage: "<b>🚀 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
       withdrawalImage: "",
       withdrawalButtons: []
     };
