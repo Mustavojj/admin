@@ -24,7 +24,7 @@ class AdminPanel {
     this.isProcessingQueue = false;
     this.currentTaskTab = 'main';
     this.settings = {
-      withdrawalMessage: "<b>🍿 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
+      withdrawalMessage: "<b>🚀 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
       withdrawalImage: "",
       withdrawalButtons: []
     };
@@ -2592,7 +2592,6 @@ class AdminPanel {
                   <input type="radio" name="sendMethod" value="forward"> Forward
                 </label>
               </div>
-              <small>Direct: أسرع للعدد القليل | Forward: أسرع بكثير للعدد الكبير (1000+)</small>
             </div>
             
             <div class="form-group">
@@ -2633,7 +2632,7 @@ class AdminPanel {
               <button class="action-btn btn-secondary" onclick="admin.addInlineButton()">
                 <i class="fas fa-plus"></i> Add Button
               </button>
-              <small>Max 5 rows, each button up to 30 characters</small>
+    
             </div>
             
             <div class="broadcast-preview">
