@@ -13,7 +13,7 @@ const BOT_TOKEN = "8302653359:AAHUifg3Olt-YwoK0hZUOrVQH-6pQ37ors4";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
-const DEFAULT_IMAGE_URL = "https://i.ibb.co/xqL5tXyF/file-00000000473871f4b2902b2708daa633.png";
+const DEFAULT_IMAGE_URL = "https://i.ibb.co/XxXhyZYf/file-000000006f8c720e9ab4c76b6e560062.png";
 
 class AdminPanel {
   constructor() {
