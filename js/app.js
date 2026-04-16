@@ -21,7 +21,6 @@ class AdminPanel {
     this.auth = null;
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
-    this.isProcessingQueue = false;
     this.currentTaskTab = 'main';
     this.settings = {
       withdrawalMessage: "<b>🚀 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
@@ -60,45 +59,10 @@ class AdminPanel {
       console.log("✅ Firebase initialized successfully");
       
       this.setupEventListeners();
-      await this.loadAndProcessPendingBroadcasts();
       
     } catch (error) {
       console.error("❌ Firebase initialization error:", error);
       this.showLoginMessage("Failed to initialize Firebase", "error");
-    }
-  }
-
-  async loadAndProcessPendingBroadcasts() {
-    try {
-      const broadcastsSnap = await this.db.ref('config/broadcasts')
-        .orderByChild('status')
-        .once('value');
-      
-      const pendingBroadcasts = [];
-      
-      if (broadcastsSnap.exists()) {
-        broadcastsSnap.forEach(child => {
-          const broadcast = child.val();
-          if (broadcast.status === 'pending' || broadcast.status === 'processing') {
-            pendingBroadcasts.push({
-              id: child.key,
-              ...broadcast
-            });
-          }
-        });
-      }
-      
-      pendingBroadcasts.sort((a, b) => a.createdAt - b.createdAt);
-      
-      if (pendingBroadcasts.length > 0) {
-        console.log(`📡 Found ${pendingBroadcasts.length} pending broadcasts`);
-        for (const broadcast of pendingBroadcasts) {
-          await this.executeBroadcast(broadcast);
-        }
-      }
-      
-    } catch (error) {
-      console.error("Error loading pending broadcasts:", error);
     }
   }
 
@@ -648,7 +612,7 @@ class AdminPanel {
 
   async getUserReferrals(userId, userName) {
     try {
-      const referralsRef = await this.db.ref(`referrals/${userId}`).once('value');
+      const referralsRef = await this.db.ref(`friends/${userId}`).once('value');
       const referrals = [];
       
       if (referralsRef.exists()) {
@@ -656,35 +620,36 @@ class AdminPanel {
           const referral = child.val();
           referrals.push({
             id: child.key,
-            ...referral
+            userId: referral.userId,
+            username: referral.username,
+            firstName: referral.firstName,
+            photoUrl: referral.photoUrl,
+            joinedAt: referral.joinedAt
           });
         });
       }
       
       referrals.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0));
-      const verifiedReferrals = referrals.filter(ref => ref.bonusGiven === true);
-      const recentReferrals = verifiedReferrals.slice(0, 10);
+      const recentReferrals = referrals.slice(0, 20);
       
-      let message = `<b>👥 Verified Referrals of ${userName}</b>\n\n`;
+      let message = `<b>👥 Friends/Referrals of ${userName}</b>\n\n`;
       
       if (recentReferrals.length === 0) {
-        message += "No verified referrals found for this user.";
+        message += "No referrals found for this user.";
       } else {
-        message += `📊 Total Verified Referrals: ${verifiedReferrals.length}\n📋 Last 10 Verified Referrals:\n\n`;
+        message += `📊 Total Referrals: ${referrals.length}\n📋 Last ${recentReferrals.length} Referrals:\n\n`;
         
         recentReferrals.forEach((ref, index) => {
           const joinedDate = ref.joinedAt ? this.formatDateTime(ref.joinedAt) : 'N/A';
-          const verifiedDate = ref.verifiedAt ? this.formatDateTime(ref.verifiedAt) : 'N/A';
           message += `${index + 1}. <b>${ref.firstName || 'User'}</b>\n`;
           message += `   🆔 ID: ${ref.userId || ref.id}\n`;
           if (ref.username) message += `   👤 Username: ${ref.username}\n`;
-          message += `   📅 Joined: ${joinedDate}\n`;
-          message += `   ✅ Bonus Given: ${verifiedDate}\n\n`;
+          message += `   📅 Joined: ${joinedDate}\n\n`;
         });
       }
       
       await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message);
-      this.showNotification("Success", "Verified referrals list sent to admin", "success");
+      this.showNotification("Success", "Referrals list sent to admin", "success");
       
     } catch (error) {
       console.error("Error getting referrals:", error);
@@ -985,6 +950,14 @@ class AdminPanel {
         balance: newBalance,
         totalEarned: this.safeNumber(user.totalEarned) + amount
       });
+      
+      const depositId = Date.now().toString();
+      await this.db.ref(`deposits/${userId}/${depositId}`).set({
+        amount: amount,
+        timestamp: Date.now(),
+        reason: reason,
+        adminId: this.currentUser?.uid || 'admin'
+      });
 
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
       
@@ -1100,9 +1073,23 @@ class AdminPanel {
               </div>
               
               <div class="form-group">
+                <label>Task Type</label>
+                <select id="taskType">
+                  <option value="channel">Channel</option>
+                  <option value="website">Website</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
                 <label>Task Reward (TON) *</label>
-                <input type="number" id="taskReward" step="0.001" min="0.001" value="0.02">
-                <small>Main: 0.02 | Partner: 0.01 | Social: Custom</small>
+                <input type="number" id="taskReward" step="0.001" min="0.001" value="0.002">
+                <small>Main: 0.002 | Partner: 0.002 | Social: 0.001</small>
+              </div>
+              
+              <div class="form-group">
+                <label>POP Reward (STARS)</label>
+                <input type="number" id="taskPopReward" step="1" min="0" value="1">
+                <small>STARS reward for completing this task</small>
               </div>
               
               <div class="form-group">
@@ -1160,6 +1147,7 @@ class AdminPanel {
     const buttons = document.querySelectorAll('.type-btn');
     const ownerField = document.getElementById('ownerIdField');
     const rewardInput = document.getElementById('taskReward');
+    const popRewardInput = document.getElementById('taskPopReward');
     
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1169,13 +1157,16 @@ class AdminPanel {
         const taskType = btn.dataset.type;
         
         if (taskType === 'main') {
-          rewardInput.value = '0.02';
+          rewardInput.value = '0.002';
+          popRewardInput.value = '1';
           if (ownerField) ownerField.style.display = 'none';
         } else if (taskType === 'partner') {
-          rewardInput.value = '0.01';
+          rewardInput.value = '0.002';
+          popRewardInput.value = '1';
           if (ownerField) ownerField.style.display = 'none';
         } else if (taskType === 'social') {
-          rewardInput.value = '0.005';
+          rewardInput.value = '0.001';
+          popRewardInput.value = '1';
           if (ownerField) ownerField.style.display = 'block';
         }
       });
@@ -1209,7 +1200,7 @@ class AdminPanel {
       if (configTasksSnap.exists()) {
         configTasksSnap.forEach(child => {
           const task = child.val();
-          if (task.status !== 'deleted' && task.name.toLowerCase().includes(searchTerm)) {
+          if (task.status !== 'deleted' && task.name && task.name.toLowerCase().includes(searchTerm)) {
             allTasks.push({
               id: child.key,
               source: 'config',
@@ -1332,78 +1323,122 @@ class AdminPanel {
       const progress = task.maxCompletions > 0 ? 
         (task.currentCompletions || 0) / task.maxCompletions * 100 : 0;
       
-      let typeClass = 'type-main';
+      let typeClass = 'badge-main';
       let typeText = 'Main';
       
       if (task.category === 'main') {
-        typeClass = 'type-main';
+        typeClass = 'badge-main';
         typeText = 'Main';
       } else if (task.category === 'partner') {
-        typeClass = 'type-partner';
+        typeClass = 'badge-partner';
         typeText = 'Partner';
       } else if (task.source === 'userTasks') {
-        typeClass = 'type-social';
+        typeClass = 'badge-social';
         typeText = 'Social';
       }
       
-      const isCompleted = progress >= 100;
+      let statusClass = 'badge-active';
+      let statusText = task.status || 'active';
+      
+      if (task.status === 'completed' || (task.currentCompletions >= task.maxCompletions)) {
+        statusClass = 'badge-completed';
+        statusText = 'Completed';
+      } else if (task.status === 'stopped') {
+        statusClass = 'badge-stopped';
+        statusText = 'Stopped';
+      } else {
+        statusText = 'Active';
+      }
+      
       const imageUrl = task.picture || DEFAULT_IMAGE_URL;
       const createdDate = task.createdAt ? this.formatDateTime(task.createdAt) : 'N/A';
       const verificationIcon = task.verification === 'YES' ? '🔒' : '🔓';
-      const reward = this.safeNumber(task.reward || (task.category === 'main' ? 0.02 : task.category === 'partner' ? 0.01 : 0.005));
+      const reward = this.safeNumber(task.reward || (task.category === 'main' ? 0.002 : task.category === 'partner' ? 0.002 : 0.001));
+      const popReward = this.safeNumber(task.popReward || 1);
+      const taskType = task.type || 'channel';
       
       html += `
-        <div class="task-item ${isCompleted ? 'completed' : ''}">
-          <div class="task-image-container">
-            <img src="${imageUrl}" 
-                 alt="${task.name}" 
-                 class="task-image"
-                 onerror="this.src='${DEFAULT_IMAGE_URL}'">
-          </div>
-          
-          <div class="task-header">
-            <h4>${task.name} ${verificationIcon}</h4>
-            <div class="task-meta">
-              <span class="task-type ${typeClass}">${typeText}</span>
-              <span class="task-reward">💰 ${reward.toFixed(3)} TON</span>
-              <span class="task-status ${isCompleted ? 'status-completed' : 'status-active'}">
-                ${isCompleted ? 'COMPLETED' : 'ACTIVE'}
-              </span>
+        <div class="task-item">
+          <div class="task-card">
+            <div class="task-card-image">
+              <img src="${imageUrl}" alt="${task.name}" onerror="this.src='${DEFAULT_IMAGE_URL}'">
             </div>
-          </div>
-          
-          <div class="task-url">
-            <i class="fas fa-link"></i>
-            <a href="${task.url}" target="_blank">${task.url}</a>
-            <button class="btn-copy" onclick="admin.copyToClipboard('${task.url}')" title="Copy link">
-              <i class="fas fa-copy"></i>
-            </button>
-          </div>
-          
-          ${task.ownerId ? `
-            <div class="task-owner" onclick="admin.copyToClipboard('${task.ownerId}')" title="Click to copy Owner ID">
-              <i class="fas fa-user"></i> Owner: ${task.ownerId}
-              <i class="fas fa-copy"></i>
+            <div class="task-card-content">
+              <div class="task-card-header">
+                <div class="task-title">
+                  <h4>${task.name} ${verificationIcon}</h4>
+                  <div class="task-badges">
+                    <span class="task-badge ${typeClass}">${typeText}</span>
+                    <span class="task-badge ${statusClass}">${statusText}</span>
+                    ${task.verification === 'YES' ? '<span class="task-badge badge-verified">Verified</span>' : ''}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="task-stats">
+                <div class="task-stat">
+                  <i class="fas fa-coins"></i>
+                  <div class="task-stat-info">
+                    <div class="task-stat-label">Reward</div>
+                    <div class="task-stat-value">${reward.toFixed(3)} TON</div>
+                  </div>
+                </div>
+                <div class="task-stat">
+                  <i class="fas fa-star"></i>
+                  <div class="task-stat-info">
+                    <div class="task-stat-label">POP Reward</div>
+                    <div class="task-stat-value">${popReward} STARS</div>
+                  </div>
+                </div>
+                <div class="task-stat">
+                  <i class="fas fa-link"></i>
+                  <div class="task-stat-info">
+                    <div class="task-stat-label">Type</div>
+                    <div class="task-stat-value">${taskType === 'channel' ? 'Telegram' : 'Website'}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="task-url">
+                <i class="fas fa-external-link-alt"></i>
+                <a href="${task.url}" target="_blank">${task.url}</a>
+                <button class="btn-copy" onclick="admin.copyToClipboard('${task.url}')" title="Copy link">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+              
+              ${task.ownerId ? `
+                <div class="task-owner" onclick="admin.copyToClipboard('${task.ownerId}')" title="Click to copy Owner ID">
+                  <i class="fas fa-user"></i> Owner: ${task.ownerId}
+                  <i class="fas fa-copy"></i>
+                </div>
+              ` : ''}
+              
+              <div class="task-progress">
+                <div class="progress-info">
+                  <span>Completions: ${task.currentCompletions || 0}/${task.maxCompletions}</span>
+                  <span>${progress.toFixed(1)}%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                </div>
+              </div>
+              
+              <div class="task-actions">
+                <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions}, ${reward}, '${task.source}', '${task.ownerId || ''}', ${popReward})">
+                  <i class="fas fa-edit"></i> Edit Total
+                </button>
+                <button class="action-btn btn-warning" onclick="admin.showEditCompletionsModal('${task.id}', ${task.currentCompletions || 0}, '${task.source}', '${task.ownerId || ''}')">
+                  <i class="fas fa-tasks"></i> Edit Completions
+                </button>
+                <button class="action-btn btn-info" onclick="admin.showStatusModal('${task.id}', '${task.status || 'active'}', '${task.source}', '${task.ownerId || ''}')">
+                  <i class="fas fa-toggle-on"></i> Status
+                </button>
+                <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}', '${task.source}', '${task.ownerId || ''}')">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </div>
             </div>
-          ` : ''}
-          
-          <div class="task-progress">
-            <div class="progress-info">
-              <span>Completions: ${task.currentCompletions || 0}/${task.maxCompletions}</span>
-              <span>${progress.toFixed(1)}%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${progress}%"></div>
-            </div>
-          </div>
-          
-          <div class="task-actions">
-            <button class="action-btn btn-primary" onclick="admin.showEditTaskModal('${task.id}', ${task.maxCompletions}, ${reward}, '${task.source}', '${task.ownerId || ''}')">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="action-btn btn-danger" onclick="admin.deleteTask('${task.id}', '${task.source}', '${task.ownerId || ''}')">
-              <i class="fas fa-trash"></i> Delete
-            </button>
           </div>
         </div>
       `;
@@ -1412,7 +1447,7 @@ class AdminPanel {
     container.innerHTML = html;
   }
 
-  showEditTaskModal(taskId, currentMaxCompletions, currentReward, source, ownerId) {
+  showEditTaskModal(taskId, currentMaxCompletions, currentReward, source, ownerId, currentPopReward) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -1431,6 +1466,10 @@ class AdminPanel {
             <label>Reward (TON) *</label>
             <input type="number" id="editReward" step="0.001" min="0.001" value="${currentReward.toFixed(3)}">
           </div>
+          <div class="form-group">
+            <label>POP Reward (STARS)</label>
+            <input type="number" id="editPopReward" step="1" min="0" value="${currentPopReward || 1}">
+          </div>
         </div>
         <div class="modal-footer">
           <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
@@ -1445,9 +1484,71 @@ class AdminPanel {
     setTimeout(() => modal.classList.add('show'), 10);
   }
 
+  showEditCompletionsModal(taskId, currentCompletions, source, ownerId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-tasks"></i> Edit Completions</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Current Completions *</label>
+            <input type="number" id="editCurrentCompletions" value="${currentCompletions}" min="0" step="1">
+            <small>Current: ${currentCompletions} completions</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-warning" onclick="admin.updateTaskCompletions('${taskId}', '${source}', '${ownerId}')">
+            <i class="fas fa-check"></i> Update
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
+  showStatusModal(taskId, currentStatus, source, ownerId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-toggle-on"></i> Change Status</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Task Status</label>
+            <select id="editTaskStatus">
+              <option value="active" ${currentStatus === 'active' ? 'selected' : ''}>Active</option>
+              <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>Completed</option>
+              <option value="stopped" ${currentStatus === 'stopped' ? 'selected' : ''}>Stopped</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="action-btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="action-btn btn-info" onclick="admin.updateTaskStatus('${taskId}', '${source}', '${ownerId}')">
+            <i class="fas fa-check"></i> Update
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+
   async updateTask(taskId, source, ownerId) {
     const newMaxCompletions = parseInt(document.getElementById('editMaxCompletions').value);
     const newReward = parseFloat(document.getElementById('editReward').value);
+    const newPopReward = parseInt(document.getElementById('editPopReward').value);
     
     if (!newMaxCompletions || newMaxCompletions < 1) {
       this.showNotification("Error", "Please enter a valid max completions number", "error");
@@ -1469,7 +1570,8 @@ class AdminPanel {
       
       await taskRef.update({
         maxCompletions: newMaxCompletions,
-        reward: newReward
+        reward: newReward,
+        popReward: newPopReward
       });
       
       this.showNotification("Success", "Task updated successfully", "success");
@@ -1483,16 +1585,75 @@ class AdminPanel {
     }
   }
 
+  async updateTaskCompletions(taskId, source, ownerId) {
+    const newCurrentCompletions = parseInt(document.getElementById('editCurrentCompletions').value);
+    
+    if (newCurrentCompletions < 0) {
+      this.showNotification("Error", "Completions cannot be negative", "error");
+      return;
+    }
+
+    try {
+      let taskRef;
+      if (source === 'userTasks' && ownerId) {
+        taskRef = this.db.ref(`config/userTasks/${ownerId}/${taskId}`);
+      } else {
+        taskRef = this.db.ref(`config/tasks/${taskId}`);
+      }
+      
+      await taskRef.update({
+        currentCompletions: newCurrentCompletions
+      });
+      
+      this.showNotification("Success", "Completions updated successfully", "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.loadTasks();
+      
+    } catch (error) {
+      console.error("Error updating completions:", error);
+      this.showNotification("Error", "Failed to update completions", "error");
+    }
+  }
+
+  async updateTaskStatus(taskId, source, ownerId) {
+    const newStatus = document.getElementById('editTaskStatus').value;
+
+    try {
+      let taskRef;
+      if (source === 'userTasks' && ownerId) {
+        taskRef = this.db.ref(`config/userTasks/${ownerId}/${taskId}`);
+      } else {
+        taskRef = this.db.ref(`config/tasks/${taskId}`);
+      }
+      
+      await taskRef.update({
+        status: newStatus
+      });
+      
+      this.showNotification("Success", `Task status changed to ${newStatus}`, "success");
+      
+      document.querySelector('.modal-overlay.show')?.remove();
+      await this.loadTasks();
+      
+    } catch (error) {
+      console.error("Error updating status:", error);
+      this.showNotification("Error", "Failed to update status", "error");
+    }
+  }
+
   async createTask() {
     const name = document.getElementById('taskName').value.trim();
     const image = document.getElementById('taskImage').value.trim();
     const link = document.getElementById('taskLink').value.trim();
     const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value) || 100;
     const reward = parseFloat(document.getElementById('taskReward').value) || 0;
+    const popReward = parseInt(document.getElementById('taskPopReward').value) || 1;
     const typeBtn = document.querySelector('.type-btn.active');
-    const type = typeBtn ? typeBtn.dataset.type : 'main';
+    const category = typeBtn ? typeBtn.dataset.type : 'main';
     const verification = document.getElementById('taskVerification').value;
     const ownerId = document.getElementById('taskOwnerId')?.value.trim();
+    const taskType = document.getElementById('taskType').value;
     
     if (!name || !link) {
       this.showNotification("Error", "Please fill all required fields", "error");
@@ -1514,7 +1675,7 @@ class AdminPanel {
       return;
     }
     
-    if (type === 'social' && !ownerId) {
+    if (category === 'social' && !ownerId) {
       this.showNotification("Error", "Owner ID is required for Social tasks", "error");
       return;
     }
@@ -1530,10 +1691,10 @@ class AdminPanel {
       const taskData = {
         name: name,
         url: formattedLink,
-        category: type === 'social' ? 'social' : type,
-        type: 'channel',
+        category: category === 'social' ? 'social' : category,
+        type: taskType,
         reward: reward,
-        starReward: 1,
+        popReward: popReward,
         maxCompletions: maxCompletions,
         currentCompletions: 0,
         status: 'active',
@@ -1548,7 +1709,7 @@ class AdminPanel {
         taskData.picture = DEFAULT_IMAGE_URL;
       }
       
-      if (type === 'social' && ownerId) {
+      if (category === 'social' && ownerId) {
         taskData.owner = ownerId;
         await this.db.ref(`config/userTasks/${ownerId}`).push(taskData);
       } else {
@@ -1559,7 +1720,8 @@ class AdminPanel {
       document.getElementById('taskImage').value = '';
       document.getElementById('taskLink').value = '';
       document.getElementById('taskOwnerId').value = '';
-      document.getElementById('taskReward').value = type === 'main' ? '0.02' : type === 'partner' ? '0.01' : '0.005';
+      document.getElementById('taskReward').value = category === 'main' ? '0.002' : category === 'partner' ? '0.002' : '0.001';
+      document.getElementById('taskPopReward').value = '1';
       
       this.showNotification("Success", "Task created successfully!", "success");
       await this.loadTasks();
@@ -1634,8 +1796,8 @@ class AdminPanel {
               
               <div class="form-group">
                 <label>Required Channel (Optional)</label>
-                <input type="text" id="promoRequired" placeholder="@CHANNEL_NAME" value="@STAR_Z">
-                <small>User must join this channel to use the promo code</small>
+                <input type="text" id="promoRequired" placeholder="@CHANNEL_NAME">
+                <small>User must join this channel to use the promo code (leave empty for no requirement)</small>
               </div>
               
               <div class="form-group">
@@ -1750,7 +1912,7 @@ class AdminPanel {
       const totalDistributed = used * (promo.reward || 0);
       const rewardType = promo.rewardType || 'ton';
       const rewardSymbol = rewardType === 'ton' ? 'TON' : 'STARS';
-      const required = promo.required || '@STAR_Z';
+      const required = promo.required || null;
       
       let status = 'active';
       let statusClass = 'status-active';
@@ -1783,10 +1945,12 @@ class AdminPanel {
           </div>
           
           <div class="promo-details">
+            ${required ? `
             <div class="detail">
               <span>Required:</span>
               <span>${required}</span>
             </div>
+            ` : ''}
             <div class="detail">
               <span>Used:</span>
               <span>${used} / ${max > 0 ? max : '∞'}</span>
@@ -1825,7 +1989,7 @@ class AdminPanel {
     const rewardType = rewardTypeBtn ? rewardTypeBtn.dataset.type : 'ton';
     const reward = parseFloat(document.getElementById('promoReward').value);
     const maxUses = parseInt(document.getElementById('promoMaxUses').value) || 0;
-    const required = document.getElementById('promoRequired').value.trim() || '@STAR_Z';
+    const required = document.getElementById('promoRequired').value.trim() || null;
     
     if (!code) {
       this.showNotification("Error", "Please enter promo code", "error");
@@ -1855,18 +2019,21 @@ class AdminPanel {
         reward: reward,
         maxUses: maxUses,
         usedCount: 0,
-        required: required,
         status: 'active',
         createdBy: 'admin',
         createdAt: Date.now()
       };
+      
+      if (required) {
+        promoData.required = required;
+      }
       
       await this.db.ref('config/promoCodes').push(promoData);
       
       document.getElementById('promoCode').value = '';
       document.getElementById('promoReward').value = '';
       document.getElementById('promoMaxUses').value = '0';
-      document.getElementById('promoRequired').value = '@STAR_Z';
+      document.getElementById('promoRequired').value = '';
       
       this.showNotification("Success", "Promo code created!", "success");
       await this.loadPromoCodes();
@@ -2173,12 +2340,18 @@ class AdminPanel {
             <button class="action-btn btn-info" onclick="admin.viewUser('${userId}')">
               <i class="fas fa-eye"></i> View
             </button>
+            <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
+              <i class="fas fa-wallet"></i> View Wallet
+            </button>
             ${w.status === 'pending' ? `
               <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.walletAddress}', '${userId}', '${userName}')">
-                <i class="fas fa-check"></i> Approve
+                <i class="fas fa-check"></i> Confirm
               </button>
               <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${w.id}')">
                 <i class="fas fa-times"></i> Reject
+              </button>
+              <button class="action-btn btn-primary" onclick="admin.directPay('${w.walletAddress}', ${w.amount})">
+                <i class="fas fa-arrow-right"></i> Direct PAY
               </button>
             ` : ''}
           </div>
@@ -2192,6 +2365,20 @@ class AdminPanel {
     `;
     
     document.getElementById('userWithdrawalsResults').innerHTML = html;
+  }
+
+  viewWallet(walletAddress) {
+    if (walletAddress) {
+      window.open(`https://tonviewer.com/${walletAddress}`, '_blank');
+    } else {
+      this.showNotification("Error", "No wallet address available", "error");
+    }
+  }
+
+  directPay(walletAddress, amount) {
+    const nanoAmount = Math.floor(amount * 1000000000);
+    const payUrl = `https://app.tonkeeper.com/transfer/${walletAddress}?amount=${nanoAmount}`;
+    window.open(payUrl, '_blank');
   }
 
   async viewUser(userId) {
@@ -2356,11 +2543,17 @@ class AdminPanel {
             <button class="action-btn btn-info" onclick="admin.viewUser('${request.userId}')">
               <i class="fas fa-eye"></i> View
             </button>
+            <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
+              <i class="fas fa-wallet"></i> View Wallet
+            </button>
             <button class="action-btn btn-success" onclick="admin.showApproveModal('${requestId}', ${request.amount}, '${request.walletAddress}', '${request.userId}', '${cleanUsername || request.userName || ''}')">
-              <i class="fas fa-check"></i> Approve
+              <i class="fas fa-check"></i> Confirm
             </button>
             <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${requestId}')">
               <i class="fas fa-times"></i> Reject
+            </button>
+            <button class="action-btn btn-primary" onclick="admin.directPay('${walletAddress}', ${request.amount})">
+              <i class="fas fa-arrow-right"></i> Direct PAY
             </button>
           </div>
         </div>
@@ -2382,7 +2575,8 @@ class AdminPanel {
   }
 
   showApproveModal(requestId, amount, wallet, userId, userName) {
-    const directPayUrl = `https://app.tonkeeper.com/transfer/${wallet}`;
+    const nanoAmount = Math.floor(amount * 1000000000);
+    const directPayUrl = `https://app.tonkeeper.com/transfer/${wallet}?amount=${nanoAmount}`;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -2583,18 +2777,6 @@ class AdminPanel {
             </div>
             
             <div class="form-group">
-              <label>Send Method</label>
-              <div class="method-selector" style="display: flex; gap: 10px;">
-                <label style="display: flex; align-items: center; gap: 5px;">
-                  <input type="radio" name="sendMethod" value="direct" checked> Direct
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px;">
-                  <input type="radio" name="sendMethod" value="forward"> Forward
-                </label>
-              </div>
-            </div>
-            
-            <div class="form-group">
               <label>Message *</label>
               <textarea id="broadcastMessage" rows="5" placeholder="Enter your message here..."></textarea>
               <small>Supports HTML formatting and emojis</small>
@@ -2632,7 +2814,6 @@ class AdminPanel {
               <button class="action-btn btn-secondary" onclick="admin.addInlineButton()">
                 <i class="fas fa-plus"></i> Add Button
               </button>
-    
             </div>
             
             <div class="broadcast-preview">
@@ -2653,115 +2834,12 @@ class AdminPanel {
                 <i class="fas fa-paper-plane"></i> Send Broadcast
               </button>
             </div>
-            
-            <div id="broadcastProgress" class="broadcast-progress" style="display: none; margin-top: 20px;">
-              <div class="progress-container">
-                <div class="progress-bar-fill" id="broadcastProgressFill" style="width: 0%;"></div>
-              </div>
-              <div class="progress-stats">
-                <span id="broadcastSent">0</span> / <span id="broadcastTotal">0</span>
-                <span id="broadcastFailed" style="color: var(--danger);">Failed: 0</span>
-              </div>
-            </div>
-            
-            <div class="broadcast-status" style="margin-top: 20px;">
-              <h4><i class="fas fa-history"></i> Broadcast History</h4>
-              <div id="broadcastHistory" class="queue-status">
-                <div class="loading">
-                  <div class="spinner"></div>
-                  <p>Loading broadcast history...</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
     `;
     
     this.updatePreview();
-    await this.loadBroadcastHistory();
-  }
-
-  async loadBroadcastHistory() {
-    try {
-      const broadcastsSnap = await this.db.ref('config/broadcasts')
-        .orderByChild('createdAt')
-        .once('value');
-      
-      const broadcasts = [];
-      if (broadcastsSnap.exists()) {
-        broadcastsSnap.forEach(child => {
-          broadcasts.push({
-            id: child.key,
-            ...child.val()
-          });
-        });
-      }
-      
-      broadcasts.sort((a, b) => b.createdAt - a.createdAt);
-      this.displayBroadcastHistory(broadcasts);
-      
-    } catch (error) {
-      console.error("Error loading broadcast history:", error);
-      document.getElementById('broadcastHistory').innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-exclamation-triangle"></i>
-          <p>Failed to load history</p>
-        </div>
-      `;
-    }
-  }
-
-  displayBroadcastHistory(broadcasts) {
-    const container = document.getElementById('broadcastHistory');
-    
-    if (broadcasts.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-history"></i>
-          <p>No broadcast history</p>
-        </div>
-      `;
-      return;
-    }
-    
-    let html = '<div class="queue-list">';
-    broadcasts.forEach(broadcast => {
-      const date = new Date(broadcast.createdAt).toLocaleString();
-      let statusClass = '';
-      let statusIcon = '';
-      
-      if (broadcast.status === 'completed') {
-        statusClass = 'completed';
-        statusIcon = '✅';
-      } else if (broadcast.status === 'failed') {
-        statusClass = 'failed';
-        statusIcon = '❌';
-      } else {
-        statusClass = 'pending';
-        statusIcon = '⏳';
-      }
-      
-      html += `
-        <div class="queue-item ${statusClass}">
-          <div class="queue-header">
-            <span class="queue-icon">${statusIcon}</span>
-            <span class="queue-title">Broadcast to ${broadcast.type === 'all' ? 'All Users' : 'User ' + broadcast.userId}</span>
-            <span class="queue-date">${date}</span>
-          </div>
-          <div class="queue-details">
-            <span>Status: ${broadcast.status.toUpperCase()}</span>
-            ${broadcast.sent ? `<span>Sent: ${broadcast.sent}</span>` : ''}
-            ${broadcast.failed ? `<span>Failed: ${broadcast.failed}</span>` : ''}
-          </div>
-          <div class="queue-message" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; padding-left: 20px;">
-            ${broadcast.message.substring(0, 100)}${broadcast.message.length > 100 ? '...' : ''}
-          </div>
-        </div>
-      `;
-    });
-    html += '</div>';
-    container.innerHTML = html;
   }
 
   toggleBroadcastTarget() {
@@ -2837,16 +2915,19 @@ class AdminPanel {
   }
 
   insertEmoji() {
-    const emojis = ['😊', '🎉', '🔥', '💰', '💎', '⭐', '✅', '❌', '⚠️', '🔔', '📢', '🎁', '🏆', '🚀', '💪', '👑', '🌟', '✨', '💫', '⚡'];
-    const emoji = prompt('Select emoji (or paste any):\n\n' + emojis.join(' '), '🎉');
-    if (!emoji) return;
+    const emojiId = prompt('Enter Emoji ID (numeric):', '5258332798409783582');
+    if (!emojiId) return;
+    
+    const emojiIcon = prompt('Enter Emoji Icon:', '🚀');
+    if (!emojiIcon) return;
     
     const textarea = document.getElementById('broadcastMessage');
     const start = textarea.selectionStart;
+    const emojiTag = `<tg-emoji emoji-id="${emojiId}">${emojiIcon}</tg-emoji>`;
     
-    textarea.value = textarea.value.substring(0, start) + emoji + textarea.value.substring(start);
+    textarea.value = textarea.value.substring(0, start) + emojiTag + textarea.value.substring(start);
     textarea.focus();
-    textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+    textarea.setSelectionRange(start + emojiTag.length, start + emojiTag.length);
     
     this.updatePreview();
   }
@@ -2925,7 +3006,6 @@ class AdminPanel {
     const userId = document.getElementById('broadcastUserId')?.value.trim();
     const inlineButtons = this.getInlineButtons();
     const imageUrl = document.getElementById('broadcastImage')?.value.trim();
-    const sendMethod = document.querySelector('input[name="sendMethod"]:checked')?.value || 'direct';
     
     if (!message) {
       this.showNotification("Error", "Please enter a message", "error");
@@ -2937,28 +3017,61 @@ class AdminPanel {
       return;
     }
     
-    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : '1 user'} using ${sendMethod.toUpperCase()} method?`)) {
+    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : '1 user'}?`)) {
       return;
     }
     
-    const broadcastId = Date.now().toString();
-    const broadcastData = {
-      id: broadcastId,
-      message: message,
-      type: type,
-      userId: userId,
-      inlineButtons: inlineButtons,
-      imageUrl: imageUrl,
-      sendMethod: sendMethod,
-      createdAt: Date.now(),
-      status: 'pending'
-    };
-    
     try {
-      await this.db.ref(`config/broadcasts/${broadcastId}`).set(broadcastData);
-      this.showNotification("Success", "Broadcast started!", "success");
+      let users = [];
       
-      this.executeBroadcast(broadcastData);
+      if (type === 'all') {
+        const usersSnap = await this.db.ref('users').once('value');
+        usersSnap.forEach(child => {
+          users.push({
+            id: child.key,
+            username: child.val().username,
+            firstName: child.val().firstName
+          });
+        });
+      } else {
+        const userSnap = await this.db.ref(`users/${userId}`).once('value');
+        if (!userSnap.exists()) throw new Error('User not found');
+        users.push({
+          id: userId,
+          username: userSnap.val().username,
+          firstName: userSnap.val().firstName
+        });
+      }
+      
+      const total = users.length;
+      if (total === 0) throw new Error('No users found');
+      
+      this.showNotification("Info", `Sending broadcast to ${total} users...`, "info");
+      
+      let sent = 0;
+      let failed = 0;
+      const CONCURRENT_LIMIT = 20;
+      
+      for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
+        const batch = users.slice(i, i + CONCURRENT_LIMIT);
+        const results = await Promise.allSettled(
+          batch.map(user => this.sendTelegramMessage(user.id, message, inlineButtons, imageUrl))
+        );
+        
+        results.forEach(result => {
+          if (result.status === 'fulfilled') {
+            sent++;
+          } else {
+            failed++;
+          }
+        });
+        
+        if (i + CONCURRENT_LIMIT < users.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+      
+      this.showNotification("Success", `Broadcast completed!\nSent: ${sent}\nFailed: ${failed}`, "success");
       
       document.getElementById('broadcastMessage').value = '';
       document.getElementById('broadcastImage').value = '';
@@ -2972,154 +3085,11 @@ class AdminPanel {
         </div>
       `;
       this.updatePreview();
-      await this.loadBroadcastHistory();
       
     } catch (error) {
-      console.error("Error starting broadcast:", error);
-      this.showNotification("Error", "Failed to start broadcast", "error");
+      console.error("Error sending broadcast:", error);
+      this.showNotification("Error", `Broadcast failed: ${error.message}`, "error");
     }
-  }
-
-  async executeBroadcast(broadcast) {
-    const progressDiv = document.getElementById('broadcastProgress');
-    const progressFill = document.getElementById('broadcastProgressFill');
-    const sentSpan = document.getElementById('broadcastSent');
-    const totalSpan = document.getElementById('broadcastTotal');
-    const failedSpan = document.getElementById('broadcastFailed');
-    
-    if (progressDiv) progressDiv.style.display = 'block';
-    
-    try {
-      await this.db.ref(`config/broadcasts/${broadcast.id}/status`).set('processing');
-      
-      let users = [];
-      
-      if (broadcast.type === 'all') {
-        const usersSnap = await this.db.ref('users').once('value');
-        usersSnap.forEach(child => {
-          users.push({
-            id: child.key,
-            username: child.val().username,
-            firstName: child.val().firstName
-          });
-        });
-      } else {
-        const userSnap = await this.db.ref(`users/${broadcast.userId}`).once('value');
-        if (!userSnap.exists()) throw new Error('User not found');
-        users.push({
-          id: broadcast.userId,
-          username: userSnap.val().username,
-          firstName: userSnap.val().firstName
-        });
-      }
-      
-      const total = users.length;
-      if (total === 0) throw new Error('No users found');
-      
-      if (totalSpan) totalSpan.textContent = total;
-      
-      let sent = 0;
-      let failed = 0;
-      
-      const sendMethod = broadcast.sendMethod || 'direct';
-      const CONCURRENT_LIMIT = 20;
-      
-      if (sendMethod === 'forward') {
-        const testMsg = await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, broadcast.message, broadcast.inlineButtons, broadcast.imageUrl);
-        
-        for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
-          const batch = users.slice(i, i + CONCURRENT_LIMIT);
-          const results = await Promise.allSettled(
-            batch.map(user => this.forwardTelegramMessage(user.id, ADMIN_TELEGRAM_ID, testMsg.message_id))
-          );
-          
-          results.forEach(result => {
-            if (result.status === 'fulfilled') {
-              sent++;
-            } else {
-              failed++;
-            }
-          });
-          
-          if (progressFill) progressFill.style.width = `${(sent + failed) / total * 100}%`;
-          if (sentSpan) sentSpan.textContent = sent;
-          if (failedSpan) failedSpan.textContent = `Failed: ${failed}`;
-          
-          if (i + CONCURRENT_LIMIT < users.length) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-      } else {
-        for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
-          const batch = users.slice(i, i + CONCURRENT_LIMIT);
-          const results = await Promise.allSettled(
-            batch.map(user => this.sendTelegramMessage(user.id, broadcast.message, broadcast.inlineButtons, broadcast.imageUrl))
-          );
-          
-          results.forEach(result => {
-            if (result.status === 'fulfilled') {
-              sent++;
-            } else {
-              failed++;
-            }
-          });
-          
-          if (progressFill) progressFill.style.width = `${(sent + failed) / total * 100}%`;
-          if (sentSpan) sentSpan.textContent = sent;
-          if (failedSpan) failedSpan.textContent = `Failed: ${failed}`;
-          
-          if (i + CONCURRENT_LIMIT < users.length) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-      }
-      
-      await this.db.ref(`config/broadcasts/${broadcast.id}`).update({
-        status: 'completed',
-        completedAt: Date.now(),
-        sent: sent,
-        failed: failed,
-        total: total
-      });
-      
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `✅ Broadcast completed!\n\nSent: ${sent}\nFailed: ${failed}\nTotal: ${total}`);
-      await this.loadBroadcastHistory();
-      
-      setTimeout(() => {
-        if (progressDiv) progressDiv.style.display = 'none';
-      }, 3000);
-      
-    } catch (error) {
-      console.error("Broadcast execution error:", error);
-      await this.db.ref(`config/broadcasts/${broadcast.id}`).update({
-        status: 'failed',
-        error: error.message
-      });
-      await this.loadBroadcastHistory();
-      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `❌ Broadcast failed!\n\nError: ${error.message}`);
-      if (progressDiv) progressDiv.style.display = 'none';
-    }
-  }
-
-  async forwardTelegramMessage(chatId, fromChatId, messageId) {
-    const url = `https://api.telegram.org/bot${this.botToken}/forwardMessage`;
-    const payload = {
-      chat_id: chatId,
-      from_chat_id: fromChatId,
-      message_id: messageId
-    };
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    
-    const data = await response.json();
-    if (!data.ok) {
-      throw new Error(data.description || 'Telegram API error');
-    }
-    return data.result;
   }
 
   async renderSettings() {
@@ -3189,8 +3159,8 @@ class AdminPanel {
     
     return buttons.map(btn => `
       <div class="button-row">
-        <input type="text" class="button-text" value="${btn.text}" placeholder="Button text" maxlength="30">
-        <input type="text" class="button-url" value="${btn.url}" placeholder="URL">
+        <input type="text" class="button-text" value="${btn.text.replace(/"/g, '&quot;')}" placeholder="Button text" maxlength="30">
+        <input type="text" class="button-url" value="${btn.url.replace(/"/g, '&quot;')}" placeholder="URL">
         <button class="btn-sm btn-danger" onclick="this.parentElement.remove()">
           <i class="fas fa-times"></i>
         </button>
@@ -3407,25 +3377,34 @@ class AdminPanel {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     
-    const icon = type === 'success' ? '✅' : 
-                 type === 'error' ? '❌' : 
-                 type === 'warning' ? '⚠️' : 'ℹ️';
+    let icon = '';
+    switch(type) {
+      case 'success': icon = '✅'; break;
+      case 'error': icon = '❌'; break;
+      case 'warning': icon = '⚠️'; break;
+      default: icon = 'ℹ️';
+    }
     
     notification.innerHTML = `
-      <div class="notification-icon">${icon}</div>
       <div class="notification-content">
-        <div class="notification-title">${title}</div>
-        <div class="notification-message">${message}</div>
+        <div class="notification-icon">${icon}</div>
+        <div class="notification-text">
+          <div class="notification-title">${title}</div>
+          <div class="notification-message">${message}</div>
+        </div>
+        <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
       </div>
-      <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
     `;
     
     container.appendChild(notification);
     
+    document.body.classList.add('shake-y');
+    setTimeout(() => document.body.classList.remove('shake-y'), 500);
+    
     setTimeout(() => {
       if (notification.parentNode) {
-        notification.style.opacity = '0';
         notification.style.transform = 'translateX(100%)';
+        notification.style.opacity = '0';
         setTimeout(() => notification.remove(), 300);
       }
     }, 5000);
