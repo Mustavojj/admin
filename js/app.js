@@ -79,6 +79,20 @@ class AdminPanel {
     localStorage.setItem('starz_settings', JSON.stringify(this.settings));
   }
 
+  vibrateDevice(type = 'success') {
+    if (window.Telegram?.WebApp) {
+      if (type === 'success') {
+        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      } else if (type === 'error') {
+        Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+      } else {
+        Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+      }
+    } else if ('vibrate' in navigator) {
+      navigator.vibrate(100);
+    }
+  }
+
   setupEventListeners() {
     this.elements.loginButton.addEventListener('click', () => this.handleLogin());
     this.elements.loginPassword.addEventListener('keypress', (e) => {
@@ -456,7 +470,7 @@ class AdminPanel {
     `;
   }
 
-  displayUsers(users) {
+  async displayUsers(users) {
     const container = document.getElementById('userResults');
     
     if (users.length === 0) {
@@ -471,7 +485,7 @@ class AdminPanel {
     
     let html = '<div class="users-list">';
     
-    users.forEach(user => {
+    for (const user of users) {
       const balance = this.safeNumber(user.balance);
       const starBalance = this.safeNumber(user.star);
       const referrals = this.safeNumber(user.referrals || 0);
@@ -486,6 +500,16 @@ class AdminPanel {
       const joinedAt = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
       const lastActive = user.lastActive ? this.formatDateTime(user.lastActive) : 'N/A';
       const telegramProfileUrl = cleanUsername ? `https://t.me/${cleanUsername}` : '#';
+      
+      let totalDeposits = 0;
+      const depositsSnap = await this.db.ref(`deposits/${user.id}`).once('value');
+      if (depositsSnap.exists()) {
+        depositsSnap.forEach(child => {
+          totalDeposits += this.safeNumber(child.val().amount);
+        });
+      }
+      
+      const totalAds = this.safeNumber(user.totalAds || 0);
       
       html += `
         <div class="user-card">
@@ -568,6 +592,20 @@ class AdminPanel {
                 <div class="user-stat-value">${totalEarned.toFixed(3)} TON</div>
               </div>
             </div>
+            <div class="user-stat-item">
+              <i class="fas fa-money-bill-wave"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Total Deposits</div>
+                <div class="user-stat-value">${totalDeposits.toFixed(3)} TON</div>
+              </div>
+            </div>
+            <div class="user-stat-item">
+              <i class="fas fa-ad"></i>
+              <div class="user-stat-info">
+                <div class="user-stat-label">Total Ads</div>
+                <div class="user-stat-value">${totalAds}</div>
+              </div>
+            </div>
           </div>
           
           <div class="user-card-actions">
@@ -604,7 +642,7 @@ class AdminPanel {
           </div>
         </div>
       `;
-    });
+    }
     
     html += '</div>';
     container.innerHTML = html;
@@ -954,9 +992,7 @@ class AdminPanel {
       const depositId = Date.now().toString();
       await this.db.ref(`deposits/${userId}/${depositId}`).set({
         amount: amount,
-        timestamp: Date.now(),
-        reason: reason,
-        adminId: this.currentUser?.uid || 'admin'
+        timestamp: Date.now()
       });
 
       this.showNotification("Success", `Added ${amount} TON to user`, "success");
@@ -3397,6 +3433,8 @@ class AdminPanel {
     `;
     
     container.appendChild(notification);
+    
+    this.vibrateDevice(type);
     
     document.body.classList.add('shake-y');
     setTimeout(() => document.body.classList.remove('shake-y'), 500);
