@@ -22,6 +22,7 @@ class AdminPanel {
     this.currentUser = null;
     this.botToken = BOT_TOKEN;
     this.currentTaskTab = 'main';
+    this.isProcessingQueue = false;
     this.settings = {
       withdrawalMessage: "<b>🚀 Your withdrawal has been approved!\n\nꘜ Amount: {amount} TON\n\nꘜ Wallet: {wallet}\n\n♡ Thanks for using STAR Z!</b>",
       withdrawalImage: "",
@@ -2813,6 +2814,18 @@ class AdminPanel {
             </div>
             
             <div class="form-group">
+              <label>Send Method</label>
+              <div class="method-selector" style="display: flex; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 5px;">
+                  <input type="radio" name="sendMethod" value="direct" checked> Direct
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px;">
+                  <input type="radio" name="sendMethod" value="forward"> Forward
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-group">
               <label>Message *</label>
               <textarea id="broadcastMessage" rows="5" placeholder="Enter your message here..."></textarea>
               <small>Supports HTML formatting and emojis</small>
@@ -2869,6 +2882,16 @@ class AdminPanel {
               <button class="action-btn btn-success" onclick="admin.sendBroadcast()">
                 <i class="fas fa-paper-plane"></i> Send Broadcast
               </button>
+            </div>
+            
+            <div id="broadcastProgress" class="broadcast-progress" style="display: none; margin-top: 20px;">
+              <div class="progress-container">
+                <div class="progress-bar-fill" id="broadcastProgressFill" style="width: 0%;"></div>
+              </div>
+              <div class="progress-stats">
+                <span id="broadcastSent">0</span> / <span id="broadcastTotal">0</span>
+                <span id="broadcastFailed" style="color: var(--danger);">Failed: 0</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3042,6 +3065,7 @@ class AdminPanel {
     const userId = document.getElementById('broadcastUserId')?.value.trim();
     const inlineButtons = this.getInlineButtons();
     const imageUrl = document.getElementById('broadcastImage')?.value.trim();
+    const sendMethod = document.querySelector('input[name="sendMethod"]:checked')?.value || 'direct';
     
     if (!message) {
       this.showNotification("Error", "Please enter a message", "error");
@@ -3053,9 +3077,17 @@ class AdminPanel {
       return;
     }
     
-    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : '1 user'}?`)) {
+    if (!confirm(`Send broadcast to ${type === 'all' ? 'ALL users' : '1 user'} using ${sendMethod.toUpperCase()} method?`)) {
       return;
     }
+    
+    const progressDiv = document.getElementById('broadcastProgress');
+    const progressFill = document.getElementById('broadcastProgressFill');
+    const sentSpan = document.getElementById('broadcastSent');
+    const totalSpan = document.getElementById('broadcastTotal');
+    const failedSpan = document.getElementById('broadcastFailed');
+    
+    if (progressDiv) progressDiv.style.display = 'block';
     
     try {
       let users = [];
@@ -3082,32 +3114,65 @@ class AdminPanel {
       const total = users.length;
       if (total === 0) throw new Error('No users found');
       
-      this.showNotification("Info", `Sending broadcast to ${total} users...`, "info");
+      if (totalSpan) totalSpan.textContent = total;
       
       let sent = 0;
       let failed = 0;
       const CONCURRENT_LIMIT = 20;
       
-      for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
-        const batch = users.slice(i, i + CONCURRENT_LIMIT);
-        const results = await Promise.allSettled(
-          batch.map(user => this.sendTelegramMessage(user.id, message, inlineButtons, imageUrl))
-        );
+      if (sendMethod === 'forward') {
+        const testMsg = await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, message, inlineButtons, imageUrl);
         
-        results.forEach(result => {
-          if (result.status === 'fulfilled') {
-            sent++;
-          } else {
-            failed++;
+        for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
+          const batch = users.slice(i, i + CONCURRENT_LIMIT);
+          const results = await Promise.allSettled(
+            batch.map(user => this.forwardTelegramMessage(user.id, ADMIN_TELEGRAM_ID, testMsg.message_id))
+          );
+          
+          results.forEach(result => {
+            if (result.status === 'fulfilled') {
+              sent++;
+            } else {
+              failed++;
+            }
+          });
+          
+          if (progressFill) progressFill.style.width = `${(sent + failed) / total * 100}%`;
+          if (sentSpan) sentSpan.textContent = sent;
+          if (failedSpan) failedSpan.textContent = `Failed: ${failed}`;
+          
+          if (i + CONCURRENT_LIMIT < users.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
-        });
-        
-        if (i + CONCURRENT_LIMIT < users.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      } else {
+        for (let i = 0; i < users.length; i += CONCURRENT_LIMIT) {
+          const batch = users.slice(i, i + CONCURRENT_LIMIT);
+          const results = await Promise.allSettled(
+            batch.map(user => this.sendTelegramMessage(user.id, message, inlineButtons, imageUrl))
+          );
+          
+          results.forEach(result => {
+            if (result.status === 'fulfilled') {
+              sent++;
+            } else {
+              failed++;
+            }
+          });
+          
+          if (progressFill) progressFill.style.width = `${(sent + failed) / total * 100}%`;
+          if (sentSpan) sentSpan.textContent = sent;
+          if (failedSpan) failedSpan.textContent = `Failed: ${failed}`;
+          
+          if (i + CONCURRENT_LIMIT < users.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
         }
       }
       
-      this.showNotification("Success", `Broadcast completed!\nSent: ${sent}\nFailed: ${failed}`, "success");
+      this.showNotification("Success", `Broadcast completed!\nSent: ${sent}\nFailed: ${failed}\nTotal: ${total}`, "success");
+      
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `✅ Broadcast completed!\n\nSent: ${sent}\nFailed: ${failed}\nTotal: ${total}`);
       
       document.getElementById('broadcastMessage').value = '';
       document.getElementById('broadcastImage').value = '';
@@ -3122,10 +3187,37 @@ class AdminPanel {
       `;
       this.updatePreview();
       
+      setTimeout(() => {
+        if (progressDiv) progressDiv.style.display = 'none';
+      }, 3000);
+      
     } catch (error) {
-      console.error("Error sending broadcast:", error);
+      console.error("Broadcast execution error:", error);
       this.showNotification("Error", `Broadcast failed: ${error.message}`, "error");
+      await this.sendTelegramMessage(ADMIN_TELEGRAM_ID, `❌ Broadcast failed!\n\nError: ${error.message}`);
+      if (progressDiv) progressDiv.style.display = 'none';
     }
+  }
+
+  async forwardTelegramMessage(chatId, fromChatId, messageId) {
+    const url = `https://api.telegram.org/bot${this.botToken}/forwardMessage`;
+    const payload = {
+      chat_id: chatId,
+      from_chat_id: fromChatId,
+      message_id: messageId
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.description || 'Telegram API error');
+    }
+    return data.result;
   }
 
   async renderSettings() {
