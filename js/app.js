@@ -1831,59 +1831,55 @@ class VeltrixAdminPanel {
     }
 
     async loadWithdrawals() {
-        try {
-            const usersSnap = await this.db.ref(this.dbPaths.users).once('value');
-            let pendingCount = 0;
-            let completedCount = 0;
-            let rejectedCount = 0;
-            let todayCount = 0;
-            const today = new Date().setHours(0, 0, 0, 0);
-            const pendingWithdrawals = [];
-            
-            if (usersSnap.exists()) {
-                for (const userSnapshot of usersSnap) {
-                    const userId = userSnapshot.key;
-                    const withdrawalsSnap = await this.db.ref(`${this.dbPaths.withdrawals}/${userId}`).once('value');
-                    
-                    if (withdrawalsSnap.exists()) {
-                        withdrawalsSnap.forEach(child => {
-                            const withdrawal = child.val();
-                            if (withdrawal.status === 'pending') {
-                                pendingCount++;
-                                pendingWithdrawals.push({
-                                    id: child.key,
-                                    userId: userId,
-                                    ...withdrawal
-                                });
-                            } else if (withdrawal.status === 'completed') {
-                                completedCount++;
-                                if (withdrawal.timestamp && withdrawal.timestamp >= today) {
-                                    todayCount++;
-                                }
-                            } else if (withdrawal.status === 'rejected') {
-                                rejectedCount++;
-                            }
-                        });
+      try {
+    const withdrawalsSnap = await this.db.ref(this.dbPaths.withdrawals).once('value');
+    let pendingCount = 0;
+    let completedCount = 0;
+    let rejectedCount = 0;
+    let todayCount = 0;
+    const today = new Date().setHours(0, 0, 0, 0);
+    const pendingWithdrawals = [];
+    
+    if (withdrawalsSnap.exists()) {
+        withdrawalsSnap.forEach(userWithdrawals => {
+            const userId = userWithdrawals.key;
+            userWithdrawals.forEach(child => {
+                const withdrawal = child.val();
+                if (withdrawal.status === 'pending') {
+                    pendingCount++;
+                    pendingWithdrawals.push({
+                        id: child.key,
+                        userId: userId,
+                        ...withdrawal
+                    });
+                } else if (withdrawal.status === 'completed') {
+                    completedCount++;
+                    if (withdrawal.timestamp && withdrawal.timestamp >= today) {
+                        todayCount++;
                     }
+                } else if (withdrawal.status === 'rejected') {
+                    rejectedCount++;
                 }
-            }
-            
-            document.getElementById('pendingCount').textContent = pendingCount;
-            document.getElementById('completedCount').textContent = completedCount;
-            document.getElementById('rejectedCount').textContent = rejectedCount;
-            document.getElementById('todayCount').textContent = todayCount;
-            
-            await this.displayPendingWithdrawals(pendingWithdrawals);
-            
-        } catch (error) {
-            console.error("Error loading withdrawals:", error);
-            document.getElementById('withdrawalsList').innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Failed to load withdrawals</p>
-                </div>
-            `;
-        }
+            });
+        });
+    }
+    
+    document.getElementById('pendingCount').textContent = pendingCount;
+    document.getElementById('completedCount').textContent = completedCount;
+    document.getElementById('rejectedCount').textContent = rejectedCount;
+    document.getElementById('todayCount').textContent = todayCount;
+    
+    await this.displayPendingWithdrawals(pendingWithdrawals);
+    
+} catch (error) {
+    console.error("Error loading withdrawals:", error);
+    document.getElementById('withdrawalsList').innerHTML = `
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Failed to load withdrawals</p>
+        </div>
+    `;
+            }  
     }
 
     async displayPendingWithdrawals(pendingWithdrawals) {
