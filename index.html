@@ -3,47 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>STAR Z - Admin Panel</title>
+    <title>VELTRIX MINING - Admin Panel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="admin-body">
+    <!-- Login Container -->
     <div id="login-container">
         <div class="login-card">
             <div class="login-logo">
                 <div class="logo-icon">
-                    <i class="fas fa-user-shield"></i>
+                    <i class="fas fa-hard-hat"></i>
                 </div>
-                <h1>STAR Z Admin</h1>
-                <p class="login-subtitle">Management Panel</p>
+                <h1>VELTRIX MINING</h1>
+                <p class="login-subtitle">Administrator Control Panel</p>
             </div>
             <div class="form-group">
                 <div class="input-with-icon">
                     <i class="fas fa-key"></i>
-                    <input type="password" id="login-password" placeholder="Admin Password" autocomplete="current-password">
+                    <input type="password" id="login-password" placeholder="Enter Admin Password" autocomplete="current-password">
                 </div>
             </div>
             <button class="login-btn" id="login-button">
-                <i class="fas fa-sign-in-alt"></i> Login
+                <i class="fas fa-sign-in-alt"></i> Access Panel
             </button>
             <div id="login-message" class="login-message"></div>
         </div>
     </div>
 
+    <!-- Main App Container -->
     <div id="app-container">
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
+        <!-- Sidebar -->
         <aside id="sidebar">
             <div id="sidebar-header">
                 <div class="sidebar-logo">
                     <div class="logo-icon">
-                        <i class="fas fa-user-shield"></i>
+                        <i class="fas fa-hard-hat"></i>
                     </div>
                     <div>
-                        <h2>STAR Z</h2>
-                        <p class="logo-subtitle">Admin Panel</p>
+                        <h2>VELTRIX</h2>
+                        <p class="logo-subtitle">Mining Admin</p>
                     </div>
                 </div>
                 <button class="sidebar-close">&times;</button>
@@ -57,7 +61,7 @@
                     </li>
                     <li class="nav-item" data-page="users">
                         <i class="fas fa-users"></i>
-                        <span>Users</span>
+                        <span>Miners</span>
                     </li>
                     <li class="nav-item" data-page="tasks">
                         <i class="fas fa-tasks"></i>
@@ -84,8 +88,8 @@
             
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <i class="fas fa-user-circle"></i>
-                    <span>Administrator</span>
+                    <i class="fas fa-user-astronaut"></i>
+                    <span>Veltrix Admin</span>
                 </div>
                 <button class="logout-btn" id="logout-btn">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -93,30 +97,36 @@
             </div>
         </aside>
 
+        <!-- Main Content -->
         <main id="main-content">
             <header id="top-bar">
                 <button id="menu-toggle" class="mobile-menu-btn">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h1 id="page-title">Dashboard</h1>
+                <h1 id="page-title">VELTRIX Dashboard</h1>
                 <div class="header-actions">
                     <div class="status-indicator">
                         <i class="fas fa-circle"></i>
+                        <span>Online</span>
                     </div>
                 </div>
             </header>
             
             <div id="content-area">
+                <!-- Dynamic content loaded here -->
             </div>
         </main>
     </div>
 
+    <!-- Notification Container -->
     <div id="notification-container"></div>
 
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
+    <!-- Main Application Script -->
     <script src="js/app.js"></script>
 </body>
 </html>
