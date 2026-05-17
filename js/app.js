@@ -13,7 +13,7 @@ const BOT_TOKEN = "8644664050:AAEo3FBkHkBNq10c0oiI76SfsABddvZ4HMg";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
-const DEFAULT_IMAGE_URL = "https://i.ibb.co/XxXhyZYf/file-000000006f8c720e9ab4c76b6e560062.png";
+const DEFAULT_IMAGE_URL = "https://i.ibb.co/B5z8x1vJ/afb301036766.jpg";
 
 class VeltrixAdminPanel {
     constructor() {
