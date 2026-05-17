@@ -1,15 +1,15 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBdX9yaTJ5KJ8agE_pz0r8AM62VFcy5toI",
-  authDomain: "stars-pop.firebaseapp.com",
-  databaseURL: "https://stars-pop-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "stars-pop",
-  storageBucket: "stars-pop.firebasestorage.app",
-  messagingSenderId: "903403392954",
-  appId: "1:903403392954:web:63dac39d99222f76069783",
-  measurementId: "G-ZD8JYN8DPN"
+  apiKey: "AIzaSyBX5ACaFjmygFxMb1FvZBHp3nLoxUB7rdc",
+  authDomain: "veltrix-999.firebaseapp.com",
+  databaseURL: "https://veltrix-999-default-rtdb.firebaseio.com",
+  projectId: "veltrix-999",
+  storageBucket: "veltrix-999.firebasestorage.app",
+  messagingSenderId: "152153110774",
+  appId: "1:152153110774:web:0e3049619d0cb84f11d4d7",
+  measurementId: "G-FY1LF425BH"
 };
 
-const BOT_TOKEN = "8302653359:AAHUifg3Olt-YwoK0hZUOrVQH-6pQ37ors4";
+const BOT_TOKEN = "8644664050:AAEo3FBkHkBNq10c0oiI76SfsABddvZ4HMg";
 const ADMIN_PASSWORDS = ["Mostafa$500"];
 const ADMIN_TELEGRAM_ID = "1891231976";
 
