@@ -2036,12 +2036,10 @@ class VeltrixAdminPanel {
             }
             
             await withdrawalRef.update({
-                status: 'completed',
-                processedAt: Date.now(),
-                transactionHash: transactionHash
+                status: 'completed'
             });
             
-            // Update global stats
+            
             const statusRef = this.db.ref(this.dbPaths.status);
             const statusSnap = await statusRef.once('value');
             const currentStatus = statusSnap.val() || {};
@@ -2074,22 +2072,11 @@ class VeltrixAdminPanel {
                 return;
             }
             
-            // Return the amount to user's balance
-            const userRef = this.db.ref(`${this.dbPaths.users}/${userId}`);
-            const userSnap = await userRef.once('value');
-            const user = userSnap.val();
-            
-            await userRef.update({
-                tonBalance: this.safeNumber(user.tonBalance) + withdrawal.amount
-            });
-            
             await withdrawalRef.update({
-                status: 'rejected',
-                processedAt: Date.now(),
-                rejectReason: 'Rejected by admin'
+                status: 'rejected'
             });
             
-            this.showNotification("Success", "Withdrawal rejected and funds returned", "success");
+            this.showNotification("Success", "Withdrawal rejected", "success");
             await this.loadWithdrawals();
             
         } catch (error) {
