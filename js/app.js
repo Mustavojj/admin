@@ -1429,7 +1429,7 @@ class VeltrixAdminPanel {
                 });
             }
           
-            promoCodes.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            promoCodes.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           
             this.displayPromoCodes(promoCodes);
             
