@@ -1863,7 +1863,9 @@ class VeltrixAdminPanel {
             });
         });
     }
-    
+
+    pendingWithdrawals.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        
     document.getElementById('pendingCount').textContent = pendingCount;
     document.getElementById('completedCount').textContent = completedCount;
     document.getElementById('rejectedCount').textContent = rejectedCount;
