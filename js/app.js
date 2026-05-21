@@ -1428,7 +1428,9 @@ class VeltrixAdminPanel {
                     });
                 });
             }
-            
+          
+            promoCodes.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+          
             this.displayPromoCodes(promoCodes);
             
         } catch (error) {
