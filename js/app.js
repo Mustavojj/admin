@@ -23,7 +23,6 @@ class VeltrixAdminPanel {
         this.botToken = BOT_TOKEN;
         this.currentTaskTab = 'main';
         
-        // New database structure paths
         this.dbPaths = {
             users: 'users',
             devices: 'devices',
@@ -311,7 +310,6 @@ class VeltrixAdminPanel {
                 });
             }
             
-            // Count active miners (users with miningActive = true)
             const usersSnap = await this.db.ref(this.dbPaths.users).once('value');
             let activeMiners = 0;
             if (usersSnap.exists()) {
@@ -448,13 +446,12 @@ class VeltrixAdminPanel {
             const totalReferrals = this.safeNumber(user.totalReferrals || 0);
             const verifiedReferrals = this.safeNumber(user.verifiedReferrals || 0);
             const referralPower = this.safeNumber(user.referralPower || 0);
-            const referralTon = this.safeNumber(user.referralTon || 0);
             const miningActive = user.miningActive || false;
             const isVerified = user.isVerified || false;
             const username = user.username || '';
             const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
             const firstName = user.firstName || 'Miner';
-            const joinedAt = user.createdAt ? this.formatDateTime(user.createdAt) : 'N/A';
+            const joinedAt = user.createdAt ? this.formatDateTimeShort(user.createdAt) : 'N/A';
             const photoUrl = user.photoUrl || DEFAULT_IMAGE_URL;
             const telegramProfileUrl = cleanUsername ? `https://t.me/${cleanUsername}` : '#';
             const status = user.status === 'banned' ? 'banned' : 'active';
@@ -520,17 +517,17 @@ class VeltrixAdminPanel {
                             </div>
                         </div>
                         <div class="user-stat-item">
-                            <i class="fas fa-coins"></i>
-                            <div class="user-stat-info">
-                                <div class="user-stat-label">Referral TON</div>
-                                <div class="user-stat-value">${referralTon.toFixed(5)} TON</div>
-                            </div>
-                        </div>
-                        <div class="user-stat-item">
                             <i class="fas fa-microchip"></i>
                             <div class="user-stat-info">
                                 <div class="user-stat-label">Mining Status</div>
                                 <div class="user-stat-value">${miningActive ? '🟢 ACTIVE' : '⚫ IDLE'}</div>
+                            </div>
+                        </div>
+                        <div class="user-stat-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div class="user-stat-info">
+                                <div class="user-stat-label">Created At</div>
+                                <div class="user-stat-value">${joinedAt}</div>
                             </div>
                         </div>
                     </div>
@@ -1027,6 +1024,11 @@ class VeltrixAdminPanel {
                             </div>
                             
                             <div class="form-group">
+                                <label>Maximum Completes (0 = unlimited)</label>
+                                <input type="number" id="taskMax" step="1" min="0" value="0">
+                            </div>
+                            
+                            <div class="form-group">
                                 <label>Verification Required</label>
                                 <select id="taskVerification">
                                     <option value="false">No verification</option>
@@ -1184,8 +1186,11 @@ class VeltrixAdminPanel {
             const typeText = task.category === 'main' ? 'Main' : 'Partner';
             const imageUrl = task.img || DEFAULT_IMAGE_URL;
             const reward = this.safeNumber(task.reward || 50);
-            const total = task.total || 0;
-            const verify = task.verify ? '🔒 Verified' : '🔓';
+            const total = this.safeNumber(task.total || 0);
+            const max = this.safeNumber(task.max || 0);
+            const verify = task.verify ? 'TRUE' : 'FALSE';
+            const progressPercent = max > 0 ? Math.min((total / max) * 100, 100) : 0;
+            const isCompleted = max > 0 && total >= max;
             
             html += `
                 <div class="task-item">
@@ -1196,7 +1201,7 @@ class VeltrixAdminPanel {
                         <div class="task-card-content">
                             <div class="task-card-header">
                                 <div class="task-title">
-                                    <h4>${task.name} ${verify}</h4>
+                                    <h4>${task.name}</h4>
                                     <div class="task-badges">
                                         <span class="task-badge ${typeClass}">${typeText}</span>
                                     </div>
@@ -1212,13 +1217,35 @@ class VeltrixAdminPanel {
                                     </div>
                                 </div>
                                 <div class="task-stat">
-                                    <i class="fas fa-users"></i>
+                                    <i class="fas fa-shield-alt"></i>
                                     <div class="task-stat-info">
-                                        <div class="task-stat-label">Completions</div>
-                                        <div class="task-stat-value">${total}</div>
+                                        <div class="task-stat-label">Verification</div>
+                                        <div class="task-stat-value">${verify}</div>
                                     </div>
                                 </div>
                             </div>
+                            
+                            ${max > 0 ? `
+                                <div class="task-progress">
+                                    <div class="progress-info">
+                                        <span>Completions: ${total} / ${max}</span>
+                                        <span>${progressPercent.toFixed(0)}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="task-progress">
+                                    <div class="progress-info">
+                                        <span>Completions: ${total}</span>
+                                        <span>Unlimited</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${Math.min((total / 1000) * 100, 100)}%"></div>
+                                    </div>
+                                </div>
+                            `}
                             
                             <div class="task-url">
                                 <i class="fas fa-external-link-alt"></i>
@@ -1247,6 +1274,7 @@ class VeltrixAdminPanel {
         const image = document.getElementById('taskImage').value.trim();
         const link = document.getElementById('taskLink').value.trim();
         const reward = parseInt(document.getElementById('taskReward').value) || 50;
+        const max = parseInt(document.getElementById('taskMax').value) || 0;
         const typeBtn = document.querySelector('.type-btn.active');
         const category = typeBtn ? typeBtn.dataset.type : 'main';
         const verification = document.getElementById('taskVerification').value === 'true';
@@ -1258,6 +1286,11 @@ class VeltrixAdminPanel {
         
         if (reward <= 0) {
             this.showNotification("Error", "Reward must be positive", "error");
+            return;
+        }
+        
+        if (max < 0) {
+            this.showNotification("Error", "Max completes cannot be negative", "error");
             return;
         }
         
@@ -1276,6 +1309,7 @@ class VeltrixAdminPanel {
                 url: formattedLink,
                 category: category,
                 reward: reward,
+                max: max,
                 verify: verification,
                 total: 0,
                 createdAt: Date.now()
@@ -1293,6 +1327,7 @@ class VeltrixAdminPanel {
             document.getElementById('taskImage').value = '';
             document.getElementById('taskLink').value = '';
             document.getElementById('taskReward').value = '50';
+            document.getElementById('taskMax').value = '0';
             
             this.showNotification("Success", "Task created successfully!", "success");
             await this.loadTasks();
@@ -1799,8 +1834,8 @@ class VeltrixAdminPanel {
                             <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.wallet}', '${userId}', '${userName}')">
                                 <i class="fas fa-check"></i> Confirm
                             </button>
-                            <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${userId}', '${w.id}')">
-                                <i class="fas fa-times"></i> Reject
+                            <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${w.id}')">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                             <button class="action-btn btn-primary" onclick="admin.directPay('${w.wallet}', ${w.amount})">
                                 <i class="fas fa-arrow-right"></i> Direct PAY
@@ -1833,57 +1868,51 @@ class VeltrixAdminPanel {
     }
 
     async loadWithdrawals() {
-      try {
-    const withdrawalsSnap = await this.db.ref(this.dbPaths.withdrawals).once('value');
-    let pendingCount = 0;
-    let completedCount = 0;
-    let rejectedCount = 0;
-    let todayCount = 0;
-    const today = new Date().setHours(0, 0, 0, 0);
-    const pendingWithdrawals = [];
-    
-    if (withdrawalsSnap.exists()) {
-        withdrawalsSnap.forEach(userWithdrawals => {
-            const userId = userWithdrawals.key;
-            userWithdrawals.forEach(child => {
-                const withdrawal = child.val();
-                if (withdrawal.status === 'pending') {
-                    pendingCount++;
-                    pendingWithdrawals.push({
-                        id: child.key,
-                        userId: userId,
-                        ...withdrawal
-                    });
-                } else if (withdrawal.status === 'completed') {
-                    completedCount++;
-                    if (withdrawal.timestamp && withdrawal.timestamp >= today) {
-                        todayCount++;
+        try {
+            const withdrawalsSnap = await this.db.ref(this.dbPaths.withdrawals).once('value');
+            let pendingCount = 0;
+            let completedCount = 0;
+            let rejectedCount = 0;
+            let todayCount = 0;
+            const today = new Date().setHours(0, 0, 0, 0);
+            const pendingWithdrawals = [];
+            
+            if (withdrawalsSnap.exists()) {
+                for (const userWithdrawals of Object.values(withdrawalsSnap.val())) {
+                    for (const withdrawal of Object.values(userWithdrawals)) {
+                        if (withdrawal.status === 'pending') {
+                            pendingCount++;
+                            pendingWithdrawals.push(withdrawal);
+                        } else if (withdrawal.status === 'completed') {
+                            completedCount++;
+                            if (withdrawal.timestamp && withdrawal.timestamp >= today) {
+                                todayCount++;
+                            }
+                        } else if (withdrawal.status === 'rejected') {
+                            rejectedCount++;
+                        }
                     }
-                } else if (withdrawal.status === 'rejected') {
-                    rejectedCount++;
                 }
-            });
-        });
-    }
-
-    pendingWithdrawals.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-        
-    document.getElementById('pendingCount').textContent = pendingCount;
-    document.getElementById('completedCount').textContent = completedCount;
-    document.getElementById('rejectedCount').textContent = rejectedCount;
-    document.getElementById('todayCount').textContent = todayCount;
-    
-    await this.displayPendingWithdrawals(pendingWithdrawals);
-    
-} catch (error) {
-    console.error("Error loading withdrawals:", error);
-    document.getElementById('withdrawalsList').innerHTML = `
-        <div class="error-message">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>Failed to load withdrawals</p>
-        </div>
-    `;
-            }  
+            }
+            
+            pendingWithdrawals.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            document.getElementById('pendingCount').textContent = pendingCount;
+            document.getElementById('completedCount').textContent = completedCount;
+            document.getElementById('rejectedCount').textContent = rejectedCount;
+            document.getElementById('todayCount').textContent = todayCount;
+            
+            await this.displayPendingWithdrawals(pendingWithdrawals);
+            
+        } catch (error) {
+            console.error("Error loading withdrawals:", error);
+            document.getElementById('withdrawalsList').innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Failed to load withdrawals</p>
+                </div>
+            `;
+        }
     }
 
     async displayPendingWithdrawals(pendingWithdrawals) {
@@ -1902,7 +1931,8 @@ class VeltrixAdminPanel {
         let html = '';
         
         for (const withdrawal of pendingWithdrawals) {
-            const userSnap = await this.db.ref(`${this.dbPaths.users}/${withdrawal.userId}`).once('value');
+            const userId = withdrawal.userId;
+            const userSnap = await this.db.ref(`${this.dbPaths.users}/${userId}`).once('value');
             const userData = userSnap.val() || {};
             const date = withdrawal.timestamp ? this.formatDateTime(withdrawal.timestamp) : 'N/A';
             const walletAddress = withdrawal.wallet || '';
@@ -1912,6 +1942,10 @@ class VeltrixAdminPanel {
             const username = userData.username || '';
             const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
             const photoUrl = userData.photoUrl || DEFAULT_IMAGE_URL;
+            const powerBalance = this.safeNumber(userData.powerBalance || 0);
+            const level = this.safeNumber(userData.level || 1);
+            const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
+            const verifiedReferrals = this.safeNumber(userData.verifiedReferrals || 0);
             
             html += `
                 <div class="withdrawal-item">
@@ -1922,10 +1956,12 @@ class VeltrixAdminPanel {
                             </div>
                             <div>
                                 <h4>${cleanUsername || userData.firstName || 'Unknown User'}</h4>
-                                <p class="user-details">ID: ${withdrawal.userId}</p>
+                                <p class="user-details">ID: ${userId}</p>
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="withdrawal-status status-active">PENDING</div>
                     
                     <div class="withdrawal-details">
                         <div class="detail">
@@ -1933,29 +1969,36 @@ class VeltrixAdminPanel {
                             <span>${date}</span>
                         </div>
                         <div class="detail">
+                            <span><i class="fas fa-coins"></i> Amount:</span>
+                            <span>${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON</span>
+                        </div>
+                        <div class="detail">
                             <span><i class="fas fa-wallet"></i> Wallet:</span>
                             <span class="copyable-wallet" onclick="admin.copyToClipboard('${walletAddress}')">${walletDisplay}</span>
                         </div>
                         <div class="detail">
-                            <span><i class="fas fa-coins"></i> Amount:</span>
-                            <span class="copyable-amount" onclick="admin.copyToClipboard('${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON')">
-                                ${withdrawal.amount ? withdrawal.amount.toFixed(5) : '0.00000'} TON
-                            </span>
+                            <span><i class="fas fa-bolt"></i> Power:</span>
+                            <span>${Math.floor(powerBalance)}</span>
+                        </div>
+                        <div class="detail">
+                            <span><i class="fas fa-chart-line"></i> Level:</span>
+                            <span>${level}</span>
+                        </div>
+                        <div class="detail">
+                            <span><i class="fas fa-users"></i> Referrals:</span>
+                            <span>${totalReferrals} (${verifiedReferrals} verified)</span>
                         </div>
                     </div>
                     
                     <div class="withdrawal-actions">
-                        <button class="action-btn btn-info" onclick="admin.getUserReferrals('${withdrawal.userId}', '${cleanUsername || ''}')">
-                            <i class="fas fa-users"></i> Referrals
-                        </button>
                         <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
                             <i class="fas fa-wallet"></i> View Wallet
                         </button>
-                        <button class="action-btn btn-success" onclick="admin.showApproveModal('${withdrawal.id}', ${withdrawal.amount}, '${walletAddress}', '${withdrawal.userId}', '${cleanUsername || ''}')">
+                        <button class="action-btn btn-success" onclick="admin.showApproveModal('${withdrawal.id}', ${withdrawal.amount}, '${walletAddress}', '${userId}', '${cleanUsername || ''}')">
                             <i class="fas fa-check"></i> Confirm
                         </button>
-                        <button class="action-btn btn-danger" onclick="admin.rejectWithdrawal('${withdrawal.userId}', '${withdrawal.id}')">
-                            <i class="fas fa-times"></i> Reject
+                        <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${withdrawal.id}')">
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                         <button class="action-btn btn-primary" onclick="admin.directPay('${walletAddress}', ${withdrawal.amount})">
                             <i class="fas fa-arrow-right"></i> Direct PAY
@@ -2040,9 +2083,10 @@ class VeltrixAdminPanel {
             }
             
             await withdrawalRef.update({
-                status: 'completed'
+                status: 'completed',
+                processedAt: Date.now(),
+                transactionHash: transactionHash
             });
-            
             
             const statusRef = this.db.ref(this.dbPaths.status);
             const statusSnap = await statusRef.once('value');
@@ -2063,29 +2107,23 @@ class VeltrixAdminPanel {
         }
     }
 
-    async rejectWithdrawal(userId, withdrawalId) {
-        if (!confirm('Are you sure you want to reject this withdrawal?')) return;
+    async deleteWithdrawalPermanently(userId, withdrawalId) {
+        if (!confirm('Are you sure you want to permanently delete this withdrawal request?')) return;
         
         try {
-            const withdrawalRef = this.db.ref(`${this.dbPaths.withdrawals}/${userId}/${withdrawalId}`);
-            const snapshot = await withdrawalRef.once('value');
-            const withdrawal = snapshot.val();
+            await this.db.ref(`${this.dbPaths.withdrawals}/${userId}/${withdrawalId}`).remove();
             
-            if (!withdrawal) {
-                this.showNotification("Error", "Withdrawal not found", "error");
-                return;
-            }
-            
-            await withdrawalRef.update({
-                status: 'rejected'
-            });
-            
-            this.showNotification("Success", "Withdrawal rejected", "success");
+            this.showNotification("Success", "Withdrawal request permanently deleted", "success");
             await this.loadWithdrawals();
             
+            const userResultsDiv = document.getElementById('userWithdrawalsResults');
+            if (userResultsDiv && userResultsDiv.style.display === 'block') {
+                await this.searchUserWithdrawals();
+            }
+            
         } catch (error) {
-            console.error("Error rejecting withdrawal:", error);
-            this.showNotification("Error", "Failed to reject withdrawal", "error");
+            console.error("Error deleting withdrawal:", error);
+            this.showNotification("Error", "Failed to delete withdrawal", "error");
         }
     }
 
@@ -2098,6 +2136,15 @@ class VeltrixAdminPanel {
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+
+    formatDateTimeShort(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = new Date(timestamp);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
     }
 
     copyToClipboard(text) {
