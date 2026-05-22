@@ -967,7 +967,6 @@ body {
 .task-item {
     background: rgba(0, 0, 0, 0.4);
     border-radius: var(--border-radius);
-    padding: 0;
     border: 1px solid var(--glass-border);
     overflow: hidden;
 }
@@ -975,63 +974,50 @@ body {
 .task-card {
     display: flex;
     flex-direction: column;
-}
-
-@media (min-width: 500px) {
-    .task-card {
-        flex-direction: row;
-    }
+    align-items: center;
+    text-align: center;
+    padding: 20px;
 }
 
 .task-card-image {
-    width: 100%;
-    max-width: 100px;
+    width: 90px;
+    height: 90px;
     background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 18px;
-    border-right: 1px solid var(--glass-border);
+    margin-bottom: 16px;
+    border: 2px solid var(--glass-border);
 }
 
 .task-card-image img {
-    width: 70px;
-    height: 70px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--glass-border);
 }
 
 .task-card-content {
     flex: 1;
-    padding: 18px;
+    width: 100%;
 }
 
 .task-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 12px;
     margin-bottom: 14px;
 }
 
-.task-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
 .task-title h4 {
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary-light);
+    margin-bottom: 8px;
 }
 
 .task-badges {
     display: flex;
     gap: 8px;
+    justify-content: center;
     flex-wrap: wrap;
 }
 
@@ -1052,21 +1038,6 @@ body {
     color: var(--success);
 }
 
-.badge-active {
-    background: rgba(16, 185, 129, 0.2);
-    color: var(--success);
-}
-
-.badge-completed {
-    background: rgba(139, 92, 246, 0.2);
-    color: var(--primary-light);
-}
-
-.badge-stopped {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--danger);
-}
-
 .task-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -1081,6 +1052,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    justify-content: center;
 }
 
 .task-stat i {
@@ -1096,7 +1068,7 @@ body {
 }
 
 .task-stat-info {
-    flex: 1;
+    text-align: left;
 }
 
 .task-stat-label {
@@ -1112,6 +1084,7 @@ body {
 .task-url {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     margin: 12px 0;
     padding: 10px 14px;
@@ -1159,7 +1132,7 @@ body {
 .task-actions {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
+    justify-content: center;
     margin-top: 14px;
     padding-top: 14px;
     border-top: 1px solid var(--glass-border);
