@@ -447,7 +447,6 @@ class VeltrixAdminPanel {
             const verifiedReferrals = this.safeNumber(user.verifiedReferrals || 0);
             const referralPower = this.safeNumber(user.referralPower || 0);
             const miningActive = user.miningActive || false;
-            const isVerified = user.isVerified || false;
             const username = user.username || '';
             const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
             const firstName = user.firstName || 'Miner';
@@ -1190,7 +1189,6 @@ class VeltrixAdminPanel {
             const max = this.safeNumber(task.max || 0);
             const verify = task.verify ? 'TRUE' : 'FALSE';
             const progressPercent = max > 0 ? Math.min((total / max) * 100, 100) : 0;
-            const isCompleted = max > 0 && total >= max;
             
             html += `
                 <div class="task-item">
@@ -1878,11 +1876,21 @@ class VeltrixAdminPanel {
             const pendingWithdrawals = [];
             
             if (withdrawalsSnap.exists()) {
-                for (const userWithdrawals of Object.values(withdrawalsSnap.val())) {
-                    for (const withdrawal of Object.values(userWithdrawals)) {
+                const withdrawalsData = withdrawalsSnap.val();
+                for (const userId in withdrawalsData) {
+                    const userWithdrawals = withdrawalsData[userId];
+                    for (const withdrawalId in userWithdrawals) {
+                        const withdrawal = userWithdrawals[withdrawalId];
                         if (withdrawal.status === 'pending') {
                             pendingCount++;
-                            pendingWithdrawals.push(withdrawal);
+                            pendingWithdrawals.push({
+                                id: withdrawalId,
+                                userId: userId,
+                                amount: withdrawal.amount,
+                                wallet: withdrawal.wallet,
+                                status: withdrawal.status,
+                                timestamp: withdrawal.timestamp
+                            });
                         } else if (withdrawal.status === 'completed') {
                             completedCount++;
                             if (withdrawal.timestamp && withdrawal.timestamp >= today) {
