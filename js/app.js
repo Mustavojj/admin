@@ -22,6 +22,7 @@ class VeltrixAdminPanel {
         this.currentUser = null;
         this.botToken = BOT_TOKEN;
         this.currentTaskTab = 'main';
+        this.pendingWithdrawalsCache = [];
         
         this.dbPaths = {
             users: 'users',
@@ -1738,7 +1739,7 @@ class VeltrixAdminPanel {
                 });
             }
             
-            this.displayUserWithdrawals(allWithdrawals, userData.firstName || userData.username || userId, userId, userData.photoUrl);
+            this.displayUserWithdrawals(allWithdrawals, userData.firstName || userData.username || userId, userId, userData.photoUrl, userData.username);
             
             document.getElementById('userWithdrawalsResults').style.display = 'block';
             
@@ -1748,8 +1749,9 @@ class VeltrixAdminPanel {
         }
     }
 
-    displayUserWithdrawals(withdrawals, userName, userId, photoUrl) {
+    displayUserWithdrawals(withdrawals, userName, userId, photoUrl, username) {
         withdrawals.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        const telegramUrl = username ? `https://t.me/${username.replace('@', '')}` : '#';
         
         let html = `
             <div class="card">
@@ -1764,7 +1766,6 @@ class VeltrixAdminPanel {
         
         withdrawals.forEach(w => {
             const date = w.timestamp ? this.formatDateTime(w.timestamp) : 'N/A';
-            const processedDate = w.processedAt ? this.formatDateTime(w.processedAt) : 'N/A';
             const walletAddress = w.wallet || '';
             const walletDisplay = walletAddress.length > 10 ? 
                 `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
@@ -1819,25 +1820,31 @@ class VeltrixAdminPanel {
                                 ${w.amount ? w.amount.toFixed(5) : '0.00000'} TON
                             </span>
                         </div>
-                        ${w.status !== 'pending' ? `
-                            <div class="detail">
-                                <span><i class="fas fa-calendar-check"></i> Processed:</span>
-                                <span>${processedDate}</span>
-                            </div>
-                        ` : ''}
                     </div>
                     
                     ${w.status === 'pending' ? `
-                        <div class="withdrawal-actions">
-                            <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${w.wallet}', '${userId}', '${userName}')">
-                                <i class="fas fa-check"></i> Confirm
-                            </button>
-                            <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${w.id}')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                            <button class="action-btn btn-primary" onclick="admin.directPay('${w.wallet}', ${w.amount})">
-                                <i class="fas fa-arrow-right"></i> Direct PAY
-                            </button>
+                        <div class="withdrawal-actions-grid">
+                            <div class="action-row">
+                                <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
+                                    <i class="fas fa-wallet"></i> View Wallet
+                                </button>
+                                <button class="action-btn btn-primary" onclick="window.open('${telegramUrl}', '_blank')">
+                                    <i class="fas fa-user"></i> View User
+                                </button>
+                            </div>
+                            <div class="action-row">
+                                <button class="action-btn btn-success" onclick="admin.showApproveModal('${w.id}', ${w.amount}, '${walletAddress}', '${userId}', '${userName}')">
+                                    <i class="fas fa-check"></i> Confirm
+                                </button>
+                                <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${w.id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                            <div class="action-row-single">
+                                <button class="action-btn btn-primary" onclick="admin.directPay('${walletAddress}', ${w.amount})">
+                                    <i class="fas fa-arrow-right"></i> Direct PAY
+                                </button>
+                            </div>
                         </div>
                     ` : ''}
                 </div>
@@ -1873,7 +1880,8 @@ class VeltrixAdminPanel {
             let rejectedCount = 0;
             let todayCount = 0;
             const today = new Date().setHours(0, 0, 0, 0);
-            const pendingWithdrawals = [];
+            const pendingWithdrawalsData = [];
+            const userDataCache = {};
             
             if (withdrawalsSnap.exists()) {
                 const withdrawalsData = withdrawalsSnap.val();
@@ -1883,13 +1891,28 @@ class VeltrixAdminPanel {
                         const withdrawal = userWithdrawals[withdrawalId];
                         if (withdrawal.status === 'pending') {
                             pendingCount++;
-                            pendingWithdrawals.push({
+                            let userBasic = userDataCache[userId];
+                            if (!userBasic) {
+                                const userSnap = await this.db.ref(`${this.dbPaths.users}/${userId}`).once('value');
+                                const userVal = userSnap.val() || {};
+                                userBasic = {
+                                    username: userVal.username || '',
+                                    firstName: userVal.firstName || '',
+                                    photoUrl: userVal.photoUrl || DEFAULT_IMAGE_URL,
+                                    powerBalance: this.safeNumber(userVal.powerBalance || 0),
+                                    totalReferrals: this.safeNumber(userVal.totalReferrals || 0),
+                                    verifiedReferrals: this.safeNumber(userVal.verifiedReferrals || 0)
+                                };
+                                userDataCache[userId] = userBasic;
+                            }
+                            
+                            pendingWithdrawalsData.push({
                                 id: withdrawalId,
                                 userId: userId,
                                 amount: withdrawal.amount,
                                 wallet: withdrawal.wallet,
-                                status: withdrawal.status,
-                                timestamp: withdrawal.timestamp
+                                timestamp: withdrawal.timestamp,
+                                userData: userBasic
                             });
                         } else if (withdrawal.status === 'completed') {
                             completedCount++;
@@ -1903,14 +1926,15 @@ class VeltrixAdminPanel {
                 }
             }
             
-            pendingWithdrawals.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            pendingWithdrawalsData.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            this.pendingWithdrawalsCache = pendingWithdrawalsData;
             
             document.getElementById('pendingCount').textContent = pendingCount;
             document.getElementById('completedCount').textContent = completedCount;
             document.getElementById('rejectedCount').textContent = rejectedCount;
             document.getElementById('todayCount').textContent = todayCount;
             
-            await this.displayPendingWithdrawals(pendingWithdrawals);
+            this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
             
         } catch (error) {
             console.error("Error loading withdrawals:", error);
@@ -1923,7 +1947,7 @@ class VeltrixAdminPanel {
         }
     }
 
-    async displayPendingWithdrawals(pendingWithdrawals) {
+    displayPendingWithdrawals(pendingWithdrawals) {
         const container = document.getElementById('withdrawalsList');
         
         if (pendingWithdrawals.length === 0) {
@@ -1940,30 +1964,25 @@ class VeltrixAdminPanel {
         
         for (const withdrawal of pendingWithdrawals) {
             const userId = withdrawal.userId;
-            const userSnap = await this.db.ref(`${this.dbPaths.users}/${userId}`).once('value');
-            const userData = userSnap.val() || {};
+            const userData = withdrawal.userData;
             const date = withdrawal.timestamp ? this.formatDateTime(withdrawal.timestamp) : 'N/A';
             const walletAddress = withdrawal.wallet || '';
             const walletDisplay = walletAddress.length > 10 ? 
                 `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}` : 
                 walletAddress;
-            const username = userData.username || '';
-            const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
-            const photoUrl = userData.photoUrl || DEFAULT_IMAGE_URL;
-            const powerBalance = this.safeNumber(userData.powerBalance || 0);
-            const level = this.safeNumber(userData.level || 1);
-            const totalReferrals = this.safeNumber(userData.totalReferrals || 0);
-            const verifiedReferrals = this.safeNumber(userData.verifiedReferrals || 0);
+            const cleanUsername = (userData.username || '').startsWith('@') ? (userData.username || '').substring(1) : (userData.username || '');
+            const displayName = cleanUsername || userData.firstName || 'User';
+            const telegramUrl = cleanUsername ? `https://t.me/${cleanUsername}` : '#';
             
             html += `
                 <div class="withdrawal-item">
                     <div class="withdrawal-header">
                         <div class="user-info">
                             <div class="user-avatar">
-                                <img src="${photoUrl}" alt="${cleanUsername || 'User'}" onerror="this.src='${DEFAULT_IMAGE_URL}'">
+                                <img src="${userData.photoUrl}" alt="${displayName}" onerror="this.src='${DEFAULT_IMAGE_URL}'">
                             </div>
                             <div>
-                                <h4>${cleanUsername || userData.firstName || 'Unknown User'}</h4>
+                                <h4>${displayName}</h4>
                                 <p class="user-details">ID: ${userId}</p>
                             </div>
                         </div>
@@ -1986,37 +2005,53 @@ class VeltrixAdminPanel {
                         </div>
                         <div class="detail">
                             <span><i class="fas fa-bolt"></i> Power:</span>
-                            <span>${Math.floor(powerBalance)}</span>
-                        </div>
-                        <div class="detail">
-                            <span><i class="fas fa-chart-line"></i> Level:</span>
-                            <span>${level}</span>
+                            <span>${Math.floor(userData.powerBalance)}</span>
                         </div>
                         <div class="detail">
                             <span><i class="fas fa-users"></i> Referrals:</span>
-                            <span>${totalReferrals} (${verifiedReferrals} verified)</span>
+                            <span>${userData.totalReferrals} (${userData.verifiedReferrals} verified)</span>
                         </div>
                     </div>
                     
-                    <div class="withdrawal-actions">
-                        <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
-                            <i class="fas fa-wallet"></i> View Wallet
-                        </button>
-                        <button class="action-btn btn-success" onclick="admin.showApproveModal('${withdrawal.id}', ${withdrawal.amount}, '${walletAddress}', '${userId}', '${cleanUsername || ''}')">
-                            <i class="fas fa-check"></i> Confirm
-                        </button>
-                        <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${withdrawal.id}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                        <button class="action-btn btn-primary" onclick="admin.directPay('${walletAddress}', ${withdrawal.amount})">
-                            <i class="fas fa-arrow-right"></i> Direct PAY
-                        </button>
+                    <div class="withdrawal-actions-grid">
+                        <div class="action-row">
+                            <button class="action-btn btn-info" onclick="admin.viewWallet('${walletAddress}')">
+                                <i class="fas fa-wallet"></i> View Wallet
+                            </button>
+                            <button class="action-btn btn-primary" onclick="window.open('${telegramUrl}', '_blank')">
+                                <i class="fas fa-user"></i> View User
+                            </button>
+                        </div>
+                        <div class="action-row">
+                            <button class="action-btn btn-success" onclick="admin.showApproveModal('${withdrawal.id}', ${withdrawal.amount}, '${walletAddress}', '${userId}', '${displayName}')">
+                                <i class="fas fa-check"></i> Confirm
+                            </button>
+                            <button class="action-btn btn-danger" onclick="admin.deleteWithdrawalPermanently('${userId}', '${withdrawal.id}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <div class="action-row-single">
+                            <button class="action-btn btn-primary" onclick="admin.directPay('${walletAddress}', ${withdrawal.amount})">
+                                <i class="fas fa-arrow-right"></i> Direct PAY
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
         }
         
         container.innerHTML = html;
+    }
+
+    removeWithdrawalFromUI(userId, withdrawalId) {
+        this.pendingWithdrawalsCache = this.pendingWithdrawalsCache.filter(w => !(w.userId === userId && w.id === withdrawalId));
+        this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
+        
+        const pendingCountElem = document.getElementById('pendingCount');
+        if (pendingCountElem) {
+            const currentCount = parseInt(pendingCountElem.textContent) || 0;
+            pendingCountElem.textContent = Math.max(0, currentCount - 1);
+        }
     }
 
     showApproveModal(requestId, amount, wallet, userId, userName) {
@@ -2049,10 +2084,10 @@ class VeltrixAdminPanel {
                     </div>
                     
                     <div class="form-group">
-                        <label>Transaction Hash *</label>
+                        <label>Transaction Hash (Optional)</label>
                         <div class="transaction-input-group">
                             <span class="transaction-prefix">https://tonviewer.com/transaction/</span>
-                            <input type="text" id="transactionHash" placeholder="Enter transaction hash">
+                            <input type="text" id="transactionHash" placeholder="Enter transaction hash (optional)">
                         </div>
                     </div>
                 </div>
@@ -2075,11 +2110,6 @@ class VeltrixAdminPanel {
     async approveWithdrawal(userId, withdrawalId, amount) {
         const transactionHash = document.getElementById('transactionHash')?.value.trim();
         
-        if (!transactionHash) {
-            this.showNotification("Error", "Please enter transaction hash", "error");
-            return;
-        }
-        
         try {
             const withdrawalRef = this.db.ref(`${this.dbPaths.withdrawals}/${userId}/${withdrawalId}`);
             const snapshot = await withdrawalRef.once('value');
@@ -2090,11 +2120,11 @@ class VeltrixAdminPanel {
                 return;
             }
             
-            await withdrawalRef.update({
-                status: 'completed',
-                processedAt: Date.now(),
-                transactionHash: transactionHash
-            });
+            const updateData = { status: 'completed' };
+            if (transactionHash) {
+                updateData.transactionHash = transactionHash;
+            }
+            await withdrawalRef.update(updateData);
             
             const statusRef = this.db.ref(this.dbPaths.status);
             const statusSnap = await statusRef.once('value');
@@ -2107,7 +2137,7 @@ class VeltrixAdminPanel {
             this.showNotification("Success", "Withdrawal approved!", "success");
             
             document.querySelector('.modal-overlay.show')?.remove();
-            await this.loadWithdrawals();
+            this.removeWithdrawalFromUI(userId, withdrawalId);
             
         } catch (error) {
             console.error("Error approving withdrawal:", error);
@@ -2122,7 +2152,7 @@ class VeltrixAdminPanel {
             await this.db.ref(`${this.dbPaths.withdrawals}/${userId}/${withdrawalId}`).remove();
             
             this.showNotification("Success", "Withdrawal request permanently deleted", "success");
-            await this.loadWithdrawals();
+            this.removeWithdrawalFromUI(userId, withdrawalId);
             
             const userResultsDiv = document.getElementById('userWithdrawalsResults');
             if (userResultsDiv && userResultsDiv.style.display === 'block') {
