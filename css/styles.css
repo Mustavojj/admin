@@ -2088,3 +2088,40 @@ body {
         width: auto;
     }
 }
+
+.withdrawal-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.action-row-single {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.action-row .action-btn,
+.action-row-single .action-btn {
+    width: 100%;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .action-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .action-row-single {
+        grid-template-columns: 1fr;
+    }
+}
+ 
