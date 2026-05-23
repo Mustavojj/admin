@@ -1653,37 +1653,6 @@ class VeltrixAdminPanel {
                     </button>
                 </div>
                 
-                <div class="withdrawals-stats">
-                    <div class="mini-stat-card">
-                        <i class="fas fa-clock"></i>
-                        <div>
-                            <h4>Pending</h4>
-                            <p id="pendingCount">0</p>
-                        </div>
-                    </div>
-                    <div class="mini-stat-card">
-                        <i class="fas fa-check-circle"></i>
-                        <div>
-                            <h4>Completed</h4>
-                            <p id="completedCount">0</p>
-                        </div>
-                    </div>
-                    <div class="mini-stat-card">
-                        <i class="fas fa-times-circle"></i>
-                        <div>
-                            <h4>Rejected</h4>
-                            <p id="rejectedCount">0</p>
-                        </div>
-                    </div>
-                    <div class="mini-stat-card">
-                        <i class="fas fa-calendar-day"></i>
-                        <div>
-                            <h4>Today</h4>
-                            <p id="todayCount">0</p>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="withdrawals-management">
                     <div class="card">
                         <div class="section-header">
@@ -1875,11 +1844,6 @@ class VeltrixAdminPanel {
     async loadWithdrawals() {
         try {
             const withdrawalsSnap = await this.db.ref(this.dbPaths.withdrawals).once('value');
-            let pendingCount = 0;
-            let completedCount = 0;
-            let rejectedCount = 0;
-            let todayCount = 0;
-            const today = new Date().setHours(0, 0, 0, 0);
             const pendingWithdrawalsData = [];
             const userDataCache = {};
             
@@ -1890,7 +1854,6 @@ class VeltrixAdminPanel {
                     for (const withdrawalId in userWithdrawals) {
                         const withdrawal = userWithdrawals[withdrawalId];
                         if (withdrawal.status === 'pending') {
-                            pendingCount++;
                             let userBasic = userDataCache[userId];
                             if (!userBasic) {
                                 const userSnap = await this.db.ref(`${this.dbPaths.users}/${userId}`).once('value');
@@ -1914,13 +1877,6 @@ class VeltrixAdminPanel {
                                 timestamp: withdrawal.timestamp,
                                 userData: userBasic
                             });
-                        } else if (withdrawal.status === 'completed') {
-                            completedCount++;
-                            if (withdrawal.timestamp && withdrawal.timestamp >= today) {
-                                todayCount++;
-                            }
-                        } else if (withdrawal.status === 'rejected') {
-                            rejectedCount++;
                         }
                     }
                 }
@@ -1928,11 +1884,6 @@ class VeltrixAdminPanel {
             
             pendingWithdrawalsData.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             this.pendingWithdrawalsCache = pendingWithdrawalsData;
-            
-            document.getElementById('pendingCount').textContent = pendingCount;
-            document.getElementById('completedCount').textContent = completedCount;
-            document.getElementById('rejectedCount').textContent = rejectedCount;
-            document.getElementById('todayCount').textContent = todayCount;
             
             this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
             
@@ -2046,12 +1997,6 @@ class VeltrixAdminPanel {
     removeWithdrawalFromUI(userId, withdrawalId) {
         this.pendingWithdrawalsCache = this.pendingWithdrawalsCache.filter(w => !(w.userId === userId && w.id === withdrawalId));
         this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
-        
-        const pendingCountElem = document.getElementById('pendingCount');
-        if (pendingCountElem) {
-            const currentCount = parseInt(pendingCountElem.textContent) || 0;
-            pendingCountElem.textContent = Math.max(0, currentCount - 1);
-        }
     }
 
     showApproveModal(requestId, amount, wallet, userId, userName) {
