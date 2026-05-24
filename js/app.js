@@ -248,10 +248,6 @@ class VeltrixAdminPanel {
                                         <span class="stat-label">Total TON Paid</span>
                                         <span class="stat-value" id="totalTonPaidStat">0 TON</span>
                                     </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Active Miners</span>
-                                        <span class="stat-value" id="activeMinersStat">0</span>
-                                    </div>
                                 </div>
                             </div>
                             
@@ -311,22 +307,12 @@ class VeltrixAdminPanel {
                 });
             }
             
-            const usersSnap = await this.db.ref(this.dbPaths.users).once('value');
-            let activeMiners = 0;
-            if (usersSnap.exists()) {
-                usersSnap.forEach(child => {
-                    const user = child.val();
-                    if (user.miningActive === true) activeMiners++;
-                });
-            }
-            
             document.getElementById('dashboardLoading').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
             
             document.getElementById('totalUsersStat').textContent = totalUsers;
             document.getElementById('totalWithdrawalsStat').textContent = totalWithdrawals;
             document.getElementById('totalTonPaidStat').textContent = totalTonPaid.toFixed(3) + ' TON';
-            document.getElementById('activeMinersStat').textContent = activeMiners;
             document.getElementById('totalTasksStat').textContent = mainTasks + partnerTasks;
             document.getElementById('mainTasksStat').textContent = mainTasks;
             document.getElementById('partnerTasksStat').textContent = partnerTasks;
