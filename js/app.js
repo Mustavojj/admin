@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBX5ACaFjmygFxMb1FvZBHp3nLoxUB7rdc",
-  authDomain: "veltrix-999.firebaseapp.com",
-  databaseURL: "https://veltrix-999-default-rtdb.firebaseio.com",
-  projectId: "veltrix-999",
-  storageBucket: "veltrix-999.firebasestorage.app",
-  messagingSenderId: "152153110774",
-  appId: "1:152153110774:web:0e3049619d0cb84f11d4d7",
-  measurementId: "G-FY1LF425BH"
+  apiKey: "AIzaSyBDDxrUoWF8bXpUTu7DPsVOxJTBW6mFM8g",
+  authDomain: "veltrix-apps.firebaseapp.com",
+  databaseURL: "https://veltrix-apps-default-rtdb.firebaseio.com",
+  projectId: "veltrix-apps",
+  storageBucket: "veltrix-apps.firebasestorage.app",
+  messagingSenderId: "624237984093",
+  appId: "1:624237984093:web:f7163a66517feb9a0790b4",
+  measurementId: "G-EFP6R8ZVFN"
 };
 
 const BOT_TOKEN = "8644664050:AAEo3FBkHkBNq10c0oiI76SfsABddvZ4HMg";
