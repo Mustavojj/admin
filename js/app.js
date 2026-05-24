@@ -1,6 +1,7 @@
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBDDxrUoWF8bXpUTu7DPsVOxJTBW6mFM8g",
   authDomain: "veltrix-apps.firebaseapp.com",
+  databaseURL: "https://veltrix-apps-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "veltrix-apps",
   storageBucket: "veltrix-apps.firebasestorage.app",
   messagingSenderId: "624237984093",
