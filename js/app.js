@@ -1,12 +1,12 @@
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBDDxrUoWF8bXpUTu7DPsVOxJTBW6mFM8g",
-  authDomain: "veltrix-apps.firebaseapp.com",
-  databaseURL: "https://veltrix-apps-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "veltrix-apps",
-  storageBucket: "veltrix-apps.firebasestorage.app",
-  messagingSenderId: "624237984093",
-  appId: "1:624237984093:web:f7163a66517feb9a0790b4",
-  measurementId: "G-EFP6R8ZVFN"
+  apiKey: "AIzaSyCWnfPAgBHr1beeph4OxxmXokY45MgPsFM",
+  authDomain: "vevaia.firebaseapp.com",
+  databaseURL: "https://vevaia-default-rtdb.firebaseio.com",
+  projectId: "vevaia",
+  storageBucket: "vevaia.firebasestorage.app",
+  messagingSenderId: "284687408904",
+  appId: "1:284687408904:web:25e88c5066b5844aefd6bd",
+  measurementId: "G-LPRMK4JY0Z"
 };
 
 const BOT_TOKEN = "8644664050:AAEo3FBkHkBNq10c0oiI76SfsABddvZ4HMg";
