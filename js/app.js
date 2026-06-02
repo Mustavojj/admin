@@ -1641,12 +1641,10 @@ class VeltrixAdminPanel {
                 
                 <div class="withdrawals-management">
                     <div class="card">
-                        <div class="section-header">
-                            <h3><i class="fas fa-clock"></i> Pending Withdrawals</h3>
-                            <button class="action-btn btn-secondary" onclick="admin.loadWithdrawals()">
-                                <i class="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        </div>
+                      <div class="section-header">
+                        <h3><i class="fas fa-clock"></i> Pending Withdrawals <span id="pendingCount">(0)</span></h3>
+                        <button class="action-btn btn-secondary" onclick="admin.loadWithdrawals()">Refresh</button>
+                      </div>
                         
                         <div id="withdrawalsList" class="withdrawals-list">
                             <div class="loading">
@@ -1870,7 +1868,7 @@ class VeltrixAdminPanel {
             
             pendingWithdrawalsData.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             this.pendingWithdrawalsCache = pendingWithdrawalsData;
-            
+            document.getElementById('pendingCount').textContent = `(${pendingWithdrawalsData.length})`;
             this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
             
         } catch (error) {
@@ -1980,10 +1978,15 @@ class VeltrixAdminPanel {
         container.innerHTML = html;
     }
 
-    removeWithdrawalFromUI(userId, withdrawalId) {
-        this.pendingWithdrawalsCache = this.pendingWithdrawalsCache.filter(w => !(w.userId === userId && w.id === withdrawalId));
-        this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
+removeWithdrawalFromUI(userId, withdrawalId) {
+    this.pendingWithdrawalsCache = this.pendingWithdrawalsCache.filter(w => !(w.userId === userId && w.id === withdrawalId));
+    this.displayPendingWithdrawals(this.pendingWithdrawalsCache);
+    
+    const countSpan = document.getElementById('pendingCount');
+    if (countSpan) {
+        countSpan.textContent = `(${this.pendingWithdrawalsCache.length})`;
     }
+}
 
     showApproveModal(requestId, amount, wallet, userId, userName) {
         const nanoAmount = Math.floor(amount * 1000000000);
